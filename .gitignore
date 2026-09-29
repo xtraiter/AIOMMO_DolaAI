@@ -1,0 +1,33 @@
+# --- build output ---
+bin/
+obj/
+dist/
+publish/
+*.user
+.vs/
+*_wpftmp.csproj
+
+# --- dữ liệu cục bộ: phiên đăng nhập thật, cookie, cơ sở dữ liệu ---
+dola-render-gateway/accounts/
+dola-render-gateway/downloads/
+dola-render-gateway/*.db
+dola-render-gateway/*.sqlite
+dola-render-gateway/cookies.txt
+dola-render-gateway/fb_cookies.txt
+dola-render-gateway/.env.local
+*.log
+
+# --- ảnh chụp/debug, file tạm ---
+/*.png
+dola-render-gateway/*.png
+scratch/
+.design_backup/
+
+# --- python ---
+__pycache__/
+*.pyc
+.venv/
+
+# --- gói bàn giao sinh ra ---
+handover/
+dola-render-gateway/.git-upstream/

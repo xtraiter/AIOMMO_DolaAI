@@ -1,0 +1,6 @@
+<Application x:Class="DolaCoordinator.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- Cố ý để trống: giao diện nằm trong Themes/DolaModule.xaml và được từng màn hình tự merge (xem file đó). -->
+    <Application.Resources />
+</Application>

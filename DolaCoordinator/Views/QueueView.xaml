@@ -1,0 +1,284 @@
+<UserControl x:Class="DolaCoordinator.Views.QueueView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:models="clr-namespace:DolaCoordinator.Models"
+             mc:Ignorable="d" 
+             d:DesignHeight="700" d:DesignWidth="950"
+             FontFamily="{DynamicResource ModernFont}">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="../Themes/DolaModule.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="150" />
+        </Grid.RowDefinitions>
+
+        <!-- Script Input Section -->
+        <Border Grid.Row="0" Style="{StaticResource ModernCard}" Margin="0,0,0,14" Padding="14">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="230" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Prompt -->
+                <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,14,0">
+                    <TextBlock Text="PROMPT SINH VIDEO (mỗi dòng một prompt = một video)" Style="{StaticResource FieldLabel}" />
+                    <TextBox Text="{Binding PromptInput, UpdateSourceTrigger=PropertyChanged}"
+                             Style="{StaticResource ModernTextBox}" AcceptsReturn="True" Height="78"
+                             VerticalScrollBarVisibility="Auto" VerticalContentAlignment="Top" TextWrapping="Wrap" />
+                </StackPanel>
+
+                <!-- Tỷ lệ / thời lượng / thêm -->
+                <StackPanel Grid.Row="0" Grid.Column="1">
+                    <Grid Margin="0,0,0,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Margin="0,0,6,0">
+                            <TextBlock Text="TỶ LỆ" Style="{StaticResource FieldLabel}" />
+                            <ComboBox ItemsSource="{Binding RatioOptions}" SelectedItem="{Binding SelectedRatio}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Margin="6,0,0,0">
+                            <TextBlock Text="THỜI LƯỢNG (giây)" Style="{StaticResource FieldLabel}" />
+                            <ComboBox ItemsSource="{Binding DurationOptions}" SelectedItem="{Binding SelectedDuration}" />
+                        </StackPanel>
+                    </Grid>
+                    <Button Content="Thêm vào hàng đợi" Command="{Binding AddPromptsToQueueCommand}" Style="{StaticResource ModernPrimaryButton}" Margin="0,0,0,6" />
+                    <Button Content="Nhập kịch bản từ file" Command="{Binding ImportPromptsFromFileCommand}" Style="{StaticResource ModernSecondaryButton}" />
+                </StackPanel>
+
+                <!-- Ảnh tham chiếu (tùy chọn) -->
+                <Grid Grid.Row="1" Grid.ColumnSpan="2" Margin="0,14,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Margin="0,0,14,0" VerticalAlignment="Top" MinWidth="150">
+                        <TextBlock Text="ẢNH THAM CHIẾU (tùy chọn)" Style="{StaticResource FieldLabel}" />
+                        <StackPanel Orientation="Horizontal">
+                            <Button Content="Chọn ảnh…" Command="{Binding AddReferenceImagesCommand}" Margin="0,0,8,0" />
+                            <Button Content="Xóa hết" Command="{Binding ClearReferenceImagesCommand}" Style="{StaticResource GhostButton}" />
+                        </StackPanel>
+                    </StackPanel>
+                    <ItemsControl Grid.Column="1" ItemsSource="{Binding ReferenceImagePaths}" VerticalAlignment="Center">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Background="{StaticResource WindowBackgroundBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                                        CornerRadius="6" Padding="4" Margin="0,0,8,6" ToolTip="{Binding}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <Image Source="{Binding Converter={StaticResource PathToThumbnailConverter}}" Width="34" Height="34" Stretch="UniformToFill" />
+                                        <TextBlock Text="{Binding Converter={StaticResource PathToFileNameConverter}}" MaxWidth="120" TextTrimming="CharacterEllipsis"
+                                                   VerticalAlignment="Center" Margin="8,0,6,0" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" />
+                                        <Button Style="{StaticResource GhostButton}" Padding="6,2" ToolTip="Bỏ ảnh này"
+                                                Command="{Binding DataContext.RemoveReferenceImageCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                CommandParameter="{Binding}">
+                                            <TextBlock Text="&#xE711;" FontFamily="Segoe MDL2 Assets" FontSize="11" />
+                                        </Button>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Grid>
+
+                <!-- Thư mục lưu video -->
+                <Grid Grid.Row="2" Grid.ColumnSpan="2" Margin="0,8,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="LƯU VIDEO VÀO" Style="{StaticResource FieldLabel}" VerticalAlignment="Center" Margin="0,0,14,0" />
+                    <TextBox Grid.Column="1" Text="{Binding SaveDirectory, UpdateSourceTrigger=LostFocus}" ToolTip="Video tải xong được lưu vào thư mục này (mặc định: thư mục Videos)" />
+                    <Button Grid.Column="2" Content="Chọn thư mục…" Command="{Binding BrowseSaveDirectoryCommand}" Margin="8,0,0,0" />
+                    <Button Grid.Column="3" Content="Mở" Command="{Binding OpenDownloadFolderCommand}" Margin="8,0,0,0" />
+                </Grid>
+            </Grid>
+        </Border>
+
+        <!-- Queue Toolbar & Counters -->
+        <Border Grid.Row="1" Style="{StaticResource ModernCard}" Margin="0,0,0,12" Padding="10,8">
+            <DockPanel LastChildFill="False">
+                <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
+                    <Button Command="{Binding ToggleQueueCommand}" Margin="0,0,10,0">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource ModernPrimaryButton}">
+                                <Setter Property="Content" Value="▶️ BẮT ĐẦU ĐIỀU PHỐI" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsQueueRunning}" Value="True">
+                                        <Setter Property="Content" Value="⏸️ TẠM DỪNG HÀNG ĐỢI" />
+                                        <Setter Property="Background" Value="{StaticResource WarningBrush}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+
+                    <Button Content="🧹 Xóa Đã Xong" Command="{Binding ClearCompletedCommand}" Style="{StaticResource ModernSecondaryButton}" Margin="0,0,8,0" />
+                    <Button Content="🧹 Xóa Lỗi" Command="{Binding ClearFailedCommand}" Style="{StaticResource ModernSecondaryButton}" Margin="0,0,8,0" />
+                    <Button Content="❌ Xóa Đã Chọn" Command="{Binding DeleteSelectedTasksCommand}" Style="{StaticResource ModernSecondaryButton}" Foreground="{StaticResource DangerBrush}" Margin="0,0,8,0" />
+                    <Button Content="🗑️ XÓA TOÀN BỘ" Command="{Binding ClearAllTasksCommand}" Style="{StaticResource ModernSecondaryButton}" Foreground="{StaticResource DangerBrush}" Margin="0,0,8,0" />
+                    <Button Content="📁 Mở Thư Mục Video" Command="{Binding OpenDownloadFolderCommand}" Style="{StaticResource ModernSecondaryButton}" Margin="0,0,8,0" />
+                </StackPanel>
+
+                <!-- Status Badges -->
+                <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" VerticalAlignment="Center">
+                    <TextBlock Text="Đang Chờ: " Foreground="{StaticResource TextSecondaryBrush}" FontSize="12" />
+                    <TextBlock Text="{Binding PendingCount}" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,12,0" FontSize="12" />
+
+                    <TextBlock Text="Đang Xử Lý: " Foreground="{StaticResource TextSecondaryBrush}" FontSize="12" />
+                    <TextBlock Text="{Binding ProcessingCount}" FontWeight="Bold" Foreground="{StaticResource AccentBrush}" Margin="0,0,12,0" FontSize="12" />
+
+                    <TextBlock Text="Hoàn Tất: " Foreground="{StaticResource TextSecondaryBrush}" FontSize="12" />
+                    <TextBlock Text="{Binding CompletedCount}" FontWeight="Bold" Foreground="{StaticResource SuccessBrush}" Margin="0,0,12,0" FontSize="12" />
+
+                    <TextBlock Text="Thất Bại: " Foreground="{StaticResource TextSecondaryBrush}" FontSize="12" />
+                    <TextBlock Text="{Binding FailedCount}" FontWeight="Bold" Foreground="{StaticResource DangerBrush}" FontSize="12" />
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <!-- Tasks DataGrid -->
+        <Grid Grid.Row="2" Margin="0,0,0,12">
+            <DataGrid ItemsSource="{Binding Tasks}"
+                      SelectedItem="{Binding SelectedTask}"
+                      AutoGenerateColumns="False"
+                      CanUserAddRows="False"
+                      GridLinesVisibility="Horizontal"
+                      HeadersVisibility="Column"
+                      Style="{StaticResource ModernDataGrid}">
+                <DataGrid.Columns>
+                    <!-- Selection Checkbox -->
+                    <DataGridTemplateColumn Width="40">
+                        <DataGridTemplateColumn.Header>
+                            <CheckBox IsChecked="{Binding DataContext.IsAllSelected, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay}"
+                                      HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </DataGridTemplateColumn.Header>
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                          HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+
+                    <DataGridTextColumn Header="Prompt Kịch Bản" Binding="{Binding Prompt}" Width="*" />
+                    <DataGridTextColumn Header="Tỉ Lệ" Binding="{Binding Ratio}" Width="65" />
+                    <DataGridTextColumn Header="Thời Lượng" Binding="{Binding Duration, StringFormat='{}{0}s'}" Width="80" />
+                    <DataGridTextColumn Header="Ảnh" Binding="{Binding ReferenceSummary}" Width="60" />
+                    <DataGridTextColumn Header="Tài Khoản" Binding="{Binding AssignedSessionName}" Width="110" />
+
+                    <!-- Status -->
+                    <DataGridTemplateColumn Header="Trạng Thái" Width="210">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding Status}" FontWeight="SemiBold" FontSize="11.5">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Status}" Value="{x:Static models:RenderTaskStatus.Completed}">
+                                                        <Setter Property="Foreground" Value="{StaticResource SuccessBrush}" />
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding Status}" Value="{x:Static models:RenderTaskStatus.Processing}">
+                                                        <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding Status}" Value="{x:Static models:RenderTaskStatus.Downloading}">
+                                                        <Setter Property="Foreground" Value="{StaticResource AccentHoverBrush}" />
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding Status}" Value="{x:Static models:RenderTaskStatus.Failed}">
+                                                        <Setter Property="Foreground" Value="{StaticResource DangerBrush}" />
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding Status}" Value="{x:Static models:RenderTaskStatus.Pending}">
+                                                        <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                    <TextBlock Text="{Binding StageText}" FontSize="10.5" Foreground="{StaticResource TextMutedBrush}" TextTrimming="CharacterEllipsis"
+                                               ToolTip="{Binding ErrorMessage}">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding StageText}" Value="{x:Null}">
+                                                        <Setter Property="Visibility" Value="Collapsed" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </StackPanel>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+
+                    <!-- Realtime Progress Bar -->
+                    <DataGridTemplateColumn Header="Tiến Độ %" Width="130">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <Grid VerticalAlignment="Center">
+                                    <ProgressBar Value="{Binding ProgressPercent}" Maximum="100" Height="14" BorderThickness="0" Background="#1E293B" Foreground="{StaticResource AccentBrush}" />
+                                    <TextBlock Text="{Binding ProgressPercent, StringFormat='{}{0}%'}" FontSize="10" FontWeight="Bold" Foreground="#FFFFFF" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Grid>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+
+                    <!-- Actions -->
+                    <DataGridTemplateColumn Header="Thao Tác" Width="220">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Button Content="▶️ Xem" ToolTip="Mở phát video" Command="{Binding DataContext.PlaySelectedVideoCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" Style="{StaticResource ModernSecondaryButton}" Padding="6,2" FontSize="11" Margin="0,0,4,0" />
+                                    <Button Content="🔄 Thử lại" ToolTip="Điều phối lại tác vụ" Command="{Binding DataContext.RetryTaskCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" Style="{StaticResource ModernSecondaryButton}" Padding="6,2" FontSize="11" Margin="0,0,4,0" />
+                                    <Button Content="❌ Hủy" ToolTip="Tạm hủy tác vụ" Command="{Binding DataContext.CancelSelectedTaskCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" Style="{StaticResource ModernSecondaryButton}" Foreground="{StaticResource WarningBrush}" Padding="6,2" FontSize="11" Margin="0,0,4,0" />
+                                    <Button Content="🗑️ Xóa" ToolTip="Xóa hoàn toàn tác vụ" Command="{Binding DataContext.DeleteSingleTaskCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" Style="{StaticResource ModernSecondaryButton}" Foreground="{StaticResource DangerBrush}" Padding="6,2" FontSize="11" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                </DataGrid.Columns>
+            </DataGrid>
+        </Grid>
+
+        <!-- Realtime Console Log Box -->
+        <Border Grid.Row="3" Background="#060911" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="10">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <DockPanel Grid.Row="0" Margin="0,0,0,6">
+                    <TextBlock Text="💻 CONSOLE LOG TRÌNH ĐIỀU PHỐI (REALTIME)" FontSize="11" FontWeight="Bold" Foreground="{StaticResource TextSecondaryBrush}" />
+                    <Button Content="Xóa Log" Command="{Binding ClearLogsCommand}" Style="{StaticResource ModernSecondaryButton}" HorizontalAlignment="Right" Padding="6,1" FontSize="10" />
+                </DockPanel>
+                <TextBox Grid.Row="1" Text="{Binding LogOutput}" IsReadOnly="True" Background="Transparent" Foreground="#38BDF8" BorderThickness="0" FontFamily="Consolas, Cascadia Code, Courier New" FontSize="11" VerticalScrollBarVisibility="Auto" TextWrapping="Wrap" />
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

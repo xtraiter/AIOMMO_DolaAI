@@ -1,0 +1,156 @@
+<Window x:Class="DolaCoordinator.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:views="clr-namespace:DolaCoordinator.Views"
+        mc:Ignorable="d"
+        Title="ALL IN ONE MMO PRO — Dola Coordinator"
+        Icon="Assets/logo64.ico"
+        Height="900" Width="1440" MinHeight="680" MinWidth="1100"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource WindowBackgroundBrush}"
+        Foreground="{DynamicResource TextPrimaryBrush}">
+        <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Themes/DolaModule.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        <Style x:Key="NavSection" TargetType="TextBlock" BasedOn="{StaticResource SectionTitle}">
+            <Setter Property="Margin" Value="22,18,0,6"/>
+        </Style>
+        <Style x:Key="NavIcon" TargetType="Image">
+            <Setter Property="Width" Value="20"/>
+            <Setter Property="Height" Value="20"/>
+            <Setter Property="Margin" Value="0,0,12,0"/>
+            <Setter Property="RenderOptions.BitmapScalingMode" Value="HighQuality"/>
+        </Style>
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="236"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- ============ SIDEBAR ============ -->
+        <Border Grid.Column="0" Background="{StaticResource SidebarBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,1,0">
+            <DockPanel LastChildFill="True">
+                <!-- Brand -->
+                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="20,22,16,10">
+                    <Image Source="Assets/logo64.ico" Width="34" Height="34" RenderOptions.BitmapScalingMode="HighQuality"/>
+                    <StackPanel Margin="12,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="ALL IN ONE MMO" FontSize="14.5" FontWeight="ExtraBold" Foreground="{StaticResource PrimaryAccentBrush}"/>
+                        <TextBlock Text="Dola Coordinator" FontSize="11.5" Foreground="{StaticResource TextMutedBrush}"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- Footer sidebar -->
+                <StackPanel DockPanel.Dock="Bottom" Margin="20,10,16,18">
+                    <Border Height="1" Background="{StaticResource BorderBrush}" Margin="0,0,0,12"/>
+                    <TextBlock Text="{Binding SettingsVm.CurrentVersion}" FontSize="11.5" Foreground="{StaticResource TextMutedBrush}"/>
+                    <TextBlock FontSize="11.5" Foreground="{StaticResource TextMutedBrush}" Margin="0,3,0,0">
+                        <Run Text="Reset quota: "/><Run Text="{Binding NextResetTimeString, Mode=OneWay}"/>
+                    </TextBlock>
+                </StackPanel>
+
+                <!-- Nav -->
+                <StackPanel>
+                    <TextBlock Text="ĐIỀU PHỐI" Style="{StaticResource NavSection}"/>
+                    <RadioButton GroupName="Nav" Style="{StaticResource SidebarItem}"
+                                 IsChecked="{Binding SelectedTabIndex, Converter={StaticResource IntToBoolConverter}, ConverterParameter=0}">
+                        <StackPanel Orientation="Horizontal">
+                            <Image Source="Assets/Icons/dashboard.png" Style="{StaticResource NavIcon}"/>
+                            <TextBlock Text="Vận hành"/>
+                        </StackPanel>
+                    </RadioButton>
+                    <RadioButton GroupName="Nav" Style="{StaticResource SidebarItem}"
+                                 IsChecked="{Binding SelectedTabIndex, Converter={StaticResource IntToBoolConverter}, ConverterParameter=1}">
+                        <StackPanel Orientation="Horizontal">
+                            <Image Source="Assets/Icons/robot.png" Style="{StaticResource NavIcon}"/>
+                            <TextBlock Text="Dola Super"/>
+                            <Border Margin="10,0,0,0" CornerRadius="9" Padding="7,1,7,2" Background="{StaticResource SuccessSoftBrush}" VerticalAlignment="Center"
+                                    Visibility="{Binding ProfilesVm.RunningCount, Converter={StaticResource CountToVisibilityConverter}}">
+                                <TextBlock FontSize="11" FontWeight="Bold" Foreground="{StaticResource SuccessBrush}"
+                                           Text="{Binding ProfilesVm.RunningCount, StringFormat='{}{0} mở'}"/>
+                            </Border>
+                        </StackPanel>
+                    </RadioButton>
+
+                    <TextBlock Text="HỆ THỐNG" Style="{StaticResource NavSection}"/>
+                    <RadioButton GroupName="Nav" Style="{StaticResource SidebarItem}"
+                                 IsChecked="{Binding SelectedTabIndex, Converter={StaticResource IntToBoolConverter}, ConverterParameter=2}">
+                        <StackPanel Orientation="Horizontal">
+                            <Image Source="Assets/Icons/settings.png" Style="{StaticResource NavIcon}"/>
+                            <TextBlock Text="Cài đặt"/>
+                        </StackPanel>
+                    </RadioButton>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <!-- ============ CONTENT ============ -->
+        <Grid Grid.Column="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="66"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- Header -->
+            <Border Grid.Row="0" Background="{StaticResource SidebarBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Padding="26,0">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="{Binding PageTitle}" FontSize="17" FontWeight="Bold"/>
+                        <TextBlock Text="{Binding PageSubtitle}" FontSize="12" Foreground="{StaticResource TextMutedBrush}" Margin="0,2,0,0"/>
+                    </StackPanel>
+
+                    <Border Grid.Column="1" CornerRadius="16" Padding="14,6" VerticalAlignment="Center">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Background" Value="{StaticResource DangerSoftBrush}"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsGatewayOnline}" Value="True">
+                                        <Setter Property="Background" Value="{StaticResource SuccessSoftBrush}"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <StackPanel Orientation="Horizontal">
+                            <Ellipse Width="9" Height="9" Margin="0,0,8,0">
+                                <Ellipse.Style>
+                                    <Style TargetType="Ellipse">
+                                        <Setter Property="Fill" Value="{StaticResource DangerBrush}"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsGatewayOnline}" Value="True">
+                                                <Setter Property="Fill" Value="{StaticResource SuccessBrush}"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Ellipse.Style>
+                            </Ellipse>
+                            <TextBlock Text="{Binding GatewayStatusBadge}" FontWeight="SemiBold" FontSize="12.5" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </Border>
+
+            <!-- Pages -->
+            <Grid Grid.Row="1">
+                <Grid Visibility="{Binding SelectedTabIndex, Converter={StaticResource IntToVisibilityConverter}, ConverterParameter=0}">
+                    <views:QueueView DataContext="{Binding QueueVm}"/>
+                </Grid>
+                <Grid Visibility="{Binding SelectedTabIndex, Converter={StaticResource IntToVisibilityConverter}, ConverterParameter=1}">
+                    <views:ProfilesView DataContext="{Binding ProfilesVm}"/>
+                </Grid>
+                <Grid Visibility="{Binding SelectedTabIndex, Converter={StaticResource IntToVisibilityConverter}, ConverterParameter=2}">
+                    <views:SettingsView DataContext="{Binding SettingsVm}"/>
+                </Grid>
+            </Grid>
+        </Grid>
+    </Grid>
+</Window>

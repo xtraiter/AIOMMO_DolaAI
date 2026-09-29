@@ -1,0 +1,70 @@
+<Window x:Class="DolaCoordinator.Views.Dialogs.ProfileEditorWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:dlg="clr-namespace:DolaCoordinator.Views.Dialogs"
+        Width="600" SizeToContent="Height" ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+        Background="{DynamicResource SidebarBrush}">
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="../../Themes/DolaModule.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <Grid Margin="26,22,26,22">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Margin="0,0,0,18">
+            <TextBlock x:Name="TitleText" FontSize="18" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}"/>
+            <TextBlock x:Name="SubtitleText" FontSize="12" Foreground="{StaticResource TextMutedBrush}" Margin="0,4,0,0" TextWrapping="Wrap"/>
+        </StackPanel>
+
+        <!-- Tên + số lượng -->
+        <Grid Grid.Row="1" Margin="0,0,0,14">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition x:Name="CountColumn" Width="110"/>
+            </Grid.ColumnDefinitions>
+            <StackPanel Grid.Column="0" Margin="0,0,10,0">
+                <TextBlock Text="TÊN TÀI KHOẢN (= tên thư mục accounts/… của gateway)" Style="{StaticResource FieldLabel}"/>
+                <TextBox x:Name="NameBox" Text="{Binding ProfileName, UpdateSourceTrigger=PropertyChanged}" MaxLength="32"
+                         ToolTip="Chỉ gồm A-Z a-z 0-9 _ - (tối đa 32 ký tự). Không đổi được sau khi tạo."/>
+            </StackPanel>
+            <StackPanel x:Name="CountPanel" Grid.Column="1">
+                <TextBlock Text="SỐ LƯỢNG" Style="{StaticResource FieldLabel}"/>
+                <TextBox x:Name="CountBox" Text="{Binding Count, UpdateSourceTrigger=PropertyChanged}"
+                         ToolTip="Tạo hàng loạt: Tên_01, Tên_02, ... (không dùng được với đăng nhập tự động)"/>
+            </StackPanel>
+        </Grid>
+
+        <!-- Đăng nhập tự động (Google / Facebook / cookie Facebook) -->
+        <Border x:Name="LoginBox" Grid.Row="3" Margin="0,0,0,14" Padding="14" CornerRadius="8"
+                Background="{StaticResource WindowBackgroundBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+            <dlg:LoginOptionsPanel DataContext="{Binding Login}"/>
+        </Border>
+
+        <StackPanel Grid.Row="4" Margin="0,0,0,8">
+            <TextBlock Text="GHI CHÚ" Style="{StaticResource FieldLabel}"/>
+            <TextBox Text="{Binding Notes, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" TextWrapping="Wrap"
+                     Height="56" VerticalScrollBarVisibility="Auto" VerticalContentAlignment="Top"/>
+            <CheckBox x:Name="OpenAfterBox" IsChecked="{Binding OpenAfterCreate}" Margin="0,14,0,0"
+                      Content="Mở trình duyệt ngay sau khi tạo (khi đăng nhập thủ công; đăng nhập tự động luôn mở)"/>
+            <TextBlock x:Name="ErrorText" Foreground="{StaticResource DangerBrush}" FontSize="12" TextWrapping="Wrap"
+                       Margin="0,12,0,0" Visibility="Collapsed"/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="5" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,14,0,0">
+            <Button Content="Hủy" Width="90" Margin="0,0,10,0" IsCancel="True" Click="Cancel_Click"/>
+            <Button x:Name="OkButton" Style="{StaticResource ModernPrimaryButton}" MinWidth="130" IsDefault="True" Click="Ok_Click"/>
+        </StackPanel>
+    </Grid>
+</Window>

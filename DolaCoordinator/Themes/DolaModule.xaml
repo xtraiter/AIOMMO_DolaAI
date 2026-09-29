@@ -1,0 +1,23 @@
+<!--
+  Điểm vào duy nhất của giao diện module Dola.
+  Mỗi Window / UserControl gốc của module tự merge file này vào Resources CỦA CHÍNH NÓ (không đặt ở App.xaml),
+  nên các style ngầm định (Button, TextBox, DataGrid…) chỉ ảnh hưởng tới màn hình Dola và không làm đổi giao diện
+  của ứng dụng chủ khi module được nhúng vào một ứng dụng WPF khác.
+-->
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:converters="clr-namespace:DolaCoordinator.Converters">
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="AllInOneTheme.xaml" />
+    </ResourceDictionary.MergedDictionaries>
+
+    <converters:IntToBoolConverter x:Key="IntToBoolConverter" />
+    <converters:IntToVisibilityConverter x:Key="IntToVisibilityConverter" />
+    <converters:CountToVisibilityConverter x:Key="CountToVisibilityConverter" />
+    <converters:UtcToLocalTextConverter x:Key="UtcToLocalTextConverter" />
+    <converters:EmptyToDashConverter x:Key="EmptyToDashConverter" />
+    <converters:EnumEqualsConverter x:Key="EnumEqualsConverter" />
+    <converters:PathToFileNameConverter x:Key="PathToFileNameConverter" />
+    <converters:PathToThumbnailConverter x:Key="PathToThumbnailConverter" />
+    <converters:EnumToVisibilityConverter x:Key="EnumToVisibilityConverter" />
+</ResourceDictionary>
