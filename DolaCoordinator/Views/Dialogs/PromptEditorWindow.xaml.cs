@@ -77,6 +77,8 @@ public partial class PromptEditorWindow : Window
         }
     }
 
+    private void Rules_Click(object sender, RoutedEventArgs e) => new PromptRulesWindow { Owner = this }.ShowDialog();
+
     private void ClearImages_Click(object sender, RoutedEventArgs e) => RefImages.Clear();
 
     private void RemoveImage_Click(object sender, RoutedEventArgs e)

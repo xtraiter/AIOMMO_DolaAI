@@ -102,6 +102,9 @@ public partial class PromptsViewModel : ObservableObject
     // ------------------------------------------------------------------ thêm / sửa / nhân bản / xóa
 
     [RelayCommand]
+    private void ShowRules() => new PromptRulesWindow { Owner = Application.Current.MainWindow }.ShowDialog();
+
+    [RelayCommand]
     private void AddPrompt()
     {
         var dlg = new PromptEditorWindow { Owner = Application.Current.MainWindow };

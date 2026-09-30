@@ -110,6 +110,8 @@
                         ToolTip="Excel (.xlsx) hoặc .csv — ô nhiều dòng giữ nguyên; hoặc .txt/.md (các prompt cách nhau bằng dòng ---). Tải File mẫu để xem cột."/>
                 <Button Content="Xuất Excel" Command="{Binding ExportToFileCommand}" Margin="0,0,8,6" ToolTip="Xuất các prompt đã tích (chưa tích thì xuất tất cả đang hiển thị)"/>
                 <Button Content="File mẫu Excel" Command="{Binding DownloadTemplateCommand}" Margin="0,0,20,6" ToolTip="Tải file Excel mẫu (có sheet Hướng dẫn) để điền nhiều prompt rồi Nhập từ file"/>
+                <Button Content="Quy tắc đặt prompt" Command="{Binding ShowRulesCommand}" Margin="0,0,20,6"
+                        ToolTip="Bảng quy tắc đặt prompt (từ README các repo + kinh nghiệm chạy thử), có nút chép"/>
                 <Button Content="Xóa đã chọn" Command="{Binding DeleteSelectedCommand}" Foreground="{StaticResource DangerBrush}" Margin="0,0,0,6"/>
             </WrapPanel>
         </Border>

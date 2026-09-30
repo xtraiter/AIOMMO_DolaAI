@@ -1,0 +1,79 @@
+<Window x:Class="DolaCoordinator.Views.Dialogs.PromptRulesWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Quy tắc đặt prompt" Width="860" Height="680" MinWidth="640" MinHeight="440"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+        Background="{DynamicResource SidebarBrush}">
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="../../Themes/DolaModule.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+            <DataTemplate x:Key="RuleTemplate">
+                <Border Background="{StaticResource WindowBackgroundBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                        CornerRadius="8" Padding="14,10" Margin="0,0,0,8">
+                    <DockPanel>
+                        <Button DockPanel.Dock="Right" Content="Chép" Tag="{Binding}" Click="CopyRule_Click"
+                                VerticalAlignment="Top" Margin="12,0,0,0" Style="{StaticResource GhostButton}"/>
+                        <StackPanel>
+                            <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="13.5" Foreground="{StaticResource TextPrimaryBrush}"
+                                       TextWrapping="Wrap"/>
+                            <TextBox Text="{Binding Detail, Mode=OneWay}" IsReadOnly="True" BorderThickness="0" Background="Transparent"
+                                     TextWrapping="Wrap" Margin="0,4,0,0" FontSize="12.5" Padding="0"
+                                     Foreground="{StaticResource TextSecondaryBrush}"/>
+                            <TextBlock Margin="0,6,0,0" FontSize="11" Foreground="{StaticResource TextMutedBrush}">
+                                <Run Text="Nguồn: "/><Run Text="{Binding Source, Mode=OneWay}"/>
+                            </TextBlock>
+                        </StackPanel>
+                    </DockPanel>
+                </Border>
+            </DataTemplate>
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <Grid Margin="26,22,26,22">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Margin="0,0,0,14">
+            <TextBlock Text="Quy tắc đặt prompt" FontSize="18" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}"/>
+            <TextBlock FontSize="12" Foreground="{StaticResource TextMutedBrush}" Margin="0,4,0,8" TextWrapping="Wrap"
+                       Text="Lấy trực tiếp từ README của repo đang dùng (nguyên văn, không dịch) và tự cập nhật khi repo có bản mới. Bấm 'Chép' để sao chép."/>
+            <DockPanel>
+                <Button DockPanel.Dock="Right" x:Name="CopyAllButton" Content="Chép tất cả" Click="CopyAll_Click" Margin="8,0,0,0"/>
+                <Button DockPanel.Dock="Right" x:Name="RefreshButton" Content="Cập nhật ngay" Click="Refresh_Click" Margin="8,0,0,0"/>
+                <TextBlock DockPanel.Dock="Left" Text="REPO" Style="{StaticResource FieldLabel}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                <ComboBox x:Name="RepoBox" IsEditable="True" SelectionChanged="RepoBox_SelectionChanged"
+                          ToolTip="Repo gateway đang dùng (dạng chủ-sở-hữu/tên-repo). Chọn repo khác để xem quy tắc của repo đó."/>
+            </DockPanel>
+            <TextBlock x:Name="RepoInfo" FontSize="11.5" Foreground="{StaticResource TextMutedBrush}" Margin="0,8,0,0" TextWrapping="Wrap"/>
+        </StackPanel>
+
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <TextBlock x:Name="EmptyText" Visibility="Collapsed" TextWrapping="Wrap" Margin="0,0,0,10" FontSize="12.5"
+                           Foreground="{StaticResource TextMutedBrush}"
+                           Text="Repo này không có mục nào nhắc tới prompt, thời lượng, model hay ảnh tham chiếu trong các tài liệu README.md / extensions/dola30/README.md / API.md."/>
+                <ItemsControl x:Name="RulesList" ItemTemplate="{StaticResource RuleTemplate}"/>
+
+                <TextBlock Text="CÁCH APP XỬ LÝ PROMPT" Style="{StaticResource FieldLabel}" Margin="0,12,0,6"/>
+                <ItemsControl x:Name="AppNotesList" ItemTemplate="{StaticResource RuleTemplate}"/>
+
+                <DockPanel Margin="0,14,0,6">
+                    <Button DockPanel.Dock="Right" Content="Chép mẫu" Click="CopyTemplate_Click" Margin="12,0,0,0"/>
+                    <TextBlock Text="MẪU PROMPT NHIỀU CẢNH (dán rồi sửa)" Style="{StaticResource FieldLabel}" VerticalAlignment="Center"/>
+                </DockPanel>
+                <TextBox x:Name="TemplateBox" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" FontFamily="Consolas" FontSize="12.5"
+                         Height="150" VerticalScrollBarVisibility="Auto" VerticalContentAlignment="Top"/>
+            </StackPanel>
+        </ScrollViewer>
+
+        <DockPanel Grid.Row="2" Margin="0,14,0,0">
+            <Button Content="Đóng" Width="90" DockPanel.Dock="Right" IsCancel="True" Click="Close_Click"/>
+            <TextBlock x:Name="StatusText" FontSize="12" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" TextWrapping="Wrap"/>
+        </DockPanel>
+    </Grid>
+</Window>

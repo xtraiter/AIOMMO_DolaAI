@@ -37,6 +37,8 @@
         <StackPanel Grid.Row="2" Margin="0,0,0,12">
             <DockPanel>
                 <TextBlock DockPanel.Dock="Right" x:Name="CountText" FontSize="11" Foreground="{StaticResource TextMutedBrush}"/>
+                <Button DockPanel.Dock="Right" Content="Quy tắc đặt prompt" Click="Rules_Click" Style="{StaticResource GhostButton}"
+                        Padding="8,2" Margin="0,0,14,0" FontSize="11"/>
                 <TextBlock Text="NỘI DUNG PROMPT" Style="{StaticResource FieldLabel}"/>
             </DockPanel>
             <TextBox x:Name="TextBox" Text="{Binding PromptText, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" AcceptsTab="True"
