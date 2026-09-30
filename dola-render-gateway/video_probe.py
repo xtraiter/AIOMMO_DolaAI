@@ -1,8 +1,7 @@
-"""视频生成探针：在 dola 登录态页面里用 fetch 提交视频生成，读 SSE。
+"""Video generation probe: Submits video generation within active Dola page session and streams SSE.
 
-验证「页面内 fetch（真实浏览器指纹）」提交视频是否触发滑块。
-SUBMIT_JS 是协议核心，video_worker.py 直接复用它。
-用法：python video_probe.py <账号名>
+Validates that in-page fetch with real browser fingerprint bypasses captcha checks.
+SUBMIT_JS contains the core submission payload used by video workers.
 """
 import asyncio
 import sys
@@ -16,7 +15,7 @@ async ({prompt, ratio, duration, msToken, fp}) => {
   const nowMs = Date.now();
   const nowSec = Math.floor(nowMs / 1000);
   const uuid = () => crypto.randomUUID();
-  const videoPrompt = `生成影片：${prompt}，${ratio}`;
+  const videoPrompt = `Generate video: ${prompt}, ${ratio}`;
 
   const body = {
     client_meta: {
@@ -107,7 +106,7 @@ async ({prompt, ratio, duration, msToken, fp}) => {
       }
       const dataStr = dataLines.join("\n");
       events.push({event: eventName, data: dataStr.slice(0, 300)});
-      // 风控/错误事件（滑块 710022004、限流 710022002 等）完整保留
+      // Preserve risk control events (e.g. captcha 710022004, rate limit 710022002)
       if (dataStr.includes("error_code")) errors.push(dataStr.slice(0, 1000));
       if (eventName === "SSE_ACK") {
         try {
@@ -134,21 +133,21 @@ async def main():
         cookies = await context.cookies("https://www.dola.com")
         msToken = cookie_value(cookies, "msToken")
         fp = cookie_value(cookies, "s_v_web_id")
-        print(f"msToken: {'有' if msToken else '无'}  fp: {fp[:20] if fp else '无'}...")
+        print(f"msToken: {'Found' if msToken else 'None'}  fp: {fp[:20] if fp else 'None'}...")
 
-        print("提交视频生成（页面内 fetch）...")
+        print("Submitting video generation (in-page fetch)...")
         result = await page.evaluate(
             SUBMIT_JS,
-            {"prompt": "一只猫在草地上追蝴蝶", "ratio": "9:16", "duration": 3, "msToken": msToken, "fp": fp},
+            {"prompt": "A cinematic shot of a cat in garden", "ratio": "9:16", "duration": 3, "msToken": msToken, "fp": fp},
         )
 
         print(f"\nHTTP status: {result['status']}")
-        print(f"conversation_id: {result['convId'] or '(未获取)'}")
+        print(f"conversation_id: {result['convId'] or '(not acquired)'}")
         if result["errors"]:
-            print("\n=== 错误/风控事件 ===")
+            print("\n=== Errors / Risk Control Events ===")
             for e in result["errors"]:
                 print(e)
-        print("\n=== SSE 事件 ===")
+        print("\n=== SSE Events ===")
         for ev in result["events"]:
             print(f"[{ev['event']}] {ev['data']}")
 

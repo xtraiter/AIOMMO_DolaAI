@@ -18,13 +18,6 @@ def _serve(argv: list[str]) -> None:
     ap.add_argument("--port", type=int, default=8000)
     args = ap.parse_args(argv)
 
-    # Desktop defaults (dola-pool is written for a server; the environment always wins over these).
-    os.environ.setdefault("DOLA_PORT", str(args.port))           # PUBLIC_BASE (video_url) follows the real port
-    os.environ.setdefault("DOLA_PURE_API", "0")                  # the HTTP-signing path needs Node.js; the browser path does not
-    os.environ.setdefault("DOLA_VIDEO_TIMEOUT", "1800")          # 30 s videos render for ~15 min (the wait_for cap is TASK_DEADLINE + this)
-    os.environ.setdefault("DOLA_TASK_DEADLINE", "1800")
-    os.environ.setdefault("DOLA_CORS_ORIGINS", "http://127.0.0.1")  # only local pages may call the API from a browser
-
     import uvicorn
     import server  # noqa: F401  (imported here so `install-browser` / `open-profile` stay light)
 

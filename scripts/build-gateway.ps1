@@ -40,7 +40,6 @@ try {
         --distpath $dist --workpath (Join-Path $work "build") --specpath (Join-Path $work "spec") `
         --paths . --collect-all patchright --collect-submodules uvicorn `
         --hidden-import open_profile --hidden-import add_account_cookie --hidden-import fb_to_dola `
-        --add-data "$src\protocol\js;protocol\js" --add-data "$src\bdcaptcha.js;." `
         --exclude-module tkinter
     if ($LASTEXITCODE -ne 0) { throw "PyInstaller that bai." }
 } finally { Pop-Location }
