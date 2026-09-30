@@ -176,6 +176,8 @@ class VideoGenRequest(BaseModel):
     hide_window: bool = False
     # Text to send when Dola answers the prompt with a question instead of making the video (empty = do not answer).
     auto_reply: str | None = Field(None, max_length=600)
+    # Drop duration words ("00:00 - 00:03", "Giây 0 đến 3", "30s") from the prompt text; null = gateway default (DOLA_STRIP_DURATION_WORDS).
+    strip_duration_words: bool | None = None
 
 
 class TaskResponse(BaseModel):
@@ -233,7 +235,8 @@ def _resolve_ratio(size, ratio):
 
 
 async def _run_task(task_id, model, prompt, ratio, duration, reference_images, client, preferred_account=None,
-                    local_reference_paths=None, hide_window=False, auto_reply=None):
+                    local_reference_paths=None, hide_window=False, auto_reply=None,
+                    strip_duration_words=None):
     api_key_hash = client.get("api_key_hash")
     acquired = False
     reference_root = None
@@ -264,7 +267,7 @@ async def _run_task(task_id, model, prompt, ratio, duration, reference_images, c
             on_conversation_id=on_conversation_id, on_poll=on_poll,
             reference_image_paths=reference_paths,
             preferred_account=preferred_account, on_stage=on_stage, hide_window=hide_window,
-            auto_reply=auto_reply)
+            auto_reply=auto_reply, strip_duration_words=strip_duration_words)
         public_url = f"{config.PUBLIC_BASE}/videos/{Path(result['local_path']).name}"
         store.update(task_id, status="completed", video_url=public_url, stage="done",
                      account=result.get("account"), last_poll_at=time.time(),
@@ -372,6 +375,8 @@ async def create_video(req: VideoGenRequest, request: Request, authorization: st
         "seedance_20", "seedance_25", "seedance_v20", "seedance_v25",
     ):
         raise HTTPException(422, "Supported models are seedance-2.0 and seedance-2.5")
+    if duration >= 30 and not model_key.endswith(("2.5", "25")):
+        raise HTTPException(422, "30s videos are only available with seedance-2.5 (seedance-2.0 supports 5s/10s/15s)")
     try:
         reference_images = await validate_reference_urls(req.reference_images)
     except ValueError as exc:
@@ -461,6 +466,7 @@ async def create_video(req: VideoGenRequest, request: Request, authorization: st
         task_id, req.model, req.prompt, ratio, duration, reference_images, client,
         preferred_account=req.account, local_reference_paths=local_reference_paths,
         hide_window=req.hide_window, auto_reply=(req.auto_reply or "").strip() or None,
+        strip_duration_words=req.strip_duration_words,
     ))
     return TaskResponse(id=task_id, status="queued", model=req.model, prompt=req.prompt)
 

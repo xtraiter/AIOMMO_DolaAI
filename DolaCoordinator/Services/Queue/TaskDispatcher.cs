@@ -508,10 +508,18 @@ public class TaskDispatcher : ITaskDispatcher, IDisposable
                 Log($"[{session.Name}] Bắt đầu điều phối: \"{task.DisplayPrompt}\" ({task.Duration}s, {task.Ratio}" +
                     (task.ReferenceLocalPaths.Count > 0 ? $", {task.ReferenceLocalPaths.Count} ảnh tham chiếu" : "") + ")");
 
+                // 30 giây chỉ có ở Seedance 2.5 (2.0 chỉ 5/10/15 giây): tự chuyển sang 2.5 thay vì để Dola hỏi lại "chỉ hỗ trợ 4–15 giây".
+                var model = task.Model;
+                if (task.Duration >= 30 && !model.Contains("2.5", StringComparison.Ordinal))
+                {
+                    model = "seedance-2.5";
+                    Log($"[{session.Name}] Video {task.Duration}s chỉ có ở Seedance 2.5 → tự dùng Seedance 2.5 (tác vụ đang chọn {task.Model}).");
+                }
+
                 var sessionToken = session.PlainToken ?? _securityService.Decrypt(session.EncryptedToken);
                 var req = new VideoGenApiRequest
                 {
-                    Model = task.Model,
+                    Model = model,
                     Prompt = task.Prompt, // gửi NGUYÊN VĂN prompt của bạn, không chèn thêm gì
                     Ratio = task.Ratio,
                     Duration = task.Duration,

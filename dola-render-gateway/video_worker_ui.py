@@ -11,6 +11,7 @@ import aiohttp
 from patchright.async_api import async_playwright
 
 from gap import find_gap_x
+from prompt_clean import strip_duration_words as strip_duration_words_in
 
 import config
 from browser import cookie_value, launch_account_context
@@ -460,7 +461,8 @@ async def generate_video(account: str, prompt: str, ratio: str = None,
                          on_conversation_id=None, on_poll=None, on_balance=None,
                          reference_image_paths: list[str] | None = None,
                          on_stage=None, warmup: bool | None = None, on_warmup_done=None,
-                         hide_window: bool = False, auto_reply: str | None = None) -> dict:
+                         hide_window: bool = False, auto_reply: str | None = None,
+                         strip_duration_words: bool | None = None) -> dict:
     """Full generation flow via UI automation.
 
     Stages reported through on_stage: warmup -> new_chat -> submitting -> generating (-> done by the caller).
@@ -483,8 +485,14 @@ async def generate_video(account: str, prompt: str, ratio: str = None,
         model_key = "seedance_v2.0"
     else:
         raise ValueError(f"Unsupported model: {model} (supported: seedance-2.0 / seedance-2.5)")
-    if duration is not None and duration not in (10, 15, 30):
-        raise ValueError("Dola supports durations of 10s, 15s, and 30s via extension")
+    if duration is not None and duration not in (5, 10, 15, 30):
+        raise ValueError("Dola supports durations of 5s, 10s, 15s, and 30s via extension")
+    prompt_note = ""
+    if strip_duration_words if strip_duration_words is not None else config.STRIP_DURATION_WORDS:
+        prompt, removed = strip_duration_words_in(prompt)
+        if removed:
+            prompt_note = f"[Đã bỏ {removed} chỗ ghi thời lượng khỏi prompt] "
+            print(f"[{account}] removed {removed} duration mention(s) from the prompt", flush=True)
     if duration == 30 and not use_extension:
         raise ValueError("30s generation requires Dola30 extension enabled")
     # 30s videos require extended generation timeout
@@ -656,8 +664,11 @@ async def generate_video(account: str, prompt: str, ratio: str = None,
             deadline = time.time() + timeout
             if on_conversation_id:
                 on_conversation_id(account, conv_id, deadline)
-            return await poll_conversation(account, page, context, conv_id, timeout, on_poll, on_balance, prompt=prompt,
-                                           auto_reply=auto_reply)
+            result = await poll_conversation(account, page, context, conv_id, timeout, on_poll, on_balance, prompt=prompt,
+                                             auto_reply=auto_reply)
+            if prompt_note:
+                result["note"] = (prompt_note + (result.get("note") or ""))[:700]
+            return result
         finally:
             await context.close()
 

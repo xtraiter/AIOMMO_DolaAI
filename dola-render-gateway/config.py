@@ -85,3 +85,6 @@ WARMUP_QUESTIONS_FILE = os.getenv("DOLA_WARMUP_QUESTIONS", "warmup_questions.txt
 
 # Testing only: run everything up to typing the video prompt, but never press Enter to send it (no credit spent)
 DRY_RUN = os.getenv("DOLA_DRY_RUN", "0") == "1"
+# Remove "(00:00 - 00:03)", "Giây 0 đến 3", "30s"... from the prompt before typing it: the Dola30 extension README says duration
+# words in the text make Dola's agent ask back ("supports 4-15 s, compress?"). The length comes from the duration dropdown.
+STRIP_DURATION_WORDS = os.getenv("DOLA_STRIP_DURATION_WORDS", "1") == "1"
