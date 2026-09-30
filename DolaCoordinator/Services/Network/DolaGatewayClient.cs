@@ -122,6 +122,24 @@ public class DolaGatewayClient : IDolaGatewayClient
         return JsonSerializer.Deserialize<TaskApiResponse>(json, JsonOptions);
     }
 
+    public async Task<bool> CancelTaskAsync(string taskId, string? clientApiKey = null, CancellationToken ct = default)
+    {
+        try
+        {
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            cts.CancelAfter(TimeSpan.FromSeconds(30)); // gateway chờ tối đa ~20 giây để Chromium đóng hẳn
+
+            using var req = new HttpRequestMessage(HttpMethod.Delete, $"{GetGatewayBaseUrl()}/v1/videos/{taskId}");
+            ApplyAuthHeader(req, clientApiKey);
+            using var resp = await _httpClient.SendAsync(req, cts.Token);
+            return resp.IsSuccessStatusCode;
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or OperationCanceledException)
+        {
+            return false;
+        }
+    }
+
     public async Task<List<GatewayAccountDto>?> GetAccountsAsync(CancellationToken ct = default)
     {
         try

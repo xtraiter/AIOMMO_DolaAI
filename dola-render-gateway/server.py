@@ -234,6 +234,9 @@ def _resolve_ratio(size, ratio):
     return ratio
 
 
+_running_tasks: dict[str, asyncio.Task] = {}
+
+
 async def _run_task(task_id, model, prompt, ratio, duration, reference_images, client, preferred_account=None,
                     local_reference_paths=None, hide_window=False, auto_reply=None,
                     strip_duration_words=None):
@@ -272,6 +275,11 @@ async def _run_task(task_id, model, prompt, ratio, duration, reference_images, c
         store.update(task_id, status="completed", video_url=public_url, stage="done",
                      account=result.get("account"), last_poll_at=time.time(),
                      finished_at=time.time(), note=result.get("note") or None)
+    except asyncio.CancelledError:
+        # Cancelled through DELETE /v1/videos/{id}: the worker's finally blocks close Chromium and free the account
+        store.update(task_id, status="failed", error="Tác vụ đã bị hủy.", failure_code="cancelled",
+                     finished_at=time.time())
+        raise
     except Exception as e:
         store.update(task_id, status="failed", error=str(e)[:500],
                      failure_code=_classify_failure(e), finished_at=time.time())
@@ -462,13 +470,33 @@ async def create_video(req: VideoGenRequest, request: Request, authorization: st
         raise HTTPException(429, str(exc)) from exc
     except PendingTaskLimitExceeded as exc:
         raise HTTPException(429, str(exc)) from exc
-    asyncio.create_task(_run_task(
+    running = asyncio.create_task(_run_task(
         task_id, req.model, req.prompt, ratio, duration, reference_images, client,
         preferred_account=req.account, local_reference_paths=local_reference_paths,
         hide_window=req.hide_window, auto_reply=(req.auto_reply or "").strip() or None,
         strip_duration_words=req.strip_duration_words,
     ))
+    _running_tasks[task_id] = running
+    running.add_done_callback(lambda _t, tid=task_id: _running_tasks.pop(tid, None))
     return TaskResponse(id=task_id, status="queued", model=req.model, prompt=req.prompt)
+
+
+@app.delete("/v1/videos/{task_id}")
+async def cancel_video(task_id: str, authorization: str | None = Header(default=None)):
+    """Cancels a queued / running task: closes its Chromium so the account is free again (no credit is refunded)."""
+    client = _auth(authorization)
+    row = store.get_for_client(task_id, client["api_key_hash"])
+    if not row:
+        raise HTTPException(404, "task not found")
+    running = _running_tasks.get(task_id)
+    if running is None or running.done():
+        return {"id": task_id, "status": row["status"], "cancelled": False}
+    running.cancel()
+    try:
+        await asyncio.wait_for(asyncio.shield(running), timeout=20)
+    except (asyncio.CancelledError, asyncio.TimeoutError, Exception):
+        pass  # the task records its own failed/cancelled state; a slow browser close must not block the caller
+    return {"id": task_id, "status": "cancelled", "cancelled": True}
 
 
 @app.get("/v1/videos/{task_id}", response_model=TaskResponse)

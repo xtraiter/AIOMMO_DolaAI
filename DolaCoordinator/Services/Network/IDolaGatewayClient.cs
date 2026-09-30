@@ -12,6 +12,9 @@ public interface IDolaGatewayClient
     Task<TaskApiResponse?> CreateVideoTaskAsync(VideoGenApiRequest request, string? clientApiKey = null, CancellationToken ct = default);
     Task<TaskApiResponse?> GetTaskStatusAsync(string taskId, string? clientApiKey = null, CancellationToken ct = default);
 
+    /// <summary>Hủy tác vụ đang chạy trên gateway (DELETE /v1/videos/{id}): đóng Chromium của tác vụ để tài khoản được giải phóng. Trả false nếu không gọi được.</summary>
+    Task<bool> CancelTaskAsync(string taskId, string? clientApiKey = null, CancellationToken ct = default);
+
     /// <summary>Danh sách tài khoản trong pool gateway (GET /api/admin/accounts). Null = gateway chưa chạy hoặc sai Admin Key.</summary>
     Task<List<GatewayAccountDto>?> GetAccountsAsync(CancellationToken ct = default);
 

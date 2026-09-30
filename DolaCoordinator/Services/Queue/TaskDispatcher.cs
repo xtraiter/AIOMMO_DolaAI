@@ -650,6 +650,25 @@ public class TaskDispatcher : ITaskDispatcher, IDisposable
         task.StageText = null;
         _databaseService.UpsertTask(task);
         TaskUpdated?.Invoke(task);
+        CancelOnGateway(task);
+    }
+
+    /// <summary>
+    /// Báo gateway hủy tác vụ đang chạy: nếu không, Chromium vẫn tiếp tục render và tài khoản bị giữ ở trạng thái "Đang render"
+    /// cho tới khi Dola xong hoặc hết giờ (tối đa 30 phút với video 30 giây). Gateway đóng Chromium của tác vụ đó.
+    /// </summary>
+    private void CancelOnGateway(RenderTask task)
+    {
+        var gatewayId = task.GatewayTaskId;
+        if (string.IsNullOrEmpty(gatewayId)) return;
+        var apiKey = _databaseService.GetSettings().ClientApiKey;
+        _ = Task.Run(async () =>
+        {
+            var ok = await _gatewayClient.CancelTaskAsync(gatewayId, apiKey);
+            Log(ok
+                ? $"[{gatewayId}] Đã báo gateway hủy, tài khoản được giải phóng."
+                : $"[{gatewayId}] Không báo được gateway hủy (gateway tắt hoặc tác vụ đã kết thúc).");
+        });
     }
 
     /// <summary>Gọi gateway tạo tác vụ; các lỗi HTTP có ý nghĩa rõ ràng được đổi thành GatewayTaskFailedException.</summary>

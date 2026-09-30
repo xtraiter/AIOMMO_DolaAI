@@ -280,6 +280,16 @@
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
 
+                        <DataGridTemplateColumn Header="DÙNG ĐỂ CHẠY" Width="110">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <CheckBox HorizontalAlignment="Center" IsChecked="{Binding UseForRender, Mode=TwoWay}" IsEnabled="{Binding HasSession}"
+                                              Click="UseForRender_Click"
+                                              ToolTip="Tích = tài khoản này được dùng khi chạy ở trang Vận hành (mặc định đã tích). Bỏ tích để loại khỏi vận hành. Cần đăng nhập trước."/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+
                         <DataGridTemplateColumn Header="TRẠNG THÁI" Width="140">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
@@ -297,16 +307,6 @@
                                         <Ellipse Style="{StaticResource RunDot}"/>
                                         <TextBlock Style="{StaticResource RunText}" VerticalAlignment="Center"/>
                                     </StackPanel>
-                                </DataTemplate>
-                            </DataGridTemplateColumn.CellTemplate>
-                        </DataGridTemplateColumn>
-
-                        <DataGridTemplateColumn Header="DÙNG ĐỂ CHẠY" Width="110">
-                            <DataGridTemplateColumn.CellTemplate>
-                                <DataTemplate>
-                                    <CheckBox HorizontalAlignment="Center" IsChecked="{Binding UseForRender, Mode=TwoWay}" IsEnabled="{Binding HasSession}"
-                                              Click="UseForRender_Click"
-                                              ToolTip="Tích = tài khoản này được dùng khi chạy ở trang Vận hành (mặc định đã tích). Bỏ tích để loại khỏi vận hành. Cần đăng nhập trước."/>
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
