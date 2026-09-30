@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Tao goi cap nhat (zip chua DolaCoordinator.exe) va file version.json co SHA-256.
+  Tao goi cap nhat (zip chua "AIOMMO DolaAI.exe") va file version.json co SHA-256.
 .DESCRIPTION
   App chi cai goi neu: URL HTTPS, cung host voi version.json, va SHA-256 khop.
   Dang len HTTPS: version.json va goi zip (cung mot host), roi dat URL version.json trong tab Cai dat.
@@ -33,7 +33,8 @@ if ($LASTEXITCODE -ne 0) { throw "dotnet publish that bai (ma $LASTEXITCODE)" }
 
 Write-Host "[2/3] Nen goi + tinh SHA-256..." -ForegroundColor Cyan
 if (Test-Path $zip) { Remove-Item -Force $zip }
-Compress-Archive -Path "$temp\DolaCoordinator.exe" -DestinationPath $zip -Force
+Rename-Item "$temp\DolaCoordinator.exe" "AIOMMO DolaAI.exe"
+Compress-Archive -LiteralPath "$temp\AIOMMO DolaAI.exe" -DestinationPath $zip -Force
 Remove-Item -Recurse -Force $temp
 $hash = (Get-FileHash $zip -Algorithm SHA256).Hash
 

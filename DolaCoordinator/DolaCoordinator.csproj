@@ -7,6 +7,10 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
     <ApplicationIcon>Assets\logo64.ico</ApplicationIcon>
+    <Product>AIOMMO DolaAI</Product>
+    <AssemblyTitle>AIOMMO DolaAI</AssemblyTitle>
+    <Description>AIOMMO DolaAI</Description>
+    <Company>ALL IN ONE MMO</Company>
   </PropertyGroup>
 
   <ItemGroup>

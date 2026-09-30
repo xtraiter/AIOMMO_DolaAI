@@ -1,4 +1,4 @@
-# Dola Coordinator + Dola Render Gateway
+# AIOMMO DolaAI (Dola Coordinator + Dola Render Gateway)
 
 Điều phối sinh video trên Dola AI với nhiều tài khoản.
 
@@ -13,14 +13,14 @@ Tài liệu: [Kiến trúc](docs/ARCHITECTURE.md)
 
 ```powershell
 git clone https://github.com/xtraiter/AIOMMO_DolaAI.git
-cd AIOMMO_DolaAI\release\DolaCoordinator
-.\DolaCoordinator.exe
+cd AIOMMO_DolaAI\release\AIOMMO_DolaAI
+& ".\AIOMMO DolaAI.exe"
 ```
 
-Bản đóng gói sẵn nằm trong [`release/DolaCoordinator/`](release/DolaCoordinator). **Không cần cài Python hay .NET, không có file .bat nào phải chạy.** Yêu cầu: Windows 10/11 x64, có mạng ở lần chạy đầu tiên (tải Chromium). Thư mục `release` nặng khoảng 370 MB nên clone lần đầu hơi lâu. Clone vào đường dẫn ngắn (ví dụ `D:\App\`): Windows giới hạn đường dẫn 260 ký tự và bản đóng gói có vài file nằm sâu; nếu Git báo `Filename too long` thì chạy `git config --global core.longpaths true` rồi clone lại.
+Bản đóng gói sẵn nằm trong [`release/AIOMMO_DolaAI/`](release/AIOMMO_DolaAI). **Không cần cài Python hay .NET, không có file .bat nào phải chạy.** Yêu cầu: Windows 10/11 x64, có mạng ở lần chạy đầu tiên (tải Chromium). Thư mục `release` nặng khoảng 370 MB nên clone lần đầu hơi lâu. Clone vào đường dẫn ngắn (ví dụ `D:\App\`): Windows giới hạn đường dẫn 260 ký tự và bản đóng gói có vài file nằm sâu; nếu Git báo `Filename too long` thì chạy `git config --global core.longpaths true` rồi clone lại.
 
 ```
-DolaCoordinator.exe          Ứng dụng
+AIOMMO DolaAI.exe            Ứng dụng
 gateway\dola-gateway.exe     Gateway đóng gói sẵn — app tự chạy ngầm, tự tắt khi đóng app
 gateway\accounts\            (tự tạo) phiên đăng nhập của từng tài khoản
 ```
@@ -78,7 +78,7 @@ DolaAI.sln
 ## Đóng gói (máy build cần .NET 8 SDK + Python 3.10+)
 
 ```powershell
-.\scripts\build-release.ps1 -Version 1.0.0 -ToRelease   # cập nhật release\DolaCoordinator\ (app + gateway, ~370 MB), rồi commit để ai clone cũng chạy được
+.\scripts\build-release.ps1 -Version 1.0.0 -ToRelease   # cập nhật release\AIOMMO_DolaAI\ (app + gateway, ~370 MB), rồi commit để ai clone cũng chạy được
 .\scripts\build-release.ps1 -Version 1.0.0              # xuất ra dist\ (không commit); thêm -Zip nếu cần file zip để gửi
 .\scripts\build-gateway.ps1                   # chỉ đóng gói gateway -> dist\gateway\dola-gateway.exe
 .\scripts\pack-update.ps1 -Version 1.0.1 -DownloadBaseUrl https://<host-cua-ban>/dola   # gói cập nhật (chỉ exe app) + version.json
@@ -93,6 +93,6 @@ có SHA-256 khớp, và không chứa đường dẫn thoát thư mục.
 - `gateway\accounts\` (bản đóng gói) hoặc `dola-render-gateway/accounts/` (bản mã nguồn) — **phiên đăng nhập thật**
 - `*.db` cạnh gateway — lịch sử tác vụ, khóa API, hạn ngạch
 - `%LOCALAPPDATA%\DolaCoordinator` (LiteDB `coordinator.db`, token mã hóa DPAPI, `gateway.log`)
-- `downloads/`, `dist/` (còn `release/` thì được commit, trừ dữ liệu chạy sinh ra trong `release/DolaCoordinator/gateway/`)
+- `downloads/`, `dist/` (còn `release/` thì được commit, trừ dữ liệu chạy sinh ra trong `release/AIOMMO_DolaAI/gateway/`)
 
 `.gitignore` đã loại các mục trên; `scripts\export-handover.ps1` cũng bỏ chúng khi tạo gói bàn giao.

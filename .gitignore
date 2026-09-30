@@ -33,8 +33,8 @@ handover/
 dola-render-gateway/.git-upstream/
 
 # --- release/ được commit (clone về là chạy), nhưng dữ liệu chạy sinh ra cạnh gateway thì không ---
-release/DolaCoordinator/gateway/accounts/
-release/DolaCoordinator/gateway/downloads/
-release/DolaCoordinator/gateway/*.db
-release/DolaCoordinator/gateway/.browser_installed
-release/DolaCoordinator/gateway/.env.local
+release/AIOMMO_DolaAI/gateway/accounts/
+release/AIOMMO_DolaAI/gateway/downloads/
+release/AIOMMO_DolaAI/gateway/*.db
+release/AIOMMO_DolaAI/gateway/.browser_installed
+release/AIOMMO_DolaAI/gateway/.env.local

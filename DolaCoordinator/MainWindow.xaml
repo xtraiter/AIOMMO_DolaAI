@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:views="clr-namespace:DolaCoordinator.Views"
         mc:Ignorable="d"
-        Title="ALL IN ONE MMO PRO — Dola Coordinator"
+        Title="AIOMMO DolaAI"
         Icon="Assets/logo64.ico"
         Height="900" Width="1440" MinHeight="680" MinWidth="1100"
         WindowStartupLocation="CenterScreen"
@@ -41,8 +41,8 @@
                 <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="20,22,16,10">
                     <Image Source="Assets/logo.png" Width="40" Height="40" RenderOptions.BitmapScalingMode="HighQuality" RenderOptions.EdgeMode="Aliased" SnapsToDevicePixels="True" UseLayoutRounding="True"/>
                     <StackPanel Margin="12,0,0,0" VerticalAlignment="Center">
-                        <TextBlock Text="ALL IN ONE MMO" FontSize="14.5" FontWeight="ExtraBold" Foreground="{StaticResource PrimaryAccentBrush}"/>
-                        <TextBlock Text="Dola Coordinator" FontSize="11.5" Foreground="{StaticResource TextMutedBrush}"/>
+                        <TextBlock Text="AIOMMO DolaAI" FontSize="14.5" FontWeight="ExtraBold" Foreground="{StaticResource PrimaryAccentBrush}"/>
+                        <TextBlock Text="ALL IN ONE MMO" FontSize="11.5" Foreground="{StaticResource TextMutedBrush}"/>
                     </StackPanel>
                 </StackPanel>
 

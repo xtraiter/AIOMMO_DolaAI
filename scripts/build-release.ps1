@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Dong goi DolaCoordinator thanh ban chay doc lap (self-contained, single-file, win-x64).
+  Dong goi AIOMMO DolaAI thanh ban chay doc lap (self-contained, single-file, win-x64).
 .EXAMPLE
   .\scripts\build-release.ps1 -Version 1.0.0
 #>
@@ -9,15 +9,15 @@ param(
     [string]$OutputDir = "dist",
     [switch]$SkipGateway,
     [switch]$Zip,           # them -Zip neu can file zip de gui di
-    [switch]$ToRelease      # xuat vao release\DolaCoordinator (thu muc duoc commit len git: clone ve la chay duoc)
+    [switch]$ToRelease      # xuat vao release\AIOMMO_DolaAI (thu muc duoc commit len git: clone ve la chay duoc)
 )
 
 $ErrorActionPreference = "Stop"
 
 $root = Split-Path -Parent $PSScriptRoot
 $project = Join-Path $root "DolaCoordinator\DolaCoordinator.csproj"
-$distDir = if ($ToRelease) { Join-Path $root "release\DolaCoordinator" } else { Join-Path $root "$OutputDir\DolaCoordinator_v$Version" }
-$zipPath = Join-Path $root "$OutputDir\DolaCoordinator_v${Version}_Portable.zip"
+$distDir = if ($ToRelease) { Join-Path $root "release\AIOMMO_DolaAI" } else { Join-Path $root "$OutputDir\AIOMMO_DolaAI_v$Version" }
+$zipPath = Join-Path $root "$OutputDir\AIOMMO_DolaAI_v${Version}_Portable.zip"
 $temp = Join-Path $env:TEMP ("DolaCoord_" + [Guid]::NewGuid().ToString("N"))
 
 Write-Host "[1/3] Bien dich v$Version (self-contained, win-x64)..." -ForegroundColor Cyan
@@ -32,6 +32,7 @@ if (Test-Path $distDir) { Remove-Item -Recurse -Force $distDir }
 New-Item -ItemType Directory -Force $distDir | Out-Null
 Copy-Item "$temp\*" $distDir -Recurse -Force
 Remove-Item -Recurse -Force $temp
+Rename-Item (Join-Path $distDir "DolaCoordinator.exe") "AIOMMO DolaAI.exe"
 if ($SkipGateway) {
     Write-Host "  (bo qua gateway: goi nay se can Python + dola-render-gateway rieng)" -ForegroundColor Yellow
 } else {
@@ -39,9 +40,9 @@ if ($SkipGateway) {
 }
 
 $guide = @"
-DOLA COORDINATOR v$Version
---------------------------
-1. Chay DolaCoordinator.exe (Windows 10/11 x64, khong can cai .NET).
+AIOMMO DOLAAI v$Version
+-----------------------
+1. Chay 'AIOMMO DolaAI.exe' (Windows 10/11 x64, khong can cai .NET).
 2. Gateway nam san trong thu muc 'gateway' (dola-gateway.exe): app tu chay ngam, KHONG can cai Python.
    Lan dau dung co the mat vai phut de tai trinh duyet Chromium. Tab 'Cai dat': quota/ngay, thu muc luu video.
 3. Tab 'Tai khoan Dola': them tai khoan (dang nhap thu cong / Google / Facebook / cookie).
@@ -59,5 +60,5 @@ if ($Zip) {
     }
     Write-Host "Xong: $zipPath" -ForegroundColor Green
 } else {
-    Write-Host "Xong: $distDir\DolaCoordinator.exe" -ForegroundColor Green
+    Write-Host "Xong: $distDir\AIOMMO DolaAI.exe" -ForegroundColor Green
 }

@@ -165,7 +165,7 @@ chcp 65001 > nul
 echo [Dola Updater] Đang chờ ứng dụng đóng hoàn toàn...
 timeout /t 2 /nobreak > nul
 
-taskkill /f /im DolaCoordinator.exe > nul 2>&1
+taskkill /f /im ""{Path.GetFileName(currentExe)}"" > nul 2>&1
 
 echo [Dola Updater] Đang giải nén và cập nhật file mới...
 powershell -NoProfile -ExecutionPolicy Bypass -Command ""Expand-Archive -LiteralPath '{downloadedPackagePath.Replace("'", "''")}' -DestinationPath '{appDir.Replace("'", "''")}' -Force""
