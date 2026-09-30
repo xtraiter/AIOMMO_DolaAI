@@ -106,6 +106,7 @@ public partial class SettingsViewModel : ObservableObject
         _quotaTracker = quotaTracker;
 
         CurrentVersion = $"v{_updateService.CurrentVersionString}";
+        WeakReferenceMessenger.Default.Register<SettingsViewModel, BrowserStateChangedMessage>(this, static (vm, _) => vm.RefreshBrowserStatus());
         LoadSettings();
     }
 
@@ -160,6 +161,7 @@ public partial class SettingsViewModel : ObservableObject
         {
             IsInstallingBrowser = false;
             RefreshBrowserStatus();
+            WeakReferenceMessenger.Default.Send(new BrowserStateChangedMessage());
         }
     }
 

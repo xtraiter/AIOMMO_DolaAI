@@ -55,6 +55,39 @@
                     </TextBlock>
                 </StackPanel>
 
+                <!-- Thẻ cảnh báo: chưa cài môi trường chạy (nằm ngay trên chân thanh bên) -->
+                <Border DockPanel.Dock="Bottom" Margin="14,0,12,6" Padding="12,10" CornerRadius="8"
+                        Background="{StaticResource WarningSoftBrush}" BorderBrush="{StaticResource WarningBrush}" BorderThickness="1">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding ShowSetupCard}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                    <StackPanel>
+                        <TextBlock Text="{Binding SetupTitle}" FontWeight="Bold" FontSize="12.5" Foreground="{StaticResource WarningBrush}" TextWrapping="Wrap"/>
+                        <TextBlock Text="{Binding SetupDetail}" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap" Margin="0,4,0,8"/>
+                        <Button Content="{Binding SetupButtonText}" Command="{Binding RunSetupCommand}" Style="{StaticResource ModernPrimaryButton}" Height="30" FontSize="12"/>
+                        <ProgressBar IsIndeterminate="True" Height="4" Margin="0,8,0,0" Foreground="{StaticResource WarningBrush}" Background="{StaticResource WindowBackgroundBrush}">
+                            <ProgressBar.Style>
+                                <Style TargetType="ProgressBar" BasedOn="{StaticResource {x:Type ProgressBar}}">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsInstallingEnvironment}" Value="True">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </ProgressBar.Style>
+                        </ProgressBar>
+                        <TextBlock Text="{Binding SetupProgressText}" FontSize="10.5" Foreground="{StaticResource TextMutedBrush}" TextWrapping="Wrap" Margin="0,6,0,0"/>
+                    </StackPanel>
+                </Border>
+
                 <!-- Nav -->
                 <StackPanel>
                     <TextBlock Text="ĐIỀU PHỐI" Style="{StaticResource NavSection}"/>

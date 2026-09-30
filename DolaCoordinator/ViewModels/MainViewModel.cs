@@ -2,6 +2,12 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using CommunityToolkit.Mvvm.Messaging;
+using DolaCoordinator.Helpers;
+using DolaCoordinator.Models;
+using DolaCoordinator.Services.Gateway;
+using DolaCoordinator.Services.Storage;
 using DolaCoordinator.Services.Network;
 using DolaCoordinator.Services.Sessions;
 
@@ -11,6 +17,8 @@ public partial class MainViewModel : ObservableObject, IDisposable
 {
     private readonly IDolaGatewayClient _gatewayClient;
     private readonly IQuotaTracker _quotaTracker;
+    private readonly IGatewayHost _gatewayHost;
+    private readonly IDatabaseService _db;
     private readonly PeriodicTimer _timer;
     private readonly CancellationTokenSource _cts = new();
 
@@ -61,13 +69,19 @@ public partial class MainViewModel : ObservableObject, IDisposable
         ProfilesViewModel profilesVm,
         SettingsViewModel settingsVm,
         IDolaGatewayClient gatewayClient,
-        IQuotaTracker quotaTracker)
+        IQuotaTracker quotaTracker,
+        IGatewayHost gatewayHost,
+        IDatabaseService db)
     {
         _queueVm = queueVm;
         _profilesVm = profilesVm;
         _settingsVm = settingsVm;
         _gatewayClient = gatewayClient;
         _quotaTracker = quotaTracker;
+        _gatewayHost = gatewayHost;
+        _db = db;
+        WeakReferenceMessenger.Default.Register<MainViewModel, BrowserStateChangedMessage>(this, static (vm, _) => vm.RefreshEnvironment());
+        RefreshEnvironment();
 
         NextResetTimeString = _quotaTracker.GetNextResetTime().ToString("dd/MM/yyyy 00:00");
         _timer = new PeriodicTimer(TimeSpan.FromSeconds(10));
@@ -82,9 +96,85 @@ public partial class MainViewModel : ObservableObject, IDisposable
             while (!ct.IsCancellationRequested && await _timer.WaitForNextTickAsync(ct))
             {
                 await CheckGatewayStatusAsync();
+                if (!IsInstallingEnvironment) RefreshEnvironment();
             }
         }
         catch (OperationCanceledException) { }
+    }
+
+    // ------------------------------------------------------------------ thẻ "cần cài môi trường" ở thanh bên
+
+    [ObservableProperty]
+    private bool _showSetupCard;
+
+    [ObservableProperty]
+    private string _setupTitle = string.Empty;
+
+    [ObservableProperty]
+    private string _setupDetail = string.Empty;
+
+    [ObservableProperty]
+    private string _setupButtonText = string.Empty;
+
+    [ObservableProperty]
+    private string _setupProgressText = string.Empty;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(RunSetupCommand))]
+    private bool _isInstallingEnvironment;
+
+    private bool _gatewayMissing;
+
+    /// <summary>Kiểm tra môi trường chạy: có gateway không, đã cài trình duyệt Chromium chưa. Thiếu thì hiện thẻ cảnh báo.</summary>
+    public void RefreshEnvironment()
+    {
+        var gatewayDir = GatewayLocator.FindDir(_db.GetSettings().GatewayDir);
+        _gatewayMissing = gatewayDir == null;
+
+        if (_gatewayMissing)
+        {
+            SetupTitle = "Chưa tìm thấy gateway";
+            SetupDetail = "Cần thư mục 'gateway' (dola-gateway.exe) cạnh app hoặc chọn thư mục trong Cài đặt.";
+            SetupButtonText = "Mở Cài đặt";
+            ShowSetupCard = true;
+        }
+        else if (!_gatewayHost.IsBrowserInstalled)
+        {
+            SetupTitle = "Chưa cài môi trường chạy";
+            SetupDetail = "Cần tải trình duyệt Chromium (~150 MB) để đăng nhập tài khoản và render video.";
+            SetupButtonText = "⬇ Cài đặt ngay";
+            ShowSetupCard = true;
+        }
+        else
+        {
+            ShowSetupCard = IsInstallingEnvironment; // đang cài dở thì giữ thẻ đến khi xong
+        }
+    }
+
+    private bool CanRunSetup() => !IsInstallingEnvironment;
+
+    [RelayCommand(CanExecute = nameof(CanRunSetup))]
+    private async Task RunSetupAsync()
+    {
+        if (_gatewayMissing)
+        {
+            SelectedTabIndex = 2; // Cài đặt: chọn thư mục gateway
+            return;
+        }
+
+        IsInstallingEnvironment = true;
+        SetupProgressText = "Đang bắt đầu...";
+        try
+        {
+            var result = await _gatewayHost.InstallBrowserAsync(new Progress<string>(line => SetupProgressText = line));
+            SetupProgressText = result.Ok ? "Đã cài xong." : (result.Error ?? "Cài đặt thất bại.");
+        }
+        catch (OperationCanceledException) { }
+        finally
+        {
+            IsInstallingEnvironment = false;
+            WeakReferenceMessenger.Default.Send(new BrowserStateChangedMessage());
+        }
     }
 
     public async Task CheckGatewayStatusAsync()
