@@ -548,7 +548,7 @@ public class TaskDispatcher : ITaskDispatcher, IDisposable
 
                 var completed = await PollUntilCompleteAsync(task, session, settings.PollingIntervalSeconds, ct);
                 if (completed == null || string.IsNullOrWhiteSpace(completed.VideoUrl))
-                    throw new GatewayTaskFailedException(completed?.Error ?? "Render thất bại trên gateway", completed?.FailureCode);
+                    throw new GatewayTaskFailedException(FriendlyGatewayError(completed?.FailureCode, completed?.Error ?? "Render thất bại trên gateway"), completed?.FailureCode);
 
                 task.VideoUrl = completed.VideoUrl;
                 task.ProgressPercent = 85;
@@ -723,6 +723,31 @@ public class TaskDispatcher : ITaskDispatcher, IDisposable
         => $"Dola hỏi lại thay vì tạo video: \"{question}\" — app đã thử tự trả lời nhưng Dola vẫn hỏi (hoặc tính năng tự trả lời đang tắt trong Cài đặt). " +
            "Hãy sửa prompt cho rõ (thời lượng Dola hỗ trợ là 4–15 giây, có ảnh tham chiếu hoặc ghi 'tự tạo nhân vật').";
 
+    /// <summary>
+    /// Gateway (dola-pool) báo lỗi bằng tiếng Trung/Anh: hiện câu tiếng Việt theo mã lỗi, kèm nguyên văn của gateway
+    /// để người dùng vẫn xem được chi tiết.
+    /// </summary>
+    private static string FriendlyGatewayError(string? code, string? raw)
+    {
+        var detail = string.IsNullOrWhiteSpace(raw) ? null : raw.Trim();
+        var vi = code switch
+        {
+            "login_required" => "Tài khoản đã mất đăng nhập Dola — mở tài khoản và đăng nhập lại.",
+            "account_limited" => "Dola báo tài khoản đã hết lượt tạo video trong ngày.",
+            "credit" => "Tài khoản không đủ credit để tạo video.",
+            "risk_control" => "Dola bật kiểm soát rủi ro (captcha) cho tài khoản này.",
+            "unhealthy" => "Tài khoản không phản hồi khi gửi yêu cầu (Dola không trả lời).",
+            "timeout" => "Quá thời gian chờ Dola tạo video.",
+            "cancelled" => "Tác vụ đã bị hủy.",
+            "restarted" => "Gateway đã khởi động lại khi tác vụ đang chạy.",
+            "429" => "Mọi tài khoản đều hết lượt hoặc hết credit hôm nay.",
+            "no_account" => "Không có tài khoản phù hợp trong gateway.",
+            _ => null,
+        };
+        if (vi == null) return detail ?? "Gateway báo lỗi không rõ nguyên nhân";
+        return detail == null || detail.Length > 300 ? vi : $"{vi} (gateway: {detail})";
+    }
+
     private bool SkipFailedEnabled() => _databaseService.GetSettings().SkipFailedAccounts;
 
     private bool HandleGatewayFailure(RenderTask task, DolaSession session, GatewayTaskFailedException gx, HashSet<string> tried)
@@ -776,6 +801,7 @@ public class TaskDispatcher : ITaskDispatcher, IDisposable
                 // Video có thể vẫn ra sau đó và gateway không gửi lại prompt: không đổi tài khoản, không hoàn lượt
                 return false;
 
+            case "restarted": // gateway khởi động lại giữa chừng: tác vụ cũ không được chạy lại (tránh tốn credit vô ích)
             case "lost":     // mất liên lạc với gateway khi đang chờ: video có thể vẫn ra, không gửi lại prompt
             case "download": // video đã có, chỉ tải lỗi
                 return false;
@@ -880,7 +906,7 @@ public class TaskDispatcher : ITaskDispatcher, IDisposable
             if (statusResp.Status.Equals("failed", StringComparison.OrdinalIgnoreCase))
             {
                 throw new GatewayTaskFailedException(
-                    statusResp.Error ?? "Gateway báo lỗi không rõ nguyên nhân", statusResp.FailureCode ?? "error");
+                    FriendlyGatewayError(statusResp.FailureCode, statusResp.Error), statusResp.FailureCode ?? "error");
             }
 
             // Hiển thị giai đoạn hiện tại mà gateway báo (hỏi thăm → chat mới → gửi → tạo video)

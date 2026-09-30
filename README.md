@@ -5,7 +5,7 @@
 | Thành phần | Công nghệ | Vai trò |
 |---|---|---|
 | [`DolaCoordinator/`](DolaCoordinator) | WPF · .NET 8 · MVVM (CommunityToolkit) · LiteDB · MS DI | Giao diện: quản lý tài khoản, hàng đợi prompt, điều phối, tải video |
-| [`dola-render-gateway/`](dola-render-gateway) | Python · FastAPI · patchright (Chromium) | Điều khiển trình duyệt Dola: đăng nhập, gửi prompt, chờ video, quản lý hạn ngạch |
+| [`dola-render-gateway/`](dola-render-gateway) | Python · FastAPI · patchright (Chromium) — gateway của [dola-pool](https://github.com/Roins-hub/dola-pool) 2.1.3 kèm chỉnh sửa cho app | Điều khiển trình duyệt Dola: đăng nhập, gửi prompt, chờ video, quản lý hạn ngạch (xem [README gateway](dola-render-gateway/README.md) để biết chỗ đã chỉnh) |
 
 Tài liệu: [Kiến trúc](docs/ARCHITECTURE.md)
 

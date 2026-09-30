@@ -1,4 +1,4 @@
-﻿(function () {
+(function () {
   const PANEL_ID = "watermark-free-media-panel";
   const DOUBAO_PLAY_INFO_URL = "https://www.doubao.com/samantha/media/get_play_info?version_code=20800&language=zh-CN&device_platform=web&aid=497858&real_aid=497858&pkg_type=release_version&device_id=&pc_version=2.51.7&region=&sys_region=&samantha_web=1&use-olympus-account=1&web_tab_id=";
   const items = new Map();
@@ -138,13 +138,13 @@
         background: #1d4ed8;
       }
     </style>
-    <section class="panel" aria-label="Watermark-Free Media Panel">
+    <section class="panel" aria-label="无水印资源面板">
       <div class="header">
-        <div class="title">Master HD Media</div>
+        <div class="title">无水印资源</div>
         <div class="count">0</div>
       </div>
       <div class="list">
-        <div class="empty">Waiting for media...</div>
+        <div class="empty">等待捕获资源</div>
       </div>
     </section>
   `;
@@ -152,7 +152,7 @@
   const list = shadow.querySelector(".list");
   const count = shadow.querySelector(".count");
   let currentSourceKey = "";
-  let statusText = "Waiting for media...";
+  let statusText = "等待捕获资源";
 
   chrome.runtime.onMessage.addListener((message) => {
     if (!message) {
@@ -171,7 +171,7 @@
       resetForSource(message.sourceKey);
       items.clear();
       addItems(message.items);
-      statusText = items.size ? "" : "No resources found";
+      statusText = items.size ? "" : "未提取到资源";
       render();
       return;
     }
@@ -188,7 +188,7 @@
       return;
     }
 
-    statusText = items.size ? "" : "Extracting unwatermarked video...";
+    statusText = items.size ? "" : "正在获取豆包无水印视频";
     render();
 
     const foundItems = [];
@@ -204,7 +204,7 @@
     }
 
     addItems(foundItems);
-    statusText = items.size ? "" : "No resources found";
+    statusText = items.size ? "" : "未提取到资源";
     render();
   }
 
@@ -247,7 +247,7 @@
     if (!items.size) {
       const empty = document.createElement("div");
       empty.className = "empty";
-      empty.textContent = statusText || "Waiting for media...";
+      empty.textContent = statusText || "等待捕获资源";
       list.appendChild(empty);
       return;
     }
@@ -262,7 +262,7 @@
 
       const tag = document.createElement("span");
       tag.className = `tag ${item.type}`;
-      tag.textContent = item.type === "image" ? "IMAGE" : "VIDEO";
+      tag.textContent = item.type === "image" ? "图片" : "视频";
 
       const indexText = document.createElement("span");
       indexText.textContent = String(index + 1);
@@ -271,7 +271,7 @@
 
       const button = document.createElement("button");
       button.type = "button";
-      button.textContent = "Download";
+      button.textContent = "下载";
       button.addEventListener("click", () => {
         chrome.runtime.sendMessage({ type: "DOWNLOAD_MEDIA", url: item.url });
       });

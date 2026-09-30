@@ -1,129 +1,35 @@
-# Dola Render Gateway
+# Gateway của AIOMMO DolaAI
 
-A high-performance session coordinator and OpenAI-compatible video generation API service.
+Gateway chạy ngầm bên dưới app: nhận lệnh tạo video, điều khiển Chromium (có extension Dola30 để mở tùy chọn 30 giây), tải video về.
+Khi đóng gói được build thành `dola-gateway.exe` (không cần cài Python).
 
-Provides automated browser session isolation, task queue distribution, extended duration handling, and an intuitive web management dashboard.
+## Nguồn gốc
 
----
+Đây là **[Roins-hub/dola-pool](https://github.com/Roins-hub/dola-pool)** (bản `2.1.3`, commit `c910f3a40ea9282a7b7d7e0799269d93bef89b69`, 28/09/2026)
+kèm một số chỗ chỉnh cho app desktop. Repo gốc **không có license**: chỉ dùng nội bộ, đừng phát hành lại gateway này ở nơi công khai nếu chưa được tác giả đồng ý.
 
-## 🌟 Key Capabilities
+Những file thêm/sửa đều đánh dấu **`[AIOMMO]`** trong code, để lần sau cập nhật theo dola-pool chỉ cần gắn lại các chỗ này:
 
-1. **OpenAI-Compatible Video API**:
-   - `POST /v1/videos/generations`: Submit generation tasks with prompt, aspect ratio, duration (`10s`, `15s`, `30s`), and reference images.
-   - `GET /v1/videos/<id>`: Poll task lifecycle (`queued` -> `processing` -> `completed` / `failed`).
-   - High-speed MP4 streaming and static asset delivery.
-2. **Extended Duration & High-Definition Media Export**:
-   - Integrated browser automation profile for managing extended duration options.
-   - Direct original quality stream extraction and processing.
-3. **Multi-Account Browser Pool**:
-   - Manages multiple persistent browser profiles in `accounts/`.
-   - Automatic concurrency management, mutual exclusion, and session rotation.
-   - Built-in verification handling.
-4. **Admin Web Dashboard**:
-   - Real-time dashboard at `/web` to monitor generation trends, success rate, account statuses, task queues, and API key management.
+| File | Chỗ chỉnh |
+|---|---|
+| `app_extras.py` (mới) | Toàn bộ phần riêng: tùy chọn theo từng tác vụ (`RunOptions`), gõ prompt nhiều dòng bằng Shift+Enter, bỏ chữ thời lượng khỏi prompt, trả lời khi Dola hỏi lại (ngoài câu hỏi về thời lượng), ảnh tham chiếu trên máy, mã lỗi |
+| `prompt_clean.py` (mới) | Bỏ `30s`, `00:00 - 00:03`, `Giây 0 đến 3`... khỏi prompt (README extension Dola30 dặn không ghi thời lượng trong prompt) |
+| `gateway_main.py`, `open_profile.py`, `add_account_cookie.py`, `fb_to_dola.py` (mới) | Điểm vào của bản đóng gói (`serve` / `open-profile` / `install-browser`), đăng nhập Google/Facebook/cookie từ app |
+| `server.py` | Thêm trường `account`, `hide_window`, `auto_reply`, `strip_duration_words`, `reference_local_paths`; trả thêm `failure_code`, `account`, `stage`, `note`; `DELETE /v1/videos/{id}` (hủy thật, đóng Chromium); `login_ok` khi verify; khóa admin đơn giản; `import_cookie` / `import_fb_cookie`; không chạy lại tác vụ dở dang của lần trước |
+| `browser_pool.py` | Tác vụ **ghim tài khoản**: chỉ dùng đúng tài khoản app chọn, bỏ qua nhóm hạn ngạch của pool, báo lỗi thật thay vì tự đổi tài khoản |
+| `browser.py` | Cửa sổ Chromium ẩn (đặt ngoài màn hình), nạp lại phiên từ `cookie.txt` |
+| `video_worker_ui.py` | Gọi các hàm trên: làm sạch prompt, gõ nhiều dòng, báo giai đoạn, ghi chú của Dola, `DOLA_DRY_RUN` |
+| `store.py` | Thêm cột `stage`, `note`, hàm `fail_unfinished` |
+| `config.py` | Không proxy mặc định (bản gốc mặc định `127.0.0.1:7890`), `DOLA_DRY_RUN`, `DOLA_STRIP_DURATION_WORDS`, `DOLA_RESUME_TASKS` |
 
----
+Mặc định khi chạy bằng app (đặt trong `gateway_main.py`, biến môi trường vẫn được ưu tiên): `DOLA_PURE_API=0` (đường HTTP ký bằng Node.js cần cài Node;
+đường trình duyệt thì không), `DOLA_VIDEO_TIMEOUT=1800`, `DOLA_TASK_DEADLINE=1800`.
 
-## 📁 Repository Structure
+## Cập nhật theo dola-pool
 
-```
-dola-render-gateway/
-├── server.py              # FastAPI server (OpenAI-compatible video API & admin routes)
-├── browser_pool.py        # Account pool concurrency manager and task scheduler
-├── browser.py             # Playwright persistent context launcher
-├── video_worker_ui.py     # UI automation worker with verification handler
-├── video_worker.py        # Protocol worker and status polling
-├── store.py               # SQLite task persistence and API key storage
-├── dola_client.py         # API client communication module
-├── media.py               # Reference media processor
-├── config.py              # Configuration & environment variables
-├── add_account.py         # Automated account profile setup (Google login helpers, TOTP)
-├── add_account_cookie.py  # Import a Dola cookie into accounts/<name>
-├── fb_to_dola.py          # Facebook cookie -> Dola session
-├── open_profile.py        # Interactive login / open profile (status via .profile_status.json)
-├── warmup.py              # Daily greeting chat
-├── dola_errors.py         # Typed errors (login required, unhealthy account)
-├── web/
-│   └── index.html         # Single-page admin management dashboard
-└── extensions/
-    └── dola30/            # Chromium extension profile
-```
+1. Tải bản mới của dola-pool, chép đè các file Python (giữ lại `app_extras.py`, `prompt_clean.py`, `gateway_main.py`, `open_profile.py`, `add_account_cookie.py`, `fb_to_dola.py`).
+2. Gắn lại các chỗ `[AIOMMO]` ở bảng trên (tìm bằng `git diff` với bản cũ).
+3. Chạy lại bộ thử: dựng gateway, tạo tác vụ có `account`, hủy tác vụ, kiểm tra `failure_code` (xem ghi chú trong commit "Switch to dola-pool gateway").
+4. Build: `scripts\build-release.ps1 -Version 1.0.0 -ToRelease`.
 
----
-
-## 🚀 Quick Start
-
-### 1. Requirements
-* Python 3.11+
-* Chrome / Chromium browser
-* Proxy with JP/KR egress
-
-### 2. Setup Environment
-```bash
-# Create virtual environment
-python -m venv .venv
-source .venv/bin/activate       # On Windows: .venv\Scripts\activate
-
-# Install dependencies
-pip install -r requirements.txt
-playwright install chromium
-```
-
-### 3. Configure
-```bash
-# Set your proxy configuration
-export DOLA_PROXY="http://127.0.0.1:7890"
-
-# Set API key for client authentication (optional, empty = dev mode)
-export DOLA_API_KEYS="sk-your-secret-key"
-
-# Concurrency limits
-export DOLA_MAX_CONCURRENCY=3
-```
-
-### 4. Start Server
-```bash
-uvicorn server:app --host 0.0.0.0 --port 8000
-```
-Open **http://127.0.0.1:8000/web** to access the Admin Dashboard.
-
-### 5. Video flow, pre-flight greeting chat and API additions
-
-For every video the UI worker (`video_worker_ui.py`) does, in order: open the account profile → check login →
-read the credit balance → **greeting chat** (one random question, waits for Dola's answer; captcha is solved if it
-appears) → **open a new chat** → open "Create video" → attach reference images → set model / ratio / duration →
-type the prompt → solve captcha → poll the conversation → download the video.
-
-If the greeting chat gets no answer the account is put on a 10-minute cooldown and the task fails with
-`failure_code=unhealthy` (no video credit is spent).
-
-| Variable | Default | Meaning |
-|---|---|---|
-| `DOLA_WARMUP` | `1` | Greeting chat runs once per account per day (`accounts_meta.warmup_day`); set `0` to disable it |
-| `DOLA_WARMUP_TIMEOUT` | `90` | Seconds to wait for Dola's answer |
-| `DOLA_WARMUP_QUESTIONS` | `warmup_questions.txt` | Optional file, one question per line (built-in list is used otherwise) |
-| `DOLA_DRY_RUN` | `0` | Testing only: do everything except sending the video prompt |
-
-`POST /v1/videos/generations` additions:
-* `reference_local_paths`: absolute paths of image files on the gateway machine. **Accepted from loopback only**
-  (403 otherwise). Images are validated (JPEG/PNG/WEBP, size limit) and copied to a temp folder during the run.
-* `GET /v1/videos/<id>` now also returns `failure_code`, `account` and `stage`.
-  `failure_code` is one of `account_limited`, `credit`, `risk_control`, `login_required`, `unhealthy`, `timeout`,
-  `429`, `no_account`, `error`; `stage` is `warmup` → `new_chat` → `submitting` → `generating` → `done`.
-
-`open_profile.py <account> [--login google|facebook|facebook-cookie] [--after keep|close]` opens an account profile in a
-visible Chromium window (used by DolaCoordinator); credentials are read from one JSON line on stdin.
-
-
-### 🌐 SonicVoice (For Voice Clone)
-
-[![Website](https://img.shields.io/badge/Website-SonicVoice.pro-6366f1?style=for-the-badge&logo=google-chrome&logoColor=white)](https://sonicvoice.pro)
-
-### 💬 Admin & Support
-
-[![Zalo](https://img.shields.io/badge/Zalo-Nhóm%20Zalo-0068FF?style=for-the-badge&logoColor=white)](https://zalo.me/g/jvwa05y9id3apkgfocw0)
-
----
-
-## 📜 License
-For educational and internal testing purposes.
+Tài liệu gốc của dola-pool: `API.md`, `CHANGELOG.md`, `DEVELOPMENT.md` (tiếng Trung).
