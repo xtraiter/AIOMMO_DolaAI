@@ -8,4 +8,10 @@ public partial class QueueView : UserControl
     {
         InitializeComponent();
     }
+
+    // Nhật ký luôn cuộn xuống dòng mới nhất
+    private void LogBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (sender is TextBox tb) tb.ScrollToEnd();
+    }
 }

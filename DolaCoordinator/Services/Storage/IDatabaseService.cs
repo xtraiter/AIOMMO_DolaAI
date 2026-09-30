@@ -14,6 +14,12 @@ public interface IDatabaseService : IDisposable
     bool DeleteSession(string id);
     void DeleteAllSessions();
 
+    // Thư viện prompt
+    List<PromptItem> GetAllPrompts();
+    void UpsertPrompt(PromptItem prompt);
+    void UpsertPrompts(IEnumerable<PromptItem> prompts);
+    void DeletePrompts(IEnumerable<string> ids);
+
     // Tài khoản Dola (profile của gateway)
     List<AccountProfile> GetAllProfiles();
     AccountProfile? GetProfileById(string id);

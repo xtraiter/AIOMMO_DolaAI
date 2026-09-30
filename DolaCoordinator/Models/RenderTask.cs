@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using LiteDB;
 
@@ -24,6 +25,12 @@ public partial class RenderTask : ObservableObject
     public string? GatewayTaskId { get; set; }
 
     public string Prompt { get; set; } = string.Empty;
+
+    /// <summary>Tên prompt trong thư viện (để dễ nhận ra trong hàng đợi); null nếu tác vụ tạo trực tiếp.</summary>
+    public string? PromptTitle { get; set; }
+
+    /// <summary>Độ ưu tiên: số lớn chạy trước (0 = thường, 1 = cao, 2 = khẩn, -1 = thấp). Cùng mức thì theo thứ tự tạo.</summary>
+    public int Priority { get; set; }
 
     public string Ratio { get; set; } = "9:16"; // 9:16 (dọc), 16:9 (ngang), 1:1
 
@@ -63,8 +70,40 @@ public partial class RenderTask : ObservableObject
 
     public DateTime? FinishedAt { get; set; }
 
+    /// <summary>Dòng đầu của thông báo lỗi (thông báo đầy đủ có thể nhiều dòng, xem ở tooltip).</summary>
     [BsonIgnore]
-    public string DisplayPrompt => Prompt.Length > 60 ? Prompt[..57] + "..." : Prompt;
+    public string ErrorShort
+    {
+        get
+        {
+            var first = (ErrorMessage ?? string.Empty).Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(l => l.Trim()).FirstOrDefault(l => l.Length > 0) ?? string.Empty;
+            return first.Length > 140 ? first[..137] + "..." : first;
+        }
+    }
+
+    [BsonIgnore]
+    public string PriorityText => Priority switch
+    {
+        >= 2 => "Khẩn",
+        1 => "Cao",
+        0 => "Thường",
+        _ => "Thấp",
+    };
+
+    [BsonIgnore]
+    public string NameText => string.IsNullOrWhiteSpace(PromptTitle) ? DisplayPrompt : PromptTitle;
+
+    [BsonIgnore]
+    public string DisplayPrompt
+    {
+        get
+        {
+            // Prompt nhiều dòng: gộp thành một dòng để hiện trong bảng / nhật ký
+            var one = string.Join(" ⏎ ", Prompt.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.RemoveEmptyEntries).Select(l => l.Trim()).Where(l => l.Length > 0));
+            return one.Length > 60 ? one[..57] + "..." : one;
+        }
+    }
 
     [ObservableProperty]
     [property: BsonIgnore]

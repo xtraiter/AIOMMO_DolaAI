@@ -31,7 +31,10 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private SettingsViewModel _settingsVm;
 
-    // 0 = Vận hành, 1 = Quản lý tài khoản (profile), 2 = Cài đặt
+    [ObservableProperty]
+    private PromptsViewModel _promptsVm;
+
+    // 0 = Vận hành, 1 = Quản lý tài khoản (profile), 2 = Cài đặt, 3 = Quản lý prompt
     [ObservableProperty]
     private int _selectedTabIndex = 0;
 
@@ -43,9 +46,10 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
     private static readonly (string Title, string Subtitle)[] PageTitles =
     {
-        ("Vận hành", "Hàng đợi render video và tiến độ tải về"),
+        ("Vận hành", "Điều khiển tiến trình: chạy, tạm dừng, ưu tiên, quản lý hàng đợi và theo dõi từng video"),
         ("Quản lý tài khoản", "Mỗi dòng là một tài khoản Dola: tích chọn rồi dùng các nút ở hàng trên (mở, đăng nhập tự động, sửa, kiểm tra, xóa...)"),
         ("Cài đặt", "Gateway, trình duyệt, thư mục lưu và cập nhật"),
+        ("Quản lý prompt", "Thư viện prompt: soạn, nhập/xuất rồi thêm vào hàng đợi để làm video"),
     };
 
     partial void OnSelectedTabIndexChanged(int value)
@@ -68,6 +72,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         QueueViewModel queueVm,
         ProfilesViewModel profilesVm,
         SettingsViewModel settingsVm,
+        PromptsViewModel promptsVm,
         IDolaGatewayClient gatewayClient,
         IQuotaTracker quotaTracker,
         IGatewayHost gatewayHost,
@@ -76,6 +81,8 @@ public partial class MainViewModel : ObservableObject, IDisposable
         _queueVm = queueVm;
         _profilesVm = profilesVm;
         _settingsVm = settingsVm;
+        _promptsVm = promptsVm;
+        WeakReferenceMessenger.Default.Register<MainViewModel, NavigateMessage>(this, static (vm, m) => vm.SelectedTabIndex = m.TabIndex);
         _gatewayClient = gatewayClient;
         _quotaTracker = quotaTracker;
         _gatewayHost = gatewayHost;

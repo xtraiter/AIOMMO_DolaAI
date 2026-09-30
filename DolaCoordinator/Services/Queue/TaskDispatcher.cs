@@ -36,12 +36,12 @@ public class TaskDispatcher : ITaskDispatcher, IDisposable
     private readonly IAccountProfileService _profiles;
     private readonly IGatewayHost _gatewayHost;
 
-    private readonly Channel<RenderTask> _taskChannel = Channel.CreateUnbounded<RenderTask>();
+    private readonly SemaphoreSlim _wake = new(0); // đánh thức vòng điều phối khi có việc mới / đổi ưu tiên / tiếp tục
+    private volatile bool _paused;
     private readonly ConcurrentDictionary<string, CancellationTokenSource> _runningTasks = new();
     private readonly HashSet<string> _activeSessionIds = new();
     private readonly object _sessionLock = new();
     private readonly object _claimLock = new();
-    private readonly HashSet<string> _queuedIds = new(); // id đang nằm trong hàng đợi (channel): không xếp trùng
 
     private CancellationTokenSource? _dispatcherCts;
     private Task? _dispatcherLoopTask;
@@ -83,6 +83,7 @@ public class TaskDispatcher : ITaskDispatcher, IDisposable
     {
         if (IsRunning) return Task.CompletedTask;
 
+        _paused = false;
         _dispatcherCts?.Cancel();
         _dispatcherCts?.Dispose();
         _dispatcherCts = new CancellationTokenSource();
@@ -115,18 +116,65 @@ public class TaskDispatcher : ITaskDispatcher, IDisposable
         }
 
         _dispatcherCts = null;
+        _paused = false;
         Log("Bộ điều phối đã dừng hoạt động.");
     }
 
-    /// <summary>Đưa tác vụ vào hàng đợi; trả về false nếu nó đã nằm sẵn trong hàng đợi (không xếp trùng).</summary>
+    /// <summary>Báo cho vòng điều phối biết có thay đổi (tác vụ mới, đổi ưu tiên, tiếp tục).</summary>
+    private void Wake()
+    {
+        if (_wake.CurrentCount == 0) _wake.Release();
+    }
+
     private bool TryQueue(RenderTask task)
     {
-        lock (_queuedIds)
-        {
-            if (!_queuedIds.Add(task.Id)) return false;
-        }
-        return _taskChannel.Writer.TryWrite(task);
+        Wake(); // tác vụ đã nằm ở trạng thái Pending trong DB: vòng điều phối tự lấy theo ưu tiên
+        return true;
     }
+
+    public bool IsPaused => _paused;
+
+    public void Pause()
+    {
+        _paused = true;
+        Log("Đã tạm dừng: không nhận tác vụ mới, các tác vụ đang chạy sẽ chạy nốt.");
+    }
+
+    public void Resume()
+    {
+        _paused = false;
+        Wake();
+        Log("Đã tiếp tục điều phối.");
+    }
+
+    public void SetPriority(string taskId, int priority)
+    {
+        var task = _databaseService.GetTaskById(taskId);
+        if (task == null) return;
+        task.Priority = priority;
+        _databaseService.UpsertTask(task);
+        TaskUpdated?.Invoke(task);
+        Wake();
+    }
+
+    /// <summary>Nhận tác vụ đang chờ có độ ưu tiên cao nhất (cùng mức: tạo trước chạy trước). Chỉ nhận đúng một lần.</summary>
+    private RenderTask? ClaimNextPending()
+    {
+        lock (_claimLock)
+        {
+            var next = _databaseService.GetAllTasks()
+                .Where(t => t.Status == RenderTaskStatus.Pending)
+                .OrderByDescending(t => t.Priority)
+                .ThenBy(t => t.CreatedAt)
+                .FirstOrDefault();
+            if (next == null) return null;
+            next.Status = RenderTaskStatus.Queued;
+            _databaseService.UpsertTask(next);
+            return next;
+        }
+    }
+
+    private bool HasPending() => _databaseService.GetAllTasks().Any(t => t.Status == RenderTaskStatus.Pending);
 
     public void EnqueueTask(RenderTask task)
     {
@@ -303,38 +351,26 @@ public class TaskDispatcher : ITaskDispatcher, IDisposable
 
         while (!ct.IsCancellationRequested)
         {
-            RenderTask task;
-            try
+            // Đợi có chỗ trống (số luồng song song) TRƯỚC khi chọn việc: đổi ưu tiên vẫn kịp có hiệu lực đến phút chót
+            try { await concurrencySemaphore.WaitAsync(ct); }
+            catch (OperationCanceledException) { break; }
+
+            RenderTask? currentTask = null;
+            while (currentTask == null && !ct.IsCancellationRequested)
             {
-                task = await _taskChannel.Reader.ReadAsync(ct);
+                if (!_paused) currentTask = ClaimNextPending();
+                if (currentTask != null) break;
+                try { await _wake.WaitAsync(TimeSpan.FromSeconds(2), ct); }
+                catch (OperationCanceledException) { break; }
             }
-            catch (OperationCanceledException)
+
+            if (currentTask == null)
             {
+                concurrencySemaphore.Release();
                 break;
-            }
-
-            lock (_queuedIds)
-            {
-                _queuedIds.Remove(task.Id);
-            }
-
-            // Nhận việc đúng MỘT lần: một tác vụ có thể nằm trong hàng đợi nhiều lần (thêm rồi bấm Bắt đầu, dừng rồi chạy lại,
-            // thử lại...). Chỉ chạy khi nó còn "Pending"; đã hủy / đang chạy ở worker khác / đã xong thì bỏ qua,
-            // nếu không cùng một prompt sẽ tạo hai video và tốn gấp đôi credit.
-            RenderTask? currentTask;
-            lock (_claimLock)
-            {
-                currentTask = _databaseService.GetTaskById(task.Id);
-                if (currentTask == null || currentTask.Status != RenderTaskStatus.Pending)
-                {
-                    continue;
-                }
-                currentTask.Status = RenderTaskStatus.Queued;
-                _databaseService.UpsertTask(currentTask);
             }
             TaskUpdated?.Invoke(currentTask);
 
-            await concurrencySemaphore.WaitAsync(ct);
             Interlocked.Increment(ref _activeWorkersCount);
 
             _ = Task.Run(async () =>
@@ -352,7 +388,7 @@ public class TaskDispatcher : ITaskDispatcher, IDisposable
                     concurrencySemaphore.Release();
                     Interlocked.Decrement(ref _activeWorkersCount);
 
-                    if (_activeWorkersCount == 0 && _taskChannel.Reader.Count == 0)
+                    if (_activeWorkersCount == 0 && !_paused && !HasPending())
                     {
                         AllTasksCompleted?.Invoke();
                     }

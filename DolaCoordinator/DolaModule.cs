@@ -47,6 +47,7 @@ public static class DolaModule
         services.AddSingleton<QueueViewModel>();
         services.AddSingleton<ProfilesViewModel>();
         services.AddSingleton<SettingsViewModel>();
+        services.AddSingleton<PromptsViewModel>();
         services.AddSingleton<MainViewModel>();
 
         return services;

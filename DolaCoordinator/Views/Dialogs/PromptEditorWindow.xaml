@@ -1,0 +1,105 @@
+<Window x:Class="DolaCoordinator.Views.Dialogs.PromptEditorWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Width="760" SizeToContent="Height" MaxHeight="900" ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+        Background="{DynamicResource SidebarBrush}">
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="../../Themes/DolaModule.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <Grid Margin="26,22,26,22">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Margin="0,0,0,16">
+            <TextBlock x:Name="TitleText" FontSize="18" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}"/>
+            <TextBlock FontSize="12" Foreground="{StaticResource TextMutedBrush}" Margin="0,4,0,0" TextWrapping="Wrap"
+                       Text="Nội dung được giữ nguyên từng dòng khi gửi cho Dola: có thể dán bảng phân cảnh, danh sách, nhiều đoạn… Một prompt = một (hoặc nhiều) video."/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="1" Margin="0,0,0,12">
+            <TextBlock Text="TÊN PROMPT" Style="{StaticResource FieldLabel}"/>
+            <TextBox x:Name="TitleBox" Text="{Binding PromptTitle, UpdateSourceTrigger=PropertyChanged}" MaxLength="120"
+                     ToolTip="Tên gợi nhớ, hiện trong danh sách và hàng đợi. Để trống thì lấy dòng đầu của nội dung."/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="2" Margin="0,0,0,12">
+            <DockPanel>
+                <TextBlock DockPanel.Dock="Right" x:Name="CountText" FontSize="11" Foreground="{StaticResource TextMutedBrush}"/>
+                <TextBlock Text="NỘI DUNG PROMPT" Style="{StaticResource FieldLabel}"/>
+            </DockPanel>
+            <TextBox x:Name="TextBox" Text="{Binding PromptText, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" AcceptsTab="True"
+                     TextWrapping="Wrap" Height="260" VerticalScrollBarVisibility="Auto" VerticalContentAlignment="Top"
+                     FontFamily="Consolas" FontSize="13" TextChanged="TextBox_TextChanged"/>
+        </StackPanel>
+
+        <Grid Grid.Row="3" Margin="0,0,0,12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="160"/>
+                <ColumnDefinition Width="160"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <StackPanel Margin="0,0,12,0">
+                <TextBlock Text="TỶ LỆ MẶC ĐỊNH" Style="{StaticResource FieldLabel}"/>
+                <ComboBox ItemsSource="{Binding RatioOptions}" SelectedItem="{Binding Ratio}"/>
+            </StackPanel>
+            <StackPanel Grid.Column="1" Margin="0,0,12,0">
+                <TextBlock Text="THỜI LƯỢNG (giây)" Style="{StaticResource FieldLabel}"/>
+                <ComboBox ItemsSource="{Binding DurationOptions}" SelectedItem="{Binding Duration}"/>
+            </StackPanel>
+            <StackPanel Grid.Column="2">
+                <TextBlock Text="ẢNH THAM CHIẾU MẶC ĐỊNH (tùy chọn)" Style="{StaticResource FieldLabel}"/>
+                <StackPanel Orientation="Horizontal">
+                    <Button Content="Chọn ảnh…" Click="AddImages_Click" Margin="0,0,8,0"/>
+                    <Button Content="Xóa hết" Click="ClearImages_Click" Style="{StaticResource GhostButton}"/>
+                </StackPanel>
+            </StackPanel>
+        </Grid>
+
+        <ItemsControl Grid.Row="4" ItemsSource="{Binding RefImages}" Margin="0,0,0,8">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <WrapPanel/>
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <Border Background="{StaticResource WindowBackgroundBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                            CornerRadius="6" Padding="4" Margin="0,0,8,6" ToolTip="{Binding}">
+                        <StackPanel Orientation="Horizontal">
+                            <Image Source="{Binding Converter={StaticResource PathToThumbnailConverter}}" Width="34" Height="34" Stretch="UniformToFill"/>
+                            <TextBlock Text="{Binding Converter={StaticResource PathToFileNameConverter}}" MaxWidth="120" TextTrimming="CharacterEllipsis"
+                                       VerticalAlignment="Center" Margin="8,0,6,0" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"/>
+                            <Button Style="{StaticResource GhostButton}" Padding="6,2" ToolTip="Bỏ ảnh này" Tag="{Binding}" Click="RemoveImage_Click">
+                                <TextBlock Text="&#xE711;" FontFamily="Segoe MDL2 Assets" FontSize="11"/>
+                            </Button>
+                        </StackPanel>
+                    </Border>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <StackPanel Grid.Row="5">
+            <TextBlock Text="GHI CHÚ" Style="{StaticResource FieldLabel}"/>
+            <TextBox Text="{Binding Notes, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" TextWrapping="Wrap"
+                     Height="48" VerticalScrollBarVisibility="Auto" VerticalContentAlignment="Top"/>
+            <TextBlock x:Name="ErrorText" Foreground="{StaticResource DangerBrush}" FontSize="12" TextWrapping="Wrap"
+                       Margin="0,10,0,0" Visibility="Collapsed"/>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,14,0,0">
+                <Button Content="Hủy" Width="90" Margin="0,0,10,0" IsCancel="True" Click="Cancel_Click"/>
+                <Button x:Name="OkButton" Style="{StaticResource ModernPrimaryButton}" MinWidth="130" IsDefault="False" Click="Ok_Click"/>
+            </StackPanel>
+        </StackPanel>
+    </Grid>
+</Window>

@@ -13,6 +13,7 @@ public class LiteDbDatabaseService : IDatabaseService
     private readonly ILiteCollection<DolaSession> _sessions;
     private readonly ILiteCollection<AccountProfile> _profiles;
     private readonly ILiteCollection<RenderTask> _tasks;
+    private readonly ILiteCollection<PromptItem> _prompts;
     private readonly ILiteCollection<AppSettings> _settings;
     private readonly object _lock = new();
 
@@ -46,6 +47,7 @@ public class LiteDbDatabaseService : IDatabaseService
         }
         _profiles = _db.GetCollection<AccountProfile>("account_profiles");
         _tasks = _db.GetCollection<RenderTask>("tasks");
+        _prompts = _db.GetCollection<PromptItem>("prompts");
         _settings = _db.GetCollection<AppSettings>("settings");
 
         // Indexes
@@ -134,6 +136,40 @@ public class LiteDbDatabaseService : IDatabaseService
         lock (_lock)
         {
             return _profiles.Delete(id);
+        }
+    }
+    #endregion
+
+    #region Prompts
+    public List<PromptItem> GetAllPrompts()
+    {
+        lock (_lock)
+        {
+            return _prompts.FindAll().OrderByDescending(p => p.UpdatedAt).ToList();
+        }
+    }
+
+    public void UpsertPrompt(PromptItem prompt)
+    {
+        lock (_lock)
+        {
+            _prompts.Upsert(prompt);
+        }
+    }
+
+    public void UpsertPrompts(IEnumerable<PromptItem> prompts)
+    {
+        lock (_lock)
+        {
+            _prompts.Upsert(prompts);
+        }
+    }
+
+    public void DeletePrompts(IEnumerable<string> ids)
+    {
+        lock (_lock)
+        {
+            foreach (var id in ids) _prompts.Delete(id);
         }
     }
     #endregion

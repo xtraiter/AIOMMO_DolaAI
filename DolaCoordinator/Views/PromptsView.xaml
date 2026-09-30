@@ -1,0 +1,193 @@
+<UserControl x:Class="DolaCoordinator.Views.PromptsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             mc:Ignorable="d"
+             d:DesignHeight="760" d:DesignWidth="1200"
+             FontFamily="{DynamicResource ModernFont}">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="../Themes/DolaModule.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+
+            <Style x:Key="GlyphText" TargetType="TextBlock">
+                <Setter Property="FontFamily" Value="Segoe MDL2 Assets"/>
+                <Setter Property="FontSize" Value="14"/>
+                <Setter Property="HorizontalAlignment" Value="Center"/>
+                <Setter Property="VerticalAlignment" Value="Center"/>
+            </Style>
+            <Style x:Key="KpiNumber" TargetType="TextBlock">
+                <Setter Property="FontSize" Value="26"/>
+                <Setter Property="FontWeight" Value="Bold"/>
+                <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+            </Style>
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <Grid Margin="24,20,24,16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <Grid Grid.Row="0" Margin="0,0,0,16">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock FontSize="12.5" Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap" VerticalAlignment="Center"
+                       Text="Thư viện prompt: mỗi prompt có nội dung nhiều dòng (bảng phân cảnh, danh sách…) và thiết lập mặc định. Tích chọn prompt rồi bấm 'Thêm vào hàng đợi' để làm video; việc chạy, tạm dừng, ưu tiên nằm ở trang Vận hành."/>
+            <Button Grid.Column="1" Style="{StaticResource ModernPrimaryButton}" Command="{Binding AddPromptCommand}"
+                    Padding="18,9" VerticalAlignment="Top" Margin="20,0,0,0">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Style="{StaticResource GlyphText}" Text="&#xE710;" Margin="0,0,8,0"/>
+                    <TextBlock Text="Thêm prompt"/>
+                </StackPanel>
+            </Button>
+        </Grid>
+
+        <!-- KPI -->
+        <UniformGrid Grid.Row="1" Columns="3" Margin="0,0,0,14">
+            <Border Style="{StaticResource ModernCard}" Margin="0,0,8,0">
+                <StackPanel Orientation="Horizontal">
+                    <Image Source="/Assets/Icons/clapperboard.png" Width="38" Height="38" RenderOptions.BitmapScalingMode="HighQuality"/>
+                    <StackPanel Margin="14,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="TỔNG PROMPT" Style="{StaticResource SectionTitle}"/>
+                        <TextBlock Text="{Binding TotalCount}" Style="{StaticResource KpiNumber}"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+            <Border Style="{StaticResource ModernCard}" Margin="4,0,4,0">
+                <StackPanel Orientation="Horizontal">
+                    <Image Source="/Assets/Icons/kpi-logged-in.png" Width="38" Height="38" RenderOptions.BitmapScalingMode="HighQuality"/>
+                    <StackPanel Margin="14,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="ĐÃ TÍCH CHỌN" Style="{StaticResource SectionTitle}"/>
+                        <TextBlock Text="{Binding SelectedCount}" Style="{StaticResource KpiNumber}" Foreground="{StaticResource AccentBrush}"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+            <Border Style="{StaticResource ModernCard}" Margin="8,0,0,0">
+                <StackPanel Orientation="Horizontal">
+                    <Image Source="/Assets/Icons/film-reel.png" Width="38" Height="38" RenderOptions.BitmapScalingMode="HighQuality"/>
+                    <StackPanel Margin="14,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="ĐÃ TỪNG LÀM VIDEO" Style="{StaticResource SectionTitle}"/>
+                        <TextBlock Text="{Binding UsedCount}" Style="{StaticResource KpiNumber}" Foreground="{StaticResource SuccessBrush}"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </UniformGrid>
+
+        <!-- Toolbar -->
+        <Border Grid.Row="2" Style="{StaticResource ModernCard}" Padding="12,10,12,4" Margin="0,0,0,14">
+            <WrapPanel>
+                <Grid Width="240" Margin="0,0,12,6">
+                    <TextBox x:Name="SearchBox" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" ToolTip="Tìm theo tên, nội dung hoặc ghi chú"/>
+                    <TextBlock Text="Tìm prompt…" IsHitTestVisible="False" Foreground="{StaticResource TextMutedBrush}" Margin="11,0,0,0" VerticalAlignment="Center">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Text, ElementName=SearchBox}" Value="">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </Grid>
+
+                <Button Content="➕ Thêm vào hàng đợi" Command="{Binding AddToQueueCommand}" Style="{StaticResource ModernPrimaryButton}"
+                        Margin="0,0,20,6" ToolTip="Làm video từ các prompt đã tích: chọn tỷ lệ, thời lượng, số video, độ ưu tiên"/>
+                <Button Content="Sửa" Command="{Binding EditSelectedCommand}" Margin="0,0,8,6" ToolTip="Sửa prompt đã tích (tích đúng 1 dòng; hoặc bấm đúp vào dòng)"/>
+                <Button Content="Nhân bản" Command="{Binding DuplicateSelectedCommand}" Margin="0,0,20,6"/>
+                <Button Content="Nhập từ file" Command="{Binding ImportFromFileCommand}" Margin="0,0,8,6"
+                        ToolTip=".csv (cột Prompt/Nội dung, ô nhiều dòng để trong ngoặc kép) hoặc .txt/.md (các prompt cách nhau bằng dòng ---)"/>
+                <Button Content="Xuất CSV" Command="{Binding ExportToFileCommand}" Margin="0,0,8,6" ToolTip="Xuất các prompt đã tích (chưa tích thì xuất tất cả đang hiển thị)"/>
+                <Button Content="File mẫu" Command="{Binding DownloadTemplateCommand}" Margin="0,0,20,6"/>
+                <Button Content="Xóa đã chọn" Command="{Binding DeleteSelectedCommand}" Foreground="{StaticResource DangerBrush}" Margin="0,0,0,6"/>
+            </WrapPanel>
+        </Border>
+
+        <!-- Bảng prompt -->
+        <Border Grid.Row="3" Style="{StaticResource ModernCard}" Padding="0" Margin="0,0,0,10">
+            <Grid>
+                <DataGrid ItemsSource="{Binding View}" AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True"
+                          GridLinesVisibility="Horizontal" HeadersVisibility="Column" MouseDoubleClick="Grid_MouseDoubleClick">
+                    <DataGrid.Columns>
+                        <DataGridTemplateColumn Width="46">
+                            <DataGridTemplateColumn.Header>
+                                <CheckBox IsChecked="{Binding DataContext.IsAllSelected, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay}"
+                                          HorizontalAlignment="Center"/>
+                            </DataGridTemplateColumn.Header>
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" HorizontalAlignment="Center"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+
+                        <DataGridTemplateColumn Header="TÊN PROMPT" Width="230">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <StackPanel VerticalAlignment="Center" Margin="4,6">
+                                        <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="13.5" TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock Text="{Binding Notes}" FontSize="11.5" Foreground="{StaticResource TextMutedBrush}" TextTrimming="CharacterEllipsis"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+
+                        <DataGridTemplateColumn Header="NỘI DUNG" Width="*" MinWidth="240">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Preview}" TextWrapping="Wrap" MaxHeight="44" TextTrimming="CharacterEllipsis"
+                                               Foreground="{StaticResource TextSecondaryBrush}" FontSize="12.5" VerticalAlignment="Center" Margin="4,4"
+                                               ToolTip="{Binding Text}"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+
+                        <DataGridTextColumn Header="DÒNG" Binding="{Binding LineCount}" Width="60"/>
+                        <DataGridTextColumn Header="TỈ LỆ" Binding="{Binding Ratio}" Width="65"/>
+                        <DataGridTextColumn Header="THỜI LƯỢNG" Binding="{Binding Duration, StringFormat='{}{0}s'}" Width="95"/>
+                        <DataGridTextColumn Header="ẢNH" Binding="{Binding ReferenceSummary}" Width="65"/>
+                        <DataGridTextColumn Header="ĐÃ LÀM" Binding="{Binding QueuedCount}" Width="70"/>
+                        <DataGridTemplateColumn Header="CẬP NHẬT" Width="120">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding UpdatedAt, Converter={StaticResource UtcToLocalTextConverter}}" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                    </DataGrid.Columns>
+                </DataGrid>
+
+                <!-- Trạng thái rỗng -->
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <StackPanel.Style>
+                        <Style TargetType="StackPanel">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding TotalCount}" Value="0">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </StackPanel.Style>
+                    <TextBlock Text="Chưa có prompt nào" FontSize="16" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" HorizontalAlignment="Center"/>
+                    <TextBlock Text="Bấm 'Thêm prompt' để soạn, hoặc 'Nhập từ file' (.csv / .txt / .md)" Foreground="{StaticResource TextMutedBrush}" Margin="0,6,0,14" HorizontalAlignment="Center"/>
+                    <Button Content="Thêm prompt đầu tiên" Style="{StaticResource ModernPrimaryButton}" Command="{Binding AddPromptCommand}" HorizontalAlignment="Center" Padding="18,9"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Thanh trạng thái -->
+        <TextBlock Grid.Row="4" Text="{Binding StatusText}" Foreground="{StaticResource TextSecondaryBrush}" FontSize="12" TextWrapping="Wrap" MinHeight="18"/>
+    </Grid>
+</UserControl>
