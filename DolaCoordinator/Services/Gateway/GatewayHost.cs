@@ -144,9 +144,10 @@ public sealed class GatewayHost : IGatewayHost, IDisposable
                 var cache = Environment.GetEnvironmentVariable("PLAYWRIGHT_BROWSERS_PATH");
                 if (string.IsNullOrWhiteSpace(cache) || cache == "0")
                     cache = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ms-playwright");
-                return Directory.Exists(cache)
-                       && Directory.EnumerateDirectories(cache, "chromium-*")
-                           .Any(d => File.Exists(Path.Combine(d, "INSTALLATION_COMPLETE")));
+                bool Complete(string pattern) => Directory.Exists(cache)
+                    && Directory.EnumerateDirectories(cache, pattern).Any(d => File.Exists(Path.Combine(d, "INSTALLATION_COMPLETE")));
+                // Chromium đầy đủ (mở profile) + headless shell (kiểm tra phiên) đều phải có
+                return Complete("chromium-*") && Complete("chromium_headless_shell-*");
             }
             catch (IOException) { return false; }
             catch (UnauthorizedAccessException) { return false; }
