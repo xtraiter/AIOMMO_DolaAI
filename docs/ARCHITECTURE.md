@@ -33,7 +33,7 @@
 
 ### Từ prompt đến video
 
-`PromptsViewModel` giữ thư viện prompt (LiteDB, collection `prompts`; nội dung nhiều dòng giữ nguyên). "Thêm vào hàng đợi" tạo các `RenderTask` (kèm `Priority`, `PromptTitle`) rồi giao cho `QueueViewModel.EnqueueAsync`. `TaskDispatcher` không còn hàng đợi FIFO trong bộ nhớ: mỗi lần có chỗ trống nó nhận tác vụ `Pending` có `Priority` cao nhất (cùng mức: tạo trước) từ DB, nên đổi ưu tiên có hiệu lực đến phút chót. Tạm dừng chỉ chặn việc nhận tác vụ mới; dừng hẳn mới hủy tác vụ đang chạy.
+`PromptsViewModel` giữ thư viện prompt (LiteDB, collection `prompts`; nội dung nhiều dòng giữ nguyên). "Thêm vào hàng đợi" tạo các `RenderTask` (kèm `Priority`, `PromptTitle`) rồi giao cho `QueueViewModel.EnqueueAsync`. `TaskDispatcher` không còn hàng đợi FIFO trong bộ nhớ: mỗi lần có chỗ trống nó nhận tác vụ `Pending` có `Priority` cao nhất (cùng mức: tạo trước) từ DB, nên đổi ưu tiên có hiệu lực đến phút chót. Tạm dừng chỉ chặn việc nhận tác vụ mới; dừng hẳn mới hủy tác vụ đang chạy. Số tác vụ chạy cùng lúc (`Capacity()`) mặc định bằng số tài khoản dùng được (mỗi tài khoản một luồng), hoặc số cố định; chọn tài khoản theo `AccountStrategy` (chia đều theo số video đã giao / dồn vào tài khoản đầu) và bỏ qua tài khoản vừa lỗi 15 phút. Gateway do app bật nhận `DOLA_MAX_CONCURRENCY` đủ lớn cho mọi tài khoản, và `hide_window` (Chromium mở ngoài màn hình vì extension Dola bắt buộc cửa sổ có giao diện nên không dùng headless).
 
 ### Điều phối một tác vụ
 

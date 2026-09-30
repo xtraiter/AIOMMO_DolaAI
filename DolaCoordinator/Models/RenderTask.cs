@@ -117,6 +117,9 @@ public partial class RenderTask : ObservableObject
     [property: BsonIgnore]
     private string? _stageText;
 
+    /// <summary>Báo giao diện đọc lại mọi thuộc tính (dispatcher sửa trực tiếp trên cùng một đối tượng).</summary>
+    public void NotifyChanged() => OnPropertyChanged(string.Empty);
+
     [BsonIgnore]
     public string ReferenceSummary => ReferenceLocalPaths.Count + ReferenceImages.Count == 0
         ? "—"

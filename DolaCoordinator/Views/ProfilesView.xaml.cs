@@ -6,6 +6,13 @@ namespace DolaCoordinator.Views;
 
 public partial class ProfilesView : UserControl
 {
+    // Ô "Dùng để chạy": binding hai chiều đã đổi giá trị trong phiên; lưu xuống DB
+    private void UseForRender_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: DolaCoordinator.Models.AccountProfile p } && DataContext is DolaCoordinator.ViewModels.ProfilesViewModel vm)
+            vm.PersistUseForRender(p);
+    }
+
     public ProfilesView()
     {
         InitializeComponent();

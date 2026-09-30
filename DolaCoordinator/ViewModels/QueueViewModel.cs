@@ -60,6 +60,57 @@ public partial class QueueViewModel : ObservableObject
     [ObservableProperty] private string _runStateText = "Đã dừng";
     [ObservableProperty] private string _primaryButtonText = "▶ Bắt đầu";
 
+    // ---- cơ chế chạy (lưu ngay vào cài đặt, dispatcher đọc lại mỗi vòng nên có hiệu lực ngay)
+    public string[] StrategyOptions { get; } =
+    {
+        "Chia đều: chạy hết các tài khoản rồi mới sang lượt 2",
+        "Hết từng tài khoản: dùng hết tài khoản này mới sang tài khoản kế",
+    };
+
+    public string[] ThreadOptions { get; } =
+    {
+        "Mỗi tài khoản 1 luồng (chạy song song)",
+        "Cố định số luồng",
+    };
+
+    [ObservableProperty] private int _strategyIndex;
+    [ObservableProperty] private int _threadModeIndex;
+    [ObservableProperty] private int _fixedThreads = 2;
+    [ObservableProperty] private bool _hideWindow;
+    [ObservableProperty] private bool _skipFailed = true;
+
+    private bool _loadingRunOptions;
+
+    partial void OnStrategyIndexChanged(int value) => SaveRunOptions();
+    partial void OnThreadModeIndexChanged(int value) => SaveRunOptions();
+    partial void OnFixedThreadsChanged(int value) => SaveRunOptions();
+    partial void OnHideWindowChanged(bool value) => SaveRunOptions();
+    partial void OnSkipFailedChanged(bool value) => SaveRunOptions();
+
+    private void LoadRunOptions()
+    {
+        _loadingRunOptions = true;
+        var s = _databaseService.GetSettings();
+        StrategyIndex = (int)s.AccountStrategy;
+        ThreadModeIndex = (int)s.ThreadMode;
+        FixedThreads = Math.Clamp(s.ConcurrencyLimit, 1, 30);
+        HideWindow = s.HideRenderWindow;
+        SkipFailed = s.SkipFailedAccounts;
+        _loadingRunOptions = false;
+    }
+
+    private void SaveRunOptions()
+    {
+        if (_loadingRunOptions) return;
+        var s = _databaseService.GetSettings();
+        s.AccountStrategy = (AccountStrategy)Math.Clamp(StrategyIndex, 0, 1);
+        s.ThreadMode = (ThreadMode)Math.Clamp(ThreadModeIndex, 0, 1);
+        s.ConcurrencyLimit = Math.Clamp(FixedThreads, 1, 30);
+        s.HideRenderWindow = HideWindow;
+        s.SkipFailedAccounts = SkipFailed;
+        _databaseService.SaveSettings(s);
+    }
+
     /// <summary>Thư mục lưu video tải về (mặc định thư mục Videos). Lưu ngay vào cài đặt khi đổi.</summary>
     [ObservableProperty] private string _saveDirectory = string.Empty;
 
@@ -89,6 +140,7 @@ public partial class QueueViewModel : ObservableObject
         _loadingSaveDirectory = true;
         SaveDirectory = _databaseService.GetSettings().DownloadDirectory;
         _loadingSaveDirectory = false;
+        LoadRunOptions();
 
         var view = new ListCollectionView(Tasks) { Filter = FilterTask };
         view.CustomSort = new TaskOrder();
@@ -160,7 +212,13 @@ public partial class QueueViewModel : ObservableObject
         Application.Current?.Dispatcher.Invoke(() =>
         {
             var existing = Tasks.FirstOrDefault(t => t.Id == task.Id);
-            if (existing != null)
+            if (existing != null && ReferenceEquals(existing, task))
+            {
+                // Cùng một đối tượng đã được dispatcher sửa tại chỗ: vẽ lại dòng và xếp lại vị trí
+                task.NotifyChanged();
+                ResortItem(task);
+            }
+            else if (existing != null)
             {
                 task.IsSelected = existing.IsSelected; // giữ dấu tích khi dòng được nạp lại
                 Tasks[Tasks.IndexOf(existing)] = task;
@@ -171,6 +229,19 @@ public partial class QueueViewModel : ObservableObject
             }
             UpdateCounters();
         });
+    }
+
+    private void ResortItem(RenderTask task)
+    {
+        if (View is ListCollectionView lcv && !lcv.IsAddingNew && !lcv.IsEditingItem)
+        {
+            try { lcv.EditItem(task); lcv.CommitEdit(); }
+            catch (InvalidOperationException) { View.Refresh(); }
+        }
+        else
+        {
+            View.Refresh();
+        }
     }
 
     private void OnAllTasksCompleted()

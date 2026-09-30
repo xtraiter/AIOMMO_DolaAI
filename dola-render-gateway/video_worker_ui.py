@@ -388,7 +388,8 @@ async def generate_video(account: str, prompt: str, ratio: str = None,
                          model: str = "seedance_v2.0", use_extension: bool = True,
                          on_conversation_id=None, on_poll=None, on_balance=None,
                          reference_image_paths: list[str] | None = None,
-                         on_stage=None, warmup: bool | None = None, on_warmup_done=None) -> dict:
+                         on_stage=None, warmup: bool | None = None, on_warmup_done=None,
+                         hide_window: bool = False) -> dict:
     """Full generation flow via UI automation.
 
     Stages reported through on_stage: warmup -> new_chat -> submitting -> generating (-> done by the caller).
@@ -423,7 +424,7 @@ async def generate_video(account: str, prompt: str, ratio: str = None,
     async with async_playwright() as p:
         context = await launch_account_context(
             p, account, headless=False if use_extension else None,
-            use_extension=use_extension)
+            use_extension=use_extension, hide_window=hide_window)
         try:
             page = context.pages[0] if context.pages else await context.new_page()
             await page.goto("https://www.dola.com/chat", timeout=60000, wait_until="domcontentloaded")

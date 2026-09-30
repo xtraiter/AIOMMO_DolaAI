@@ -171,6 +171,8 @@ class VideoGenRequest(BaseModel):
     reference_local_paths: list[str] = Field(default_factory=list)
     account: str | None = None
     cookie: str | None = None
+    # Render with the Chromium window kept off-screen (DolaCoordinator: "Ẩn Chromium"). Loopback default is visible.
+    hide_window: bool = False
 
 
 class TaskResponse(BaseModel):
@@ -224,7 +226,7 @@ def _resolve_ratio(size, ratio):
 
 
 async def _run_task(task_id, model, prompt, ratio, duration, reference_images, client, preferred_account=None,
-                    local_reference_paths=None):
+                    local_reference_paths=None, hide_window=False):
     api_key_hash = client.get("api_key_hash")
     acquired = False
     reference_root = None
@@ -254,7 +256,7 @@ async def _run_task(task_id, model, prompt, ratio, duration, reference_images, c
             prompt, ratio, duration, model,
             on_conversation_id=on_conversation_id, on_poll=on_poll,
             reference_image_paths=reference_paths,
-            preferred_account=preferred_account, on_stage=on_stage)
+            preferred_account=preferred_account, on_stage=on_stage, hide_window=hide_window)
         public_url = f"{config.PUBLIC_BASE}/videos/{Path(result['local_path']).name}"
         store.update(task_id, status="completed", video_url=public_url, stage="done",
                      account=result.get("account"), last_poll_at=time.time(),
@@ -450,6 +452,7 @@ async def create_video(req: VideoGenRequest, request: Request, authorization: st
     asyncio.create_task(_run_task(
         task_id, req.model, req.prompt, ratio, duration, reference_images, client,
         preferred_account=req.account, local_reference_paths=local_reference_paths,
+        hide_window=req.hide_window,
     ))
     return TaskResponse(id=task_id, status="queued", model=req.model, prompt=req.prompt)
 

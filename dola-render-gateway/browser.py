@@ -11,12 +11,26 @@ LAUNCH_ARGS = [
     "--no-default-browser-check",
 ]
 
+# "Hidden" render window. The Dola extension needs a HEADED Chromium, so instead of headless mode the window is
+# opened far off-screen (and kept from being throttled as "occluded"). It behaves exactly like a normal window for the
+# site, so it does not raise the bot-detection risk that real headless mode would.
+HIDDEN_WINDOW_ARGS = [
+    "--window-position=-32000,-32000",
+    "--window-size=1280,800",
+    "--disable-backgrounding-occluded-windows",
+    "--disable-renderer-backgrounding",
+    "--disable-background-timer-throttling",
+    "--disable-features=CalculateNativeWinOcclusion",
+]
 
-async def launch_account_context(p, account: str, headless: bool = None, use_extension: bool = False):
+
+async def launch_account_context(p, account: str, headless: bool = None, use_extension: bool = False,
+                                 hide_window: bool = False):
     """Launches accounts/<account> profile, returns BrowserContext. Caller must close.
 
     p: async_playwright() instance
     headless: None = uses config.HEADLESS
+    hide_window: open the (headed) window off-screen so nothing shows on the desktop while rendering
     """
     profile_dir = Path("accounts") / account
     if not profile_dir.exists():
@@ -37,6 +51,8 @@ async def launch_account_context(p, account: str, headless: bool = None, use_ext
             f"--disable-extensions-except={extension_dir}",
             f"--load-extension={extension_dir}",
         ])
+    if hide_window and not launch_headless:
+        args.extend(HIDDEN_WINDOW_ARGS)
     kwargs = {
         "headless": launch_headless,
         "args": args,

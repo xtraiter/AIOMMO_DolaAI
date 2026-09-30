@@ -660,6 +660,32 @@ public partial class ProfilesViewModel : ObservableObject, IDisposable
         }
     }
 
+    /// <summary>Lưu lựa chọn "Dùng để chạy" của một dòng (ô tích trong bảng).</summary>
+    public void PersistUseForRender(AccountProfile p)
+    {
+        if (p.Session == null) return;
+        _db.UpsertSession(p.Session);
+        Log($"'{p.Name}': {(p.UseForRender ? "được dùng" : "KHÔNG dùng")} khi chạy vận hành.");
+    }
+
+    [RelayCommand]
+    private void IncludeSelected() => SetUseForRender(true);
+
+    [RelayCommand]
+    private void ExcludeSelected() => SetUseForRender(false);
+
+    private void SetUseForRender(bool value)
+    {
+        var targets = Selected().Where(p => p.Session != null).ToList();
+        if (targets.Count == 0) { Log("Tích chọn tài khoản (đã đăng nhập) để đưa vào / loại khỏi vận hành."); return; }
+        foreach (var p in targets)
+        {
+            p.UseForRender = value;
+            _db.UpsertSession(p.Session!);
+        }
+        Log($"{(value ? "Đã đưa" : "Đã loại")} {targets.Count} tài khoản {(value ? "vào" : "khỏi")} vận hành.");
+    }
+
     [RelayCommand]
     private void ResetQuotaSelected()
     {

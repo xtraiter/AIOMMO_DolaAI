@@ -155,6 +155,35 @@
                     <Button Content="Xóa đã chọn" Command="{Binding DeleteSelectedCommand}" Foreground="{StaticResource DangerBrush}" Margin="0,0,0,6"/>
                 </WrapPanel>
 
+                <!-- Cơ chế chạy -->
+                <Border Height="1" Background="{StaticResource BorderBrush}" Margin="0,0,0,10"/>
+                <WrapPanel Margin="0,0,0,2">
+                    <StackPanel Margin="0,0,18,8">
+                        <TextBlock Text="CƠ CHẾ CHẠY TÀI KHOẢN" Style="{StaticResource FieldLabel}"/>
+                        <ComboBox Width="400" ItemsSource="{Binding StrategyOptions}" SelectedIndex="{Binding StrategyIndex}"
+                                  ToolTip="Chia đều: mỗi tài khoản một video, hết vòng mới quay lại tài khoản đầu. Hết từng tài khoản: dồn video vào tài khoản đầu cho tới khi hết lượt hoặc lỗi. Tài khoản lỗi luôn được bỏ qua."/>
+                    </StackPanel>
+                    <StackPanel Margin="0,0,18,8">
+                        <TextBlock Text="SỐ LUỒNG" Style="{StaticResource FieldLabel}"/>
+                        <StackPanel Orientation="Horizontal">
+                            <ComboBox Width="290" ItemsSource="{Binding ThreadOptions}" SelectedIndex="{Binding ThreadModeIndex}"
+                                      ToolTip="Mặc định mỗi tài khoản một luồng: có N tài khoản dùng được thì chạy N video cùng lúc."/>
+                            <TextBox Width="58" Margin="8,0,0,0" HorizontalContentAlignment="Center" Text="{Binding FixedThreads, UpdateSourceTrigger=PropertyChanged}"
+                                     Visibility="{Binding ThreadModeIndex, Converter={StaticResource IntToVisibilityConverter}, ConverterParameter=1}"
+                                     ToolTip="Số video chạy cùng lúc (1–30)"/>
+                        </StackPanel>
+                    </StackPanel>
+                    <StackPanel Margin="0,0,0,8">
+                        <TextBlock Text="TRÌNH DUYỆT KHI CHẠY" Style="{StaticResource FieldLabel}"/>
+                        <WrapPanel>
+                            <CheckBox Content="Ẩn Chromium (chạy nền)" IsChecked="{Binding HideWindow}" Margin="0,7,18,0"
+                                      ToolTip="Tích: cửa sổ Chromium nằm ngoài màn hình, không hiện lên. Bỏ tích: hiện cửa sổ để theo dõi. Trang Quản lý tài khoản (đăng nhập) luôn hiện."/>
+                            <CheckBox Content="Bỏ qua tài khoản lỗi" IsChecked="{Binding SkipFailed}" Margin="0,7,0,0"
+                                      ToolTip="Tài khoản vừa lỗi được bỏ qua ở các video khác trong 15 phút thay vì lần nào cũng thử lại"/>
+                        </WrapPanel>
+                    </StackPanel>
+                </WrapPanel>
+
                 <!-- Thư mục lưu video -->
                 <Grid Margin="0,2,0,8">
                     <Grid.ColumnDefinitions>

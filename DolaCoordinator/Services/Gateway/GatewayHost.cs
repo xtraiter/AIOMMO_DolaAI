@@ -8,6 +8,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using DolaCoordinator.Helpers;
+using DolaCoordinator.Models;
 using DolaCoordinator.Services.Storage;
 
 namespace DolaCoordinator.Services.Gateway;
@@ -93,6 +94,7 @@ public sealed class GatewayHost : IGatewayHost, IDisposable
         foreach (var a in args) psi.ArgumentList.Add(a);
         psi.Environment["PYTHONUNBUFFERED"] = "1";
         psi.Environment["PYTHONIOENCODING"] = "utf-8";
+        psi.Environment["DOLA_MAX_CONCURRENCY"] = GatewayCapacity().ToString(); // đủ chỗ cho mọi tài khoản chạy song song
 
         try
         {
@@ -231,6 +233,14 @@ public sealed class GatewayHost : IGatewayHost, IDisposable
         {
             _browserGate.Release();
         }
+    }
+
+    /// <summary>Số video gateway được render cùng lúc: theo số tài khoản (mỗi tài khoản một luồng) hoặc số luồng cố định, có dư chỗ.</summary>
+    private int GatewayCapacity()
+    {
+        var s = _db.GetSettings();
+        var wanted = s.ThreadMode == ThreadMode.Fixed ? s.ConcurrencyLimit : _db.GetAllSessions().Count(x => x.IsEnabled);
+        return Math.Clamp(wanted + 2, 8, 30);
     }
 
     private async Task<bool> IsHealthyAsync(string url, CancellationToken ct)

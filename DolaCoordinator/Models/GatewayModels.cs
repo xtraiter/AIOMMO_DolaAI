@@ -29,6 +29,10 @@ public class VideoGenApiRequest
 
     [JsonPropertyName("cookie")]
     public string? Cookie { get; set; }
+
+    /// <summary>Chạy với cửa sổ Chromium nằm ngoài màn hình (ẩn).</summary>
+    [JsonPropertyName("hide_window")]
+    public bool HideWindow { get; set; }
 }
 
 public class TaskApiResponse

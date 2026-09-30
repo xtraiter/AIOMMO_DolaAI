@@ -239,6 +239,10 @@
                         ToolTip="Sửa tài khoản đã tích (tích đúng 1 dòng): cách đăng nhập, tài khoản/mật khẩu đã lưu, ghi chú"/>
                 <Button Content="Kiểm tra phiên" Command="{Binding ValidateSelectedCommand}" Margin="0,0,8,6"
                         ToolTip="Nhờ gateway kiểm tra đăng nhập thật (các dòng đã tích, hoặc tất cả nếu chưa tích)"/>
+                <Button Content="Đưa vào vận hành" Command="{Binding IncludeSelectedCommand}" Margin="0,0,8,6"
+                        ToolTip="Các tài khoản đã tích sẽ được dùng khi chạy ở trang Vận hành"/>
+                <Button Content="Loại khỏi vận hành" Command="{Binding ExcludeSelectedCommand}" Margin="0,0,8,6"
+                        ToolTip="Các tài khoản đã tích sẽ không được dùng khi chạy (vẫn giữ nguyên đăng nhập)"/>
                 <Button Content="Reset hạn ngạch" Command="{Binding ResetQuotaSelectedCommand}" Margin="0,0,8,6"/>
                 <Button Content="Mở thư mục" Command="{Binding OpenFolderSelectedCommand}" Margin="0,0,8,6"
                         ToolTip="Mở thư mục accounts/&lt;tên&gt; của các tài khoản đã tích (chưa tích thì mở thư mục accounts)"/>
@@ -293,6 +297,16 @@
                                         <Ellipse Style="{StaticResource RunDot}"/>
                                         <TextBlock Style="{StaticResource RunText}" VerticalAlignment="Center"/>
                                     </StackPanel>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+
+                        <DataGridTemplateColumn Header="DÙNG ĐỂ CHẠY" Width="110">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <CheckBox HorizontalAlignment="Center" IsChecked="{Binding UseForRender, Mode=TwoWay}" IsEnabled="{Binding HasSession}"
+                                              Click="UseForRender_Click"
+                                              ToolTip="Tích = tài khoản này được dùng khi chạy ở trang Vận hành (mặc định đã tích). Bỏ tích để loại khỏi vận hành. Cần đăng nhập trước."/>
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>

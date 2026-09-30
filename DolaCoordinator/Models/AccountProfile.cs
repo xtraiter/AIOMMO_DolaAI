@@ -158,6 +158,22 @@ public partial class AccountProfile : ObservableObject
         _ => "Chưa đăng nhập",
     };
 
+    /// <summary>Có được dùng khi chạy vận hành không (mặc định có). Lưu ở phiên: DolaSession.IsEnabled.</summary>
+    [BsonIgnore]
+    public bool UseForRender
+    {
+        get => Session?.IsEnabled ?? true;
+        set
+        {
+            if (Session == null) return;
+            Session.IsEnabled = value;
+            OnPropertyChanged();
+        }
+    }
+
+    [BsonIgnore]
+    public bool HasSession => Session != null;
+
     [BsonIgnore]
     public string QuotaText => Session == null ? "—" : $"{Session.UsedToday} / {Session.DailyLimit}";
 
@@ -209,6 +225,8 @@ public partial class AccountProfile : ObservableObject
         }
 
         OnPropertyChanged(nameof(StatusText));
+        OnPropertyChanged(nameof(UseForRender));
+        OnPropertyChanged(nameof(HasSession));
         OnPropertyChanged(nameof(QuotaText));
         OnPropertyChanged(nameof(CreditText));
         OnPropertyChanged(nameof(StatusDetail));

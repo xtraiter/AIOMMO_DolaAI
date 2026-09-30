@@ -3,6 +3,26 @@ using System.IO;
 
 namespace DolaCoordinator.Models;
 
+/// <summary>Cách chọn tài khoản cho từng video.</summary>
+public enum AccountStrategy
+{
+    /// <summary>Chia đều: chạy hết các tài khoản (mỗi tài khoản một video) rồi mới sang lượt 2.</summary>
+    RoundRobin = 0,
+
+    /// <summary>Dùng hết từng tài khoản: dồn video vào tài khoản đầu cho tới khi hết lượt/lỗi mới sang tài khoản kế.</summary>
+    Sequential = 1,
+}
+
+/// <summary>Số luồng chạy cùng lúc.</summary>
+public enum ThreadMode
+{
+    /// <summary>Mỗi tài khoản đang dùng được một luồng: N tài khoản = N video chạy song song.</summary>
+    PerAccount = 0,
+
+    /// <summary>Số luồng cố định (ConcurrencyLimit) dù có bao nhiêu tài khoản.</summary>
+    Fixed = 1,
+}
+
 public class AppSettings
 {
     public int Id { get; set; } = 1;
@@ -36,6 +56,18 @@ public class AppSettings
     /// Số luồng xử lý render song song (Concurrency)
     /// </summary>
     public int ConcurrencyLimit { get; set; } = 2;
+
+    /// <summary>Cách chọn tài khoản cho từng video (mặc định chia đều theo lượt).</summary>
+    public AccountStrategy AccountStrategy { get; set; } = AccountStrategy.RoundRobin;
+
+    /// <summary>Mặc định mỗi tài khoản một luồng; chọn Fixed để dùng ConcurrencyLimit.</summary>
+    public ThreadMode ThreadMode { get; set; } = ThreadMode.PerAccount;
+
+    /// <summary>Tài khoản vừa lỗi được bỏ qua ở các video khác trong một lúc (thay vì lần nào cũng thử lại).</summary>
+    public bool SkipFailedAccounts { get; set; } = true;
+
+    /// <summary>Ẩn cửa sổ Chromium khi chạy vận hành (cửa sổ nằm ngoài màn hình). Đăng nhập tài khoản luôn hiện.</summary>
+    public bool HideRenderWindow { get; set; }
 
     /// <summary>
     /// Chu kỳ polling kiểm tra trạng thái video (giây)

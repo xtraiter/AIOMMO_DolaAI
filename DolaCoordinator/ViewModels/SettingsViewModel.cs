@@ -289,7 +289,7 @@ public partial class SettingsViewModel : ObservableObject
             s.GatewayUrl = GatewayUrl?.Trim().TrimEnd('/') ?? "http://127.0.0.1:8000";
             s.ClientApiKey = ClientApiKey?.Trim();
             s.DefaultDailyQuota = Math.Clamp(DefaultDailyQuota, 1, 1000);
-            s.ConcurrencyLimit = Math.Clamp(ConcurrencyLimit, 1, 10);
+            s.ConcurrencyLimit = Math.Clamp(ConcurrencyLimit, 1, 30);
             s.PollingIntervalSeconds = Math.Clamp(PollingIntervalSeconds, 2, 60);
             s.EnableToastNotification = EnableToastNotification;
             s.AutoRetryOnFailure = AutoRetryOnFailure;

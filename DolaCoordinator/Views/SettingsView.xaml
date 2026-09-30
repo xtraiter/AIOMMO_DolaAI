@@ -76,7 +76,7 @@
                             <ColumnDefinition Width="100" />
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0">
-                            <TextBlock Text="Số luồng render song song (Concurrency limit):" Foreground="{StaticResource TextSecondaryBrush}" FontSize="12" />
+                            <TextBlock Text="Số luồng cố định (chỉ dùng khi chọn 'Cố định số luồng' ở trang Vận hành):" Foreground="{StaticResource TextSecondaryBrush}" FontSize="12" />
                             <TextBlock Text="Số tác vụ render được điều phối đồng thời tới gateway (Khuyến nghị: 1 - 3)." Foreground="{StaticResource TextMutedBrush}" FontSize="11" />
                         </StackPanel>
                         <TextBox Grid.Column="1" Text="{Binding ConcurrencyLimit}" Style="{StaticResource ModernTextBox}" HorizontalContentAlignment="Center" VerticalAlignment="Center" />

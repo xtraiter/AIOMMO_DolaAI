@@ -45,7 +45,9 @@ public class TaskDispatcher : ITaskDispatcher, IDisposable
 
     private CancellationTokenSource? _dispatcherCts;
     private Task? _dispatcherLoopTask;
-    private int _roundRobinIndex = 0;
+    private readonly Dictionary<string, int> _assignCounts = new();      // số video đã giao cho từng tài khoản (chia đều theo lượt)
+    private readonly Dictionary<string, DateTime> _skipUntil = new();     // tài khoản vừa lỗi: bỏ qua tới thời điểm này
+    private static readonly TimeSpan FailedAccountSkip = TimeSpan.FromMinutes(15);
     private int _activeWorkersCount = 0;
 
     public event Action<string>? LogReceived;
@@ -84,6 +86,7 @@ public class TaskDispatcher : ITaskDispatcher, IDisposable
         if (IsRunning) return Task.CompletedTask;
 
         _paused = false;
+        ResetRound();
         _dispatcherCts?.Cancel();
         _dispatcherCts?.Dispose();
         _dispatcherCts = new CancellationTokenSource();
@@ -264,17 +267,26 @@ public class TaskDispatcher : ITaskDispatcher, IDisposable
             if (potential.Count == 0)
                 return new PickResult(null, false, Summarize(sessions, gateway, tried));
 
+            var pickSettings = _databaseService.GetSettings();
             var ready = potential
                 .Where(s => !_activeSessionIds.Contains(s.Id)
                             && !_profiles.IsAccountOpen(s.Name) // profile đang mở → Chromium khóa thư mục, gateway không dùng được
                             && !IsBusyOrCooling(s, gateway))
                 .ToList();
+            if (pickSettings.SkipFailedAccounts)
+            {
+                var now = DateTime.UtcNow;
+                ready = ready.Where(s => !_skipUntil.TryGetValue(s.Id, out var until) || until <= now).ToList();
+            }
             if (ready.Count == 0)
                 return new PickResult(null, true, string.Empty);
 
-            _roundRobinIndex %= ready.Count;
-            var selected = ready[_roundRobinIndex];
-            _roundRobinIndex = (_roundRobinIndex + 1) % ready.Count;
+            // Chia đều: tài khoản đã nhận ít video nhất đi trước (hết một vòng mới tới lượt 2).
+            // Hết từng tài khoản: luôn ưu tiên tài khoản đứng đầu; chỉ sang tài khoản kế khi nó bận / hết lượt / lỗi.
+            var selected = pickSettings.AccountStrategy == AccountStrategy.Sequential
+                ? ready.OrderBy(s => s.CreatedAt).ThenBy(s => s.Name, StringComparer.OrdinalIgnoreCase).First()
+                : ready.OrderBy(s => _assignCounts.GetValueOrDefault(s.Id)).ThenBy(s => s.CreatedAt).First();
+            _assignCounts[selected.Id] = _assignCounts.GetValueOrDefault(selected.Id) + 1;
             _activeSessionIds.Add(selected.Id);
             return new PickResult(selected, false, string.Empty);
         }
@@ -344,33 +356,52 @@ public class TaskDispatcher : ITaskDispatcher, IDisposable
 
     // ------------------------------------------------------------------ vòng điều phối
 
-    private async Task DispatcherLoopAsync(CancellationToken ct)
+    /// <summary>
+    /// Số video được chạy cùng lúc. Mặc định mỗi tài khoản dùng được một luồng (N tài khoản = N video song song);
+    /// hoặc số luồng cố định trong cài đặt. Tính lại mỗi vòng nên thêm/bớt tài khoản có hiệu lực ngay.
+    /// </summary>
+    private int Capacity()
     {
         var settings = _databaseService.GetSettings();
-        using var concurrencySemaphore = new SemaphoreSlim(settings.ConcurrencyLimit);
+        if (settings.ThreadMode == ThreadMode.Fixed) return Math.Clamp(settings.ConcurrencyLimit, 1, 30);
+        var accounts = _databaseService.GetAllSessions().Count(s => s.IsSchedulable);
+        return Math.Clamp(accounts, 1, 30);
+    }
 
+    private void ResetRound()
+    {
+        lock (_sessionLock)
+        {
+            _assignCounts.Clear();
+            _skipUntil.Clear();
+        }
+    }
+
+    private void MarkAccountFailed(string sessionId)
+    {
+        lock (_sessionLock)
+        {
+            _skipUntil[sessionId] = DateTime.UtcNow + FailedAccountSkip;
+        }
+    }
+
+    private async Task DispatcherLoopAsync(CancellationToken ct)
+    {
         while (!ct.IsCancellationRequested)
         {
-            // Đợi có chỗ trống (số luồng song song) TRƯỚC khi chọn việc: đổi ưu tiên vẫn kịp có hiệu lực đến phút chót
-            try { await concurrencySemaphore.WaitAsync(ct); }
-            catch (OperationCanceledException) { break; }
-
+            // Chỉ nhận việc khi còn chỗ trống: đổi ưu tiên / số luồng vẫn kịp có hiệu lực đến phút chót
             RenderTask? currentTask = null;
-            while (currentTask == null && !ct.IsCancellationRequested)
-            {
-                if (!_paused) currentTask = ClaimNextPending();
-                if (currentTask != null) break;
-                try { await _wake.WaitAsync(TimeSpan.FromSeconds(2), ct); }
-                catch (OperationCanceledException) { break; }
-            }
+            if (!_paused && _activeWorkersCount < Capacity())
+                currentTask = ClaimNextPending();
 
             if (currentTask == null)
             {
-                concurrencySemaphore.Release();
-                break;
+                try { await _wake.WaitAsync(TimeSpan.FromSeconds(2), ct); }
+                catch (OperationCanceledException) { break; }
+                continue;
             }
-            TaskUpdated?.Invoke(currentTask);
 
+            TaskUpdated?.Invoke(currentTask);
             Interlocked.Increment(ref _activeWorkersCount);
 
             _ = Task.Run(async () =>
@@ -385,11 +416,12 @@ public class TaskDispatcher : ITaskDispatcher, IDisposable
                 finally
                 {
                     _runningTasks.TryRemove(currentTask.Id, out _);
-                    concurrencySemaphore.Release();
                     Interlocked.Decrement(ref _activeWorkersCount);
+                    Wake(); // có chỗ trống: nhận việc tiếp
 
                     if (_activeWorkersCount == 0 && !_paused && !HasPending())
                     {
+                        ResetRound();
                         AllTasksCompleted?.Invoke();
                     }
                 }
@@ -495,7 +527,8 @@ public class TaskDispatcher : ITaskDispatcher, IDisposable
                     ReferenceImages = task.ReferenceImages,
                     ReferenceLocalPaths = task.ReferenceLocalPaths,
                     Account = session.Name,
-                    Cookie = sessionToken
+                    Cookie = sessionToken,
+                    HideWindow = settings.HideRenderWindow
                 };
 
                 var createResp = await CreateOnGatewayAsync(req, settings.ClientApiKey, ct);
@@ -636,6 +669,8 @@ public class TaskDispatcher : ITaskDispatcher, IDisposable
     /// <summary>
     /// Xử lý lỗi gateway theo failure_code. Trả về true nếu nên đổi sang tài khoản khác, false nếu nên dừng tác vụ.
     /// </summary>
+    private bool SkipFailedEnabled() => _databaseService.GetSettings().SkipFailedAccounts;
+
     private bool HandleGatewayFailure(RenderTask task, DolaSession session, GatewayTaskFailedException gx, HashSet<string> tried)
     {
         var fresh = _databaseService.GetSessionById(session.Id) ?? session;
@@ -699,6 +734,7 @@ public class TaskDispatcher : ITaskDispatcher, IDisposable
                 break;
         }
 
+        if (SkipFailedEnabled()) MarkAccountFailed(session.Id);
         _databaseService.UpsertSession(fresh);
         tried.Add(session.Id);
         NotifyProfilesChanged();
