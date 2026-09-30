@@ -395,27 +395,23 @@ public partial class ProfilesViewModel : ObservableObject, IDisposable
 
         var options = dlg.Login;
 
-        var created = new List<AccountProfile>();
-        for (var i = 1; i <= dlg.Count; i++)
+        var name = dlg.ProfileName.Trim();
+        if (!GatewayLocator.IsValidAccountName(name))
         {
-            var name = dlg.Count > 1 ? $"{dlg.ProfileName.Trim()}_{i:00}" : dlg.ProfileName.Trim();
-            if (!GatewayLocator.IsValidAccountName(name))
-            {
-                Log($"Bỏ qua '{name}': tên vượt 32 ký tự hoặc có ký tự không hợp lệ.");
-                continue;
-            }
-            if (NameExists(name, null) || Directory.Exists(Path.Combine(_chrome.AccountsDir!, name)))
-            {
-                Log($"Bỏ qua '{name}': tài khoản đã tồn tại trong gateway.");
-                continue;
-            }
-
-            var p = _chrome.CreateProfile(name, dlg.Notes);
-            if (dlg.Count == 1 && options.IsAutomatic && options.Remember)
-                _chrome.SaveLogin(p, options); // phải lưu TRƯỚC khi mở: sau khi đưa cho script, mật khẩu bị xóa khỏi bộ nhớ
-            Profiles.Add(p);
-            created.Add(p);
+            Log($"Không tạo '{name}': tên vượt 32 ký tự hoặc có ký tự không hợp lệ.");
+            return;
         }
+        if (NameExists(name, null) || Directory.Exists(Path.Combine(_chrome.AccountsDir!, name)))
+        {
+            Log($"Không tạo '{name}': tài khoản đã tồn tại trong gateway.");
+            return;
+        }
+
+        var profile = _chrome.CreateProfile(name, dlg.Notes);
+        if (options.IsAutomatic && options.Remember)
+            _chrome.SaveLogin(profile, options); // phải lưu TRƯỚC khi mở: sau khi đưa cho script, mật khẩu bị xóa khỏi bộ nhớ
+        Profiles.Add(profile);
+        var created = new List<AccountProfile> { profile };
 
         ReloadSessions();
         if (created.Count == 0) return;

@@ -9,7 +9,6 @@ public partial class ProfileEditorWindow : Window
     public bool IsEditMode { get; }
 
     public string ProfileName { get; set; } = string.Empty;
-    public int Count { get; set; } = 1;
 
     public string Notes { get; set; } = string.Empty;
     public bool OpenAfterCreate { get; set; } = true;
@@ -42,8 +41,6 @@ public partial class ProfileEditorWindow : Window
             TitleText.Text = "Sửa tài khoản";
             SubtitleText.Text = "Tên là tên thư mục accounts/… của gateway nên không đổi được. Sửa được cách đăng nhập, tài khoản/mật khẩu đã lưu và ghi chú.";
             NameBox.IsReadOnly = true;
-            CountPanel.Visibility = Visibility.Collapsed;
-            CountColumn.Width = new GridLength(0);
             OpenAfterBox.Visibility = Visibility.Collapsed;
             OkButton.Content = "Lưu thay đổi";
         }
@@ -69,17 +66,7 @@ public partial class ProfileEditorWindow : Window
                 ShowError("Tên chỉ gồm A-Z a-z 0-9 _ - (không dấu, không khoảng trắng), tối đa 32 ký tự — đúng quy định của gateway.");
                 return;
             }
-            if (Count < 1 || Count > 100)
-            {
-                ShowError("Số lượng phải từ 1 đến 100.");
-                return;
-            }
 
-            if (Login.IsAutomatic && Count > 1)
-            {
-                ShowError("Đăng nhập tự động chỉ dùng khi tạo 1 tài khoản (mỗi tài khoản có thông tin và có thể có captcha/2FA riêng).");
-                return;
-            }
         }
 
         // Sửa tài khoản + bỏ tích "Ghi nhớ" = xóa thông tin đã lưu, không cần đủ mật khẩu

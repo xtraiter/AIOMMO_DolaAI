@@ -42,7 +42,7 @@ public sealed partial class LoginOptions : ObservableObject
     private string _cookie = string.Empty;
 
     [ObservableProperty]
-    private AfterLogin _after = AfterLogin.Keep;
+    private AfterLogin _after = AfterLogin.Close; // mặc định tự đóng trình duyệt khi đăng nhập xong
 
     /// <summary>Ghi nhớ thông tin đăng nhập (mã hóa DPAPI) để lần sau chỉ cần bấm "Đăng nhập tự động".</summary>
     [ObservableProperty]

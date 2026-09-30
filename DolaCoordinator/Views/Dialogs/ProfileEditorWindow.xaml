@@ -32,21 +32,12 @@
             </Border>
         </StackPanel>
 
-        <!-- Tên + số lượng -->
+        <!-- Tên tài khoản -->
         <Grid Grid.Row="1" Margin="0,0,0,14">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition x:Name="CountColumn" Width="110"/>
-            </Grid.ColumnDefinitions>
-            <StackPanel Grid.Column="0" Margin="0,0,10,0">
+            <StackPanel>
                 <TextBlock Text="TÊN TÀI KHOẢN (= tên thư mục accounts/… của gateway)" Style="{StaticResource FieldLabel}"/>
                 <TextBox x:Name="NameBox" Text="{Binding ProfileName, UpdateSourceTrigger=PropertyChanged}" MaxLength="32"
                          ToolTip="Chỉ gồm A-Z a-z 0-9 _ - (tối đa 32 ký tự). Không đổi được sau khi tạo."/>
-            </StackPanel>
-            <StackPanel x:Name="CountPanel" Grid.Column="1">
-                <TextBlock Text="SỐ LƯỢNG" Style="{StaticResource FieldLabel}"/>
-                <TextBox x:Name="CountBox" Text="{Binding Count, UpdateSourceTrigger=PropertyChanged}"
-                         ToolTip="Tạo hàng loạt: Tên_01, Tên_02, ... (không dùng được với đăng nhập tự động)"/>
             </StackPanel>
         </Grid>
 

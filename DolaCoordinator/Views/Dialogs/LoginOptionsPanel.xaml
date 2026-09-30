@@ -59,10 +59,10 @@
         <StackPanel Visibility="{Binding Method, Converter={StaticResource EnumToVisibilityConverter}, ConverterParameter=Manual|Google|Facebook|FacebookCookie}">
             <TextBlock Text="KHI ĐĂNG NHẬP XONG" Style="{StaticResource FieldLabel}"/>
             <WrapPanel Margin="0,0,0,6">
-                <RadioButton Content="Giữ profile mở (chờ)" Margin="0,0,18,6"
-                             IsChecked="{Binding After, Converter={StaticResource EnumEqualsConverter}, ConverterParameter=Keep}"/>
-                <RadioButton Content="Tự đóng profile" Margin="0,0,0,6"
+                <RadioButton Content="Tự đóng trình duyệt (mặc định)" Margin="0,0,18,6"
                              IsChecked="{Binding After, Converter={StaticResource EnumEqualsConverter}, ConverterParameter=Close}"/>
+                <RadioButton Content="Giữ trình duyệt mở (chờ)" Margin="0,0,0,6"
+                             IsChecked="{Binding After, Converter={StaticResource EnumEqualsConverter}, ConverterParameter=Keep}"/>
             </WrapPanel>
         </StackPanel>
 

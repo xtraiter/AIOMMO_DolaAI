@@ -71,7 +71,7 @@ public partial class AccountProfile : ObservableObject
     /// <summary>DPAPI(JSON { password, totp, cookie }). Rỗng nếu chưa lưu.</summary>
     public string? SavedSecret { get; set; }
 
-    public AfterLogin SavedAfter { get; set; } = AfterLogin.Keep;
+    public AfterLogin SavedAfter { get; set; } = AfterLogin.Close;
 
     [BsonIgnore]
     public bool HasSavedLogin => SavedMethod != LoginMethod.Manual && !string.IsNullOrEmpty(SavedSecret);
