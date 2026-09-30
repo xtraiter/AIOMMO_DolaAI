@@ -1,0 +1,7 @@
+DOLA COORDINATOR v1.2.0
+--------------------------
+1. Chay DolaCoordinator.exe (Windows 10/11 x64, khong can cai .NET).
+2. Gateway nam san trong thu muc 'gateway' (dola-gateway.exe): app tu chay ngam, KHONG can cai Python.
+   Lan dau dung co the mat vai phut de tai trinh duyet Chromium. Tab 'Cai dat': quota/ngay, thu muc luu video.
+3. Tab 'Tai khoan Dola': them tai khoan (dang nhap thu cong / Google / Facebook / cookie).
+4. Tab 'Hang doi render': nhap prompt, thoi luong, ti le, anh tham chieu -> Bat dau.

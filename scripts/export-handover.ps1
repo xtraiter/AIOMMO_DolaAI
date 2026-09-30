@@ -14,7 +14,7 @@ $out   = Join-Path $root "handover"
 $stage = Join-Path $out $Name
 $zip   = Join-Path $out "$Name.zip"
 
-$excludeDirs = @('bin','obj','dist','publish','updates','accounts','downloads','__pycache__','.git','.vs','.venv',
+$excludeDirs = @('bin','obj','dist','release','publish','updates','accounts','downloads','__pycache__','.git','.vs','.venv',
                  'scratch','.design_backup','handover')
 $excludeFiles = @('*.db','*.sqlite','*.db-journal','*.db-wal','*.db-shm','*.png','*.jpg','*.log','*.pdb','*_wpftmp.csproj',
                   'cookies.txt','fb_cookies.txt','.env.local','version.json',

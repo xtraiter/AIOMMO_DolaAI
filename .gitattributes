@@ -1,0 +1,2 @@
+# bản đóng gói: giữ nguyên byte, không đổi cuối dòng
+release/** -text

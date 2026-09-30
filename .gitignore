@@ -31,3 +31,10 @@ __pycache__/
 # --- gói bàn giao sinh ra ---
 handover/
 dola-render-gateway/.git-upstream/
+
+# --- release/ được commit (clone về là chạy), nhưng dữ liệu chạy sinh ra cạnh gateway thì không ---
+release/DolaCoordinator/gateway/accounts/
+release/DolaCoordinator/gateway/downloads/
+release/DolaCoordinator/gateway/*.db
+release/DolaCoordinator/gateway/.browser_installed
+release/DolaCoordinator/gateway/.env.local

@@ -9,9 +9,15 @@
 
 Tài liệu: [Kiến trúc](docs/ARCHITECTURE.md)
 
-## Dùng bản đã đóng gói (người dùng cuối)
+## Chạy ngay (clone về là dùng được)
 
-Mở `DolaCoordinator.exe` trong thư mục `dist\DolaCoordinator_vX.Y.Z\` (hoặc chép nguyên thư mục đó sang máy khác). **Không cần cài Python hay .NET, không có file .bat nào phải chạy.**
+```powershell
+git clone https://github.com/xtraiter/AIOMMO_DolaAI.git
+cd AIOMMO_DolaAI\release\DolaCoordinator
+.\DolaCoordinator.exe
+```
+
+Bản đóng gói sẵn nằm trong [`release/DolaCoordinator/`](release/DolaCoordinator). **Không cần cài Python hay .NET, không có file .bat nào phải chạy.** Yêu cầu: Windows 10/11 x64, có mạng ở lần chạy đầu tiên (tải Chromium). Thư mục `release` nặng khoảng 370 MB nên clone lần đầu hơi lâu.
 
 ```
 DolaCoordinator.exe          Ứng dụng
@@ -61,7 +67,8 @@ DolaAI.sln
 ## Đóng gói (máy build cần .NET 8 SDK + Python 3.10+)
 
 ```powershell
-.\scripts\build-release.ps1 -Version 1.2.0    # dist\DolaCoordinator_v1.2.0\ (app + gateway, ~370 MB); thêm -Zip nếu cần file zip để gửi
+.\scripts\build-release.ps1 -Version 1.2.0 -ToRelease   # cập nhật release\DolaCoordinator\ (app + gateway, ~370 MB), rồi commit để ai clone cũng chạy được
+.\scripts\build-release.ps1 -Version 1.2.0              # xuất ra dist\ (không commit); thêm -Zip nếu cần file zip để gửi
 .\scripts\build-gateway.ps1                   # chỉ đóng gói gateway -> dist\gateway\dola-gateway.exe
 .\scripts\pack-update.ps1 -Version 1.2.1 -DownloadBaseUrl https://<host-cua-ban>/dola   # gói cập nhật (chỉ exe app) + version.json
 .\scripts\export-handover.ps1                 # bản MÃ NGUỒN sạch để bàn giao (không có phiên đăng nhập)
@@ -75,6 +82,6 @@ có SHA-256 khớp, và không chứa đường dẫn thoát thư mục.
 - `gateway\accounts\` (bản đóng gói) hoặc `dola-render-gateway/accounts/` (bản mã nguồn) — **phiên đăng nhập thật**
 - `*.db` cạnh gateway — lịch sử tác vụ, khóa API, hạn ngạch
 - `%LOCALAPPDATA%\DolaCoordinator` (LiteDB `coordinator.db`, token mã hóa DPAPI, `gateway.log`)
-- `downloads/`, `dist/`
+- `downloads/`, `dist/` (còn `release/` thì được commit, trừ dữ liệu chạy sinh ra trong `release/DolaCoordinator/gateway/`)
 
 `.gitignore` đã loại các mục trên; `scripts\export-handover.ps1` cũng bỏ chúng khi tạo gói bàn giao.

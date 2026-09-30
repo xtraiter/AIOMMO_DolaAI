@@ -278,8 +278,13 @@ public class AccountProfileService : IAccountProfileService
             {
                 string tail;
                 lock (output) tail = string.Join(Environment.NewLine, output);
+                var hint = tail.Contains("No module named", StringComparison.OrdinalIgnoreCase)
+                    ? $"{Environment.NewLine}{Environment.NewLine}Python trên máy này thiếu thư viện của gateway. Chạy một lần trong thư mục gateway:{Environment.NewLine}" +
+                      $"  {python} -m pip install -r requirements.txt{Environment.NewLine}  {python} -m patchright install chromium{Environment.NewLine}" +
+                      "(hoặc dùng bản đóng gói có thư mục 'gateway' chứa dola-gateway.exe — không cần Python)."
+                    : string.Empty;
                 throw new InvalidOperationException(
-                    $"Không mở được profile '{profile.Name}' (mã thoát {proc.ExitCode}).{Environment.NewLine}{tail}");
+                    $"Không mở được profile '{profile.Name}' (mã thoát {proc.ExitCode}).{Environment.NewLine}{tail}{hint}");
             }
             if (DateTime.UtcNow > deadline)
             {

@@ -8,14 +8,15 @@ param(
     [string]$Version = "1.0.0",
     [string]$OutputDir = "dist",
     [switch]$SkipGateway,
-    [switch]$Zip            # them -Zip neu can file zip de gui di; mac dinh chi tao thu muc
+    [switch]$Zip,           # them -Zip neu can file zip de gui di
+    [switch]$ToRelease      # xuat vao release\DolaCoordinator (thu muc duoc commit len git: clone ve la chay duoc)
 )
 
 $ErrorActionPreference = "Stop"
 
 $root = Split-Path -Parent $PSScriptRoot
 $project = Join-Path $root "DolaCoordinator\DolaCoordinator.csproj"
-$distDir = Join-Path $root "$OutputDir\DolaCoordinator_v$Version"
+$distDir = if ($ToRelease) { Join-Path $root "release\DolaCoordinator" } else { Join-Path $root "$OutputDir\DolaCoordinator_v$Version" }
 $zipPath = Join-Path $root "$OutputDir\DolaCoordinator_v${Version}_Portable.zip"
 $temp = Join-Path $env:TEMP ("DolaCoord_" + [Guid]::NewGuid().ToString("N"))
 
