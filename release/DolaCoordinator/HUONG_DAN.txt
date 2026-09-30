@@ -1,4 +1,4 @@
-DOLA COORDINATOR v1.3.2
+DOLA COORDINATOR v1.0.0
 --------------------------
 1. Chay DolaCoordinator.exe (Windows 10/11 x64, khong can cai .NET).
 2. Gateway nam san trong thu muc 'gateway' (dola-gateway.exe): app tu chay ngam, KHONG can cai Python.

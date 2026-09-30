@@ -70,10 +70,10 @@ DolaAI.sln
 ## Đóng gói (máy build cần .NET 8 SDK + Python 3.10+)
 
 ```powershell
-.\scripts\build-release.ps1 -Version 1.2.0 -ToRelease   # cập nhật release\DolaCoordinator\ (app + gateway, ~370 MB), rồi commit để ai clone cũng chạy được
-.\scripts\build-release.ps1 -Version 1.2.0              # xuất ra dist\ (không commit); thêm -Zip nếu cần file zip để gửi
+.\scripts\build-release.ps1 -Version 1.0.0 -ToRelease   # cập nhật release\DolaCoordinator\ (app + gateway, ~370 MB), rồi commit để ai clone cũng chạy được
+.\scripts\build-release.ps1 -Version 1.0.0              # xuất ra dist\ (không commit); thêm -Zip nếu cần file zip để gửi
 .\scripts\build-gateway.ps1                   # chỉ đóng gói gateway -> dist\gateway\dola-gateway.exe
-.\scripts\pack-update.ps1 -Version 1.2.1 -DownloadBaseUrl https://<host-cua-ban>/dola   # gói cập nhật (chỉ exe app) + version.json
+.\scripts\pack-update.ps1 -Version 1.0.1 -DownloadBaseUrl https://<host-cua-ban>/dola   # gói cập nhật (chỉ exe app) + version.json
 .\scripts\export-handover.ps1                 # bản MÃ NGUỒN sạch để bàn giao (không có phiên đăng nhập)
 ```
 

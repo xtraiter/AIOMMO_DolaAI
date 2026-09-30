@@ -5,7 +5,7 @@
   App chi cai goi neu: URL HTTPS, cung host voi version.json, va SHA-256 khop.
   Dang len HTTPS: version.json va goi zip (cung mot host), roi dat URL version.json trong tab Cai dat.
 .EXAMPLE
-  .\scripts\pack-update.ps1 -Version 1.1.0 -DownloadBaseUrl https://updates.example.com/dola
+  .\scripts\pack-update.ps1 -Version 1.0.1 -DownloadBaseUrl https://updates.example.com/dola
 #>
 param(
     [Parameter(Mandatory = $true)] [string]$Version,
