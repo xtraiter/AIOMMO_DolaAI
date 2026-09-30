@@ -529,7 +529,8 @@ public class TaskDispatcher : ITaskDispatcher, IDisposable
                     Cookie = sessionToken,
                     HideWindow = settings.HideRenderWindow,
                     AutoReply = settings.AutoAnswerAskBack
-                        ? (string.IsNullOrWhiteSpace(settings.AskBackReply) ? AppSettings.DefaultAskBackReply : settings.AskBackReply.Trim())
+                        ? (string.IsNullOrWhiteSpace(settings.AskBackReply) || settings.AskBackReply.Trim() == AppSettings.LegacyAskBackReply
+                            ? AppSettings.DefaultAskBackReply : settings.AskBackReply.Trim())
                         : null,
                 };
 

@@ -38,7 +38,10 @@ MAX_AUTO_REPLIES = 3
 
 def _is_dola_question(text: str, prompt: str) -> bool:
     t = (text or "").strip()
-    if len(t) < 12 or not QUESTION_MARK.search(t):
+    if len(t) < 12:
+        return False
+    # a duration offer often has no question mark ("...対応しています。別の秒数をご希望でしたら指定してください。")
+    if not QUESTION_MARK.search(t) and not (DURATION_QUESTION_RE.search(t) and not ACCEPTANCE_TEXT.search(t)):
         return False
     head = (prompt or "").strip()[:30]
     # our own prompt echoed back in the conversation (it may contain question marks too) is not a question from Dola
@@ -60,6 +63,35 @@ def _dola_note(texts, prompt: str) -> str:
         seen.add(t)
         out.append(t)
     return " | ".join(out)[:600]
+
+
+# Duration questions (same handling as dola-pool): "A. 5 秒で生成 B. 10 秒で生成 ...", "supports durations from 4 to 15 s",
+# "動画生成は現在4～15秒に対応しています。別の秒数をご希望でしたら…". The right answer is the duration that was requested
+# (e.g. "B. 10秒" / "30秒"). Answering "yes, use your suggestion" makes Dola compress the script or split it into two videos.
+DURATION_CHOICE_RE = re.compile(r"([A-Da-d])\s*[.．、)）\]]?\s*(\d+)\s*秒", re.IGNORECASE)
+DURATION_QUESTION_RE = re.compile(
+    r"動画生成には|秒で生成|A/B/C で選んで|supports durations from|nearest supported duration|"
+    r"秒数は|から選んで|選んでください|選んで下さい|choose.*duration|select.*duration|"
+    r"対応しています|別の秒数|秒数をご希望|秒数を指定|supports?\s+\d+\s*[-–~]\s*\d+\s*(?:s\b|sec)|"
+    r"\d+\s*[~～-]\s*\d+\s*秒",
+    re.IGNORECASE,
+)
+ACCEPTANCE_TEXT = re.compile(r"生成されます|ポイントを消費|を生成します|ビデオを生成|動画を生成|生成を開始|分後に完成", re.IGNORECASE)
+
+
+def build_duration_reply(text: str, duration: int | None, ratio: str | None) -> str | None:
+    """The reply that answers a duration question with the REQUESTED duration; None = Dola offers no option equal to it."""
+    if not text or not duration:
+        return None
+    letters = list(DURATION_CHOICE_RE.finditer(text))
+    if letters:
+        for m in letters:
+            if int(m.group(2)) == duration:
+                return f"{m.group(1).upper()}. {duration}秒"   # a bare "B" is rejected by Dola, "B. 10秒" is accepted
+        return None
+    if re.search(r"対応しています|別の秒数|秒数をご希望|秒数を指定", text):
+        return f"{duration}秒"
+    return f"{duration}秒、{ratio or '16:9'}"
 
 
 async def send_chat_message(page, text: str) -> None:
@@ -356,7 +388,8 @@ async def _preflight_balance(page, ms_token: str, fp: str, required: int) -> dic
 
 async def poll_conversation(account: str, page, context, conversation_id: str,
                             timeout: int, on_poll=None, on_balance=None, prompt: str = "",
-                            auto_reply: str | None = None) -> dict:
+                            auto_reply: str | None = None, duration: int | None = None,
+                            ratio: str | None = None) -> dict:
     """Polls accepted conversation for video completion."""
     cookies = await context.cookies("https://www.dola.com")
     ms_token, fp = cookie_value(cookies, "msToken"), cookie_value(cookies, "s_v_web_id")
@@ -393,10 +426,16 @@ async def poll_conversation(account: str, page, context, conversation_id: str,
                 question_since, question_text = now, questions[-1]
             elif now - question_since >= grace:
                 if auto_reply and replies < MAX_AUTO_REPLIES:
-                    # Dola wants a confirmation ("use 15s instead?", "do you have a face image?"): give it, once per question
-                    print(f"[{account}] Dola asked: {question_text[:150]!r} -> auto reply #{replies + 1}", flush=True)
+                    # Dola wants a confirmation: a duration question gets the REQUESTED duration as the answer (never
+                    # "use your suggestion" - that compresses / splits the video), anything else gets the configured reply
+                    reply = auto_reply
+                    if duration and DURATION_QUESTION_RE.search(question_text):
+                        reply = build_duration_reply(question_text, duration, ratio)
+                        if reply is None:
+                            raise DolaAskedBackError(question_text.strip())   # no option equals the requested duration
+                    print(f"[{account}] Dola asked: {question_text[:150]!r} -> auto reply #{replies + 1}: {reply!r}", flush=True)
                     answered.update(questions)
-                    await send_chat_message(page, auto_reply)
+                    await send_chat_message(page, reply)
                     replies += 1
                     question_since = None
                     continue
@@ -665,7 +704,7 @@ async def generate_video(account: str, prompt: str, ratio: str = None,
             if on_conversation_id:
                 on_conversation_id(account, conv_id, deadline)
             result = await poll_conversation(account, page, context, conv_id, timeout, on_poll, on_balance, prompt=prompt,
-                                             auto_reply=auto_reply)
+                                             auto_reply=auto_reply, duration=duration, ratio=ratio)
             if prompt_note:
                 result["note"] = (prompt_note + (result.get("note") or ""))[:700]
             return result

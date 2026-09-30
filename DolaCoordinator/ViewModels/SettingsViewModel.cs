@@ -131,7 +131,8 @@ public partial class SettingsViewModel : ObservableObject
         PythonCommand = string.IsNullOrWhiteSpace(s.PythonCommand) ? "py -3" : s.PythonCommand;
         AdminKey = s.AdminKey;
         AutoAnswerAskBack = s.AutoAnswerAskBack;
-        AskBackReply = string.IsNullOrWhiteSpace(s.AskBackReply) ? AppSettings.DefaultAskBackReply : s.AskBackReply;
+        AskBackReply = string.IsNullOrWhiteSpace(s.AskBackReply) || s.AskBackReply.Trim() == AppSettings.LegacyAskBackReply
+            ? AppSettings.DefaultAskBackReply : s.AskBackReply;
         UpdateCheckUrl = s.UpdateCheckUrl;
         RefreshGatewayDirDetected();
         RefreshBrowserStatus();

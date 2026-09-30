@@ -57,10 +57,18 @@ public class AppSettings
     public bool SkipFailedAccounts { get; set; } = true;
 
     /// <summary>
-    /// Câu app tự gõ vào khung chat khi Dola hỏi lại thay vì tạo video ("dùng 15 giây được không?", "bạn có ảnh khuôn mặt không, A hay B?").
+    /// Câu app tự gõ vào khung chat khi Dola hỏi lại một câu KHÔNG phải về thời lượng ("bạn có ảnh khuôn mặt không, A hay B?").
+    /// Câu hỏi về thời lượng thì gateway tự trả lời bằng đúng thời lượng đã chọn ("30秒", "B. 10秒"). Tuyệt đối không bảo Dola
+    /// "làm theo đề xuất của bạn": nó sẽ nén kịch bản hoặc tách thành nhiều video ngắn.
     /// Không chứa dấu hỏi để không bị nhận nhầm là một câu hỏi nữa.
     /// </summary>
     public const string DefaultAskBackReply =
+        "Có, tiếp tục ngay. Nếu bạn hỏi về ảnh khuôn mặt thì chọn B, tự tạo nhân vật và giữ nhân vật đó ở mọi cảnh. " +
+        "Chỉ tạo MỘT video duy nhất đúng thời lượng đã chọn, không chia thành nhiều video, không rút ngắn. " +
+        "Không cần hỏi lại, hãy tạo video ngay.";
+
+    /// <summary>Nội dung mặc định của các bản trước (bảo Dola dùng thời lượng gần nhất và nén kịch bản → video bị ngắn / tách đôi). Gặp lại thì tự thay bằng bản mới.</summary>
+    public const string LegacyAskBackReply =
         "Có, tiếp tục ngay với phương án bạn đề xuất: dùng thời lượng gần nhất được hỗ trợ và nén kịch bản cho vừa. " +
         "Nếu bạn hỏi về ảnh khuôn mặt thì chọn B, tự tạo nhân vật và giữ nhân vật đó ở mọi cảnh. " +
         "Không cần hỏi lại, hãy tạo video ngay. (Yes, go ahead now with your suggestion, do not ask again.)";
