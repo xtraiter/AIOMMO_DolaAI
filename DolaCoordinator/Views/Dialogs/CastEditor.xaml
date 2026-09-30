@@ -1,0 +1,83 @@
+<UserControl x:Class="DolaCoordinator.Views.Dialogs.CastEditor"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- DataContext = CastModel (nhân vật + bối cảnh, mỗi mục có ảnh tham chiếu riêng) -->
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="../../Themes/DolaModule.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+
+            <!-- Danh sách ảnh: hình nhỏ + tên + nút bỏ -->
+            <DataTemplate x:Key="CastImageTemplate">
+                <Border Background="{StaticResource WindowBackgroundBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                        CornerRadius="6" Padding="4" Margin="0,0,8,6" ToolTip="{Binding Path}">
+                    <StackPanel Orientation="Horizontal">
+                        <Image Source="{Binding Path, Converter={StaticResource PathToThumbnailConverter}}" Width="34" Height="34" Stretch="UniformToFill"/>
+                        <TextBlock Text="{Binding Path, Converter={StaticResource PathToFileNameConverter}}" MaxWidth="110" TextTrimming="CharacterEllipsis"
+                                   VerticalAlignment="Center" Margin="8,0,6,0" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"/>
+                        <Button Style="{StaticResource GhostButton}" Padding="6,2" ToolTip="Bỏ ảnh này" Tag="{Binding}" Click="RemoveImage_Click">
+                            <TextBlock Text="&#xE711;" FontFamily="Segoe MDL2 Assets" FontSize="11"/>
+                        </Button>
+                    </StackPanel>
+                </Border>
+            </DataTemplate>
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <StackPanel>
+        <DockPanel Margin="0,0,0,6">
+            <Button DockPanel.Dock="Right" Content="➕ Thêm nhân vật" Click="AddCharacter_Click"/>
+            <TextBlock Text="NHÂN VẬT (mỗi nhân vật một khung, kèm ảnh tham chiếu của nhân vật đó)" Style="{StaticResource FieldLabel}" VerticalAlignment="Center"/>
+        </DockPanel>
+
+        <ItemsControl ItemsSource="{Binding Characters}">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <Border Background="{StaticResource WindowBackgroundBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                            CornerRadius="8" Padding="12,10" Margin="0,0,0,8">
+                        <StackPanel>
+                            <DockPanel Margin="0,0,0,6">
+                                <Button DockPanel.Dock="Right" Content="Xóa nhân vật" Tag="{Binding}" Click="RemoveCharacter_Click"
+                                        Style="{StaticResource GhostButton}" Margin="8,0,0,0"/>
+                                <TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" MaxLength="60"
+                                         ToolTip="Tên nhân vật (vd. Lan, Minh, bà chủ quán...). Dola dùng tên này để nhận ra nhân vật trong prompt."/>
+                            </DockPanel>
+                            <TextBox Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" TextWrapping="Wrap"
+                                     Height="54" VerticalScrollBarVisibility="Auto" VerticalContentAlignment="Top"
+                                     ToolTip="Mô tả nhân vật: tuổi, ngoại hình, trang phục, tính cách..."/>
+                            <StackPanel Orientation="Horizontal" Margin="0,8,0,6">
+                                <Button Content="Chọn ảnh nhân vật…" Tag="{Binding}" Click="AddCharacterImages_Click" Margin="0,0,8,0"/>
+                                <TextBlock Text="nhiều ảnh: chính diện, nghiêng, toàn thân..." VerticalAlignment="Center" FontSize="11.5"
+                                           Foreground="{StaticResource TextMutedBrush}"/>
+                            </StackPanel>
+                            <ItemsControl ItemsSource="{Binding Images}" ItemTemplate="{StaticResource CastImageTemplate}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <TextBlock Text="BỐI CẢNH" Style="{StaticResource FieldLabel}" Margin="0,6,0,6"/>
+        <TextBox Text="{Binding SceneText, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" TextWrapping="Wrap"
+                 Height="54" VerticalScrollBarVisibility="Auto" VerticalContentAlignment="Top"
+                 ToolTip="Mô tả bối cảnh: địa điểm, thời điểm, ánh sáng, không khí..."/>
+        <StackPanel Orientation="Horizontal" Margin="0,8,0,6">
+            <Button Content="Chọn ảnh bối cảnh…" Click="AddSceneImages_Click" Margin="0,0,8,0"/>
+            <TextBlock x:Name="ImageCountText" VerticalAlignment="Center" FontSize="11.5" Foreground="{StaticResource TextMutedBrush}"/>
+        </StackPanel>
+        <ItemsControl ItemsSource="{Binding SceneImages}" ItemTemplate="{StaticResource CastImageTemplate}">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <WrapPanel/>
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+        </ItemsControl>
+    </StackPanel>
+</UserControl>

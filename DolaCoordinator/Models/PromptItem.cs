@@ -30,6 +30,14 @@ public partial class PromptItem : ObservableObject
     /// <summary>Ảnh tham chiếu mặc định (đường dẫn trên máy này).</summary>
     public List<string> ReferenceLocalPaths { get; set; } = new();
 
+    /// <summary>Nhân vật của prompt (mỗi nhân vật có mô tả + ảnh tham chiếu riêng). Có thể nhiều nhân vật.</summary>
+    public List<PromptCharacter> Characters { get; set; } = new();
+
+    /// <summary>Mô tả bối cảnh và ảnh tham chiếu bối cảnh.</summary>
+    public string SceneText { get; set; } = string.Empty;
+
+    public List<string> SceneImages { get; set; } = new();
+
     public string? Notes { get; set; }
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
@@ -64,7 +72,27 @@ public partial class PromptItem : ObservableObject
     public string ModelLabel => DolaCoordinator.Helpers.PromptFileParser.ModelLabel(Model);
 
     [BsonIgnore]
-    public string ReferenceSummary => ReferenceLocalPaths.Count == 0 ? "—" : $"{ReferenceLocalPaths.Count} ảnh";
+    public string ReferenceSummary
+    {
+        get
+        {
+            var n = DolaCoordinator.Helpers.PromptComposer.CountImages(ReferenceLocalPaths, Characters, SceneImages);
+            return n == 0 ? "—" : $"{n} ảnh";
+        }
+    }
+
+    [BsonIgnore]
+    public string CastSummary
+    {
+        get
+        {
+            var parts = new List<string>();
+            var named = Characters.Count(c => !string.IsNullOrWhiteSpace(c.Name) || !string.IsNullOrWhiteSpace(c.Description) || c.Images.Count > 0);
+            if (named > 0) parts.Add($"{named} nhân vật");
+            if (!string.IsNullOrWhiteSpace(SceneText) || SceneImages.Count > 0) parts.Add("bối cảnh");
+            return parts.Count == 0 ? "—" : string.Join(" + ", parts);
+        }
+    }
 
     /// <summary>Báo giao diện đọc lại mọi thuộc tính sau khi sửa.</summary>
     public void NotifyChanged() => OnPropertyChanged(string.Empty);

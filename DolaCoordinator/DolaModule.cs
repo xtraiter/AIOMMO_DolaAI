@@ -8,6 +8,7 @@ using DolaCoordinator.Services.Security;
 using DolaCoordinator.Services.Sessions;
 using DolaCoordinator.Services.Storage;
 using DolaCoordinator.Services.Update;
+using DolaCoordinator.Services.Video;
 using DolaCoordinator.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -39,6 +40,7 @@ public static class DolaModule
 
         // Hàng đợi, tải video, thông báo, cập nhật
         services.AddSingleton<IAssetDownloader, AssetDownloader>();
+        services.AddSingleton<IVideoTools, FfmpegVideoTools>();
         services.AddSingleton<ITaskDispatcher, TaskDispatcher>();
         services.AddSingleton<INotificationService, WindowsNotificationService>();
         services.AddSingleton<IUpdateService, AutoUpdateService>();
@@ -48,6 +50,7 @@ public static class DolaModule
         services.AddSingleton<ProfilesViewModel>();
         services.AddSingleton<SettingsViewModel>();
         services.AddSingleton<PromptsViewModel>();
+        services.AddSingleton<ScriptsViewModel>();
         services.AddSingleton<MainViewModel>();
 
         return services;

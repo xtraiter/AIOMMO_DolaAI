@@ -1,0 +1,34 @@
+<Window x:Class="DolaCoordinator.Views.Dialogs.PartEditorWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Width="700" Height="470" MinWidth="480" MinHeight="300"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+        Background="{DynamicResource SidebarBrush}">
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="../../Themes/DolaModule.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <Grid Margin="22,18,22,18">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <StackPanel Margin="0,0,0,10">
+            <TextBlock x:Name="HeadingText" FontSize="17" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}"/>
+            <TextBlock FontSize="12" Foreground="{StaticResource TextMutedBrush}" Margin="0,4,0,0" TextWrapping="Wrap"
+                       Text="Nội dung của riêng phần này. Đừng ghi thời lượng (30s, 0-3s...): thời lượng chọn ở kịch bản. Nhân vật và bối cảnh dùng chung của kịch bản sẽ được app tự ghép vào."/>
+        </StackPanel>
+        <TextBox x:Name="Body" Grid.Row="1" AcceptsReturn="True" TextWrapping="Wrap" FontFamily="Consolas" FontSize="13"
+                 VerticalScrollBarVisibility="Auto" VerticalContentAlignment="Top"/>
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+            <TextBlock x:Name="ErrorText" Foreground="{StaticResource DangerBrush}" VerticalAlignment="Center" Margin="0,0,14,0" FontSize="12"/>
+            <Button Content="Hủy" Width="90" Margin="0,0,10,0" IsCancel="True" Click="Cancel_Click"/>
+            <Button Content="Lưu" Style="{StaticResource ModernPrimaryButton}" MinWidth="110" Click="Ok_Click"/>
+        </StackPanel>
+    </Grid>
+</Window>

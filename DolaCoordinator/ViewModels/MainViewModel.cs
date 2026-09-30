@@ -34,7 +34,10 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private PromptsViewModel _promptsVm;
 
-    // 0 = Vận hành, 1 = Quản lý tài khoản (profile), 2 = Cài đặt, 3 = Quản lý prompt
+    [ObservableProperty]
+    private ScriptsViewModel _scriptsVm;
+
+    // 0 = Vận hành, 1 = Quản lý tài khoản (profile), 2 = Cài đặt, 3 = Quản lý prompt, 4 = Kịch bản lớn
     [ObservableProperty]
     private int _selectedTabIndex = 0;
 
@@ -50,6 +53,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         ("Quản lý tài khoản", "Mỗi dòng là một tài khoản Dola: tích chọn rồi dùng các nút ở hàng trên (mở, đăng nhập tự động, sửa, kiểm tra, xóa...)"),
         ("Cài đặt", "Gateway, trình duyệt, thư mục lưu và cập nhật"),
         ("Quản lý prompt", "Thư viện prompt: soạn, nhập/xuất rồi thêm vào hàng đợi để làm video"),
+        ("Kịch bản lớn", "Kịch bản dài tách thành nhiều phần, chạy nối tiếp bằng khung hình cuối của video trước, rồi ghép thành một video"),
     };
 
     partial void OnSelectedTabIndexChanged(int value)
@@ -73,6 +77,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         ProfilesViewModel profilesVm,
         SettingsViewModel settingsVm,
         PromptsViewModel promptsVm,
+        ScriptsViewModel scriptsVm,
         IDolaGatewayClient gatewayClient,
         IQuotaTracker quotaTracker,
         IGatewayHost gatewayHost,
@@ -82,6 +87,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         _profilesVm = profilesVm;
         _settingsVm = settingsVm;
         _promptsVm = promptsVm;
+        _scriptsVm = scriptsVm;
         WeakReferenceMessenger.Default.Register<MainViewModel, NavigateMessage>(this, static (vm, m) => vm.SelectedTabIndex = m.TabIndex);
         _gatewayClient = gatewayClient;
         _quotaTracker = quotaTracker;

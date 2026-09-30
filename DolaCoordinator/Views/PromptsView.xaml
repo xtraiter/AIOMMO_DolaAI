@@ -111,7 +111,7 @@
                 <Button Content="Xuất Excel" Command="{Binding ExportToFileCommand}" Margin="0,0,8,6" ToolTip="Xuất các prompt đã tích (chưa tích thì xuất tất cả đang hiển thị)"/>
                 <Button Content="File mẫu Excel" Command="{Binding DownloadTemplateCommand}" Margin="0,0,20,6" ToolTip="Tải file Excel mẫu (có sheet Hướng dẫn) để điền nhiều prompt rồi Nhập từ file"/>
                 <Button Content="Quy tắc đặt prompt" Command="{Binding ShowRulesCommand}" Margin="0,0,20,6"
-                        ToolTip="Bảng quy tắc đặt prompt (từ README các repo + kinh nghiệm chạy thử), có nút chép"/>
+                        ToolTip="Đoạn prompt quy tắc để dán cho AI khi nhờ viết prompt video, có nút chép"/>
                 <Button Content="Xóa đã chọn" Command="{Binding DeleteSelectedCommand}" Foreground="{StaticResource DangerBrush}" Margin="0,0,0,6"/>
             </WrapPanel>
         </Border>
@@ -160,6 +160,7 @@
                         <DataGridTextColumn Header="TỈ LỆ" Binding="{Binding Ratio}" Width="65"/>
                         <DataGridTextColumn Header="THỜI LƯỢNG" Binding="{Binding Duration, StringFormat='{}{0}s'}" Width="95"/>
                         <DataGridTextColumn Header="ẢNH" Binding="{Binding ReferenceSummary}" Width="65"/>
+                        <DataGridTextColumn Header="NHÂN VẬT / BỐI CẢNH" Binding="{Binding CastSummary}" Width="150"/>
                         <DataGridTextColumn Header="ĐÃ LÀM" Binding="{Binding QueuedCount}" Width="70"/>
                         <DataGridTemplateColumn Header="CẬP NHẬT" Width="120">
                             <DataGridTemplateColumn.CellTemplate>

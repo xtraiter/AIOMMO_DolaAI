@@ -39,6 +39,20 @@ if ($SkipGateway) {
     & (Join-Path $PSScriptRoot "build-gateway.ps1") -OutDir (Join-Path $distDir "gateway")
 }
 
+# ffmpeg: lay khung hinh cuoi va ghep video cua trang "Kich ban lon". Lay ban build san trong goi imageio-ffmpeg (pip)
+# bang chinh venv cua buoc dong goi gateway, chep thanh tools\ffmpeg.exe canh app (khong can cai gi tren may nguoi dung).
+$vpy = Join-Path $env:TEMP "dola-gateway-build\venv\Scripts\python.exe"
+$ffDest = Join-Path $distDir "tools\ffmpeg.exe"
+if (Test-Path $vpy) {
+    & $vpy -m pip install -q --disable-pip-version-check imageio-ffmpeg
+    $ffSrc = (& $vpy -c "import imageio_ffmpeg; print(imageio_ffmpeg.get_ffmpeg_exe())" | Select-Object -Last 1)
+    if ($ffSrc -and (Test-Path $ffSrc)) {
+        New-Item -ItemType Directory -Force (Split-Path $ffDest) | Out-Null
+        Copy-Item $ffSrc $ffDest -Force
+        Write-Host "  ffmpeg: $ffDest" -ForegroundColor Green
+    } else { Write-Host "  (khong lay duoc ffmpeg tu imageio-ffmpeg)" -ForegroundColor Yellow }
+} else { Write-Host "  (bo qua ffmpeg: chua co venv cua buoc gateway)" -ForegroundColor Yellow }
+
 $guide = @"
 AIOMMO DOLAAI v$Version
 -----------------------

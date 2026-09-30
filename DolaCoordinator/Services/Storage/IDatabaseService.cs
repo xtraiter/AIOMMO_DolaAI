@@ -20,6 +20,11 @@ public interface IDatabaseService : IDisposable
     void UpsertPrompts(IEnumerable<PromptItem> prompts);
     void DeletePrompts(IEnumerable<string> ids);
 
+    // Kịch bản lớn (nhiều phần, nối tiếp bằng khung hình cuối)
+    List<ScriptProject> GetAllProjects();
+    void UpsertProject(ScriptProject project);
+    void DeleteProject(string id);
+
     // Tài khoản Dola (profile của gateway)
     List<AccountProfile> GetAllProfiles();
     AccountProfile? GetProfileById(string id);

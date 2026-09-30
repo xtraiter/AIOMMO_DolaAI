@@ -119,6 +119,9 @@ public partial class PromptsViewModel : ObservableObject
             Model = dlg.Model,
             Notes = string.IsNullOrWhiteSpace(dlg.Notes) ? null : dlg.Notes.Trim(),
             ReferenceLocalPaths = dlg.RefImages.ToList(),
+            Characters = dlg.Characters,
+            SceneText = dlg.SceneText,
+            SceneImages = dlg.SceneImages,
         };
         _db.UpsertPrompt(p);
         Add(p);
@@ -152,6 +155,9 @@ public partial class PromptsViewModel : ObservableObject
         p.Model = dlg.Model;
         p.Notes = string.IsNullOrWhiteSpace(dlg.Notes) ? null : dlg.Notes.Trim();
         p.ReferenceLocalPaths = dlg.RefImages.ToList();
+        p.Characters = dlg.Characters;
+        p.SceneText = dlg.SceneText;
+        p.SceneImages = dlg.SceneImages;
         p.UpdatedAt = DateTime.UtcNow;
         _db.UpsertPrompt(p);
         p.NotifyChanged();
@@ -175,6 +181,9 @@ public partial class PromptsViewModel : ObservableObject
                 Model = src.Model,
                 Notes = src.Notes,
                 ReferenceLocalPaths = src.ReferenceLocalPaths.ToList(),
+                Characters = src.Characters.Select(c => new PromptCharacter { Name = c.Name, Description = c.Description, Images = c.Images.ToList() }).ToList(),
+                SceneText = src.SceneText,
+                SceneImages = src.SceneImages.ToList(),
             });
             _db.UpsertPrompt(Prompts[^1]);
         }
@@ -317,14 +326,16 @@ public partial class PromptsViewModel : ObservableObject
         {
             for (var i = 0; i < dlg.Copies; i++)
             {
+                // Ghép nhân vật + bối cảnh vào prompt; ảnh được đánh số theo thứ tự gửi (ảnh mặc định → nhân vật → bối cảnh)
+                var composed = PromptComposer.Compose(p.Text, p.ReferenceLocalPaths, p.Characters, p.SceneText, p.SceneImages);
                 tasks.Add(new RenderTask
                 {
-                    Prompt = p.Text,
+                    Prompt = composed.Text,
                     PromptTitle = p.Title,
                     Model = dlg.ModelOverride ?? p.Model,
                     Ratio = dlg.RatioOverride ?? p.Ratio,
                     Duration = dlg.DurationOverride ?? p.Duration,
-                    ReferenceLocalPaths = p.ReferenceLocalPaths.ToList(),
+                    ReferenceLocalPaths = composed.Images,
                     Priority = dlg.Priority,
                     CreatedAt = DateTime.UtcNow.AddMilliseconds(tasks.Count), // giữ đúng thứ tự khi cùng độ ưu tiên
                 });

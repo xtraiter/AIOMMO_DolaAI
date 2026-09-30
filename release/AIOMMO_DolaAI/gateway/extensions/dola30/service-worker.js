@@ -1,4 +1,4 @@
-const DEBUGGER_VERSION = "1.3";
+﻿const DEBUGGER_VERSION = "1.3";
 const DOUBAO_SKILL_PACK_URL_PART = "doubao.com/samantha/skill/pack";
 const DOLA_SKILL_PACK_URL_PART = "dola.com/samantha/skill/pack";
 const ACTION_BAR_CONF_URL_PART = ".com/alice/slot/action_bar_v3/get_item_conf";
@@ -245,7 +245,7 @@ async function inspectChainSingleResponse(tabId, event, source) {
     await sendToTab(tabId, {
       type: "MEDIA_STATUS",
       sourceKey,
-      text: "未提取到资源"
+      text: "No resources found"
     });
   }
 

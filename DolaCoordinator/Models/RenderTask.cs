@@ -24,6 +24,11 @@ public partial class RenderTask : ObservableObject
 
     public string? GatewayTaskId { get; set; }
 
+    /// <summary>Kịch bản lớn / phần kịch bản mà tác vụ này thuộc về (null nếu là prompt thường).</summary>
+    public string? ProjectId { get; set; }
+
+    public string? ProjectPartId { get; set; }
+
     public string Prompt { get; set; } = string.Empty;
 
     /// <summary>Tên prompt trong thư viện (để dễ nhận ra trong hàng đợi); null nếu tác vụ tạo trực tiếp.</summary>

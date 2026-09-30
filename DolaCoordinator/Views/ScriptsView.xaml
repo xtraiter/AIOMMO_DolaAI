@@ -1,0 +1,177 @@
+<UserControl x:Class="DolaCoordinator.Views.ScriptsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             mc:Ignorable="d"
+             d:DesignHeight="760" d:DesignWidth="1200"
+             FontFamily="{DynamicResource ModernFont}">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="../Themes/DolaModule.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+
+            <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+
+            <Style x:Key="PartStatusBadge" TargetType="Border">
+                <Setter Property="CornerRadius" Value="10"/>
+                <Setter Property="Padding" Value="9,2,9,3"/>
+                <Setter Property="HorizontalAlignment" Value="Left"/>
+                <Setter Property="VerticalAlignment" Value="Center"/>
+                <Setter Property="Background" Value="{StaticResource InfoSoftBrush}"/>
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding Status}" Value="Done">
+                        <Setter Property="Background" Value="{StaticResource SuccessSoftBrush}"/>
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding Status}" Value="Failed">
+                        <Setter Property="Background" Value="{StaticResource DangerSoftBrush}"/>
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding Status}" Value="NotStarted">
+                        <Setter Property="Background" Value="{StaticResource WindowBackgroundBrush}"/>
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
+            <Style x:Key="RowAction" TargetType="Button" BasedOn="{StaticResource GhostButton}">
+                <Setter Property="Padding" Value="8,3"/>
+                <Setter Property="Margin" Value="0,0,2,2"/>
+                <Setter Property="FontSize" Value="12"/>
+            </Style>
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <Grid Margin="24,20,24,16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Chọn kịch bản -->
+        <Grid Grid.Row="0" Margin="0,0,0,14">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock FontSize="12.5" Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap" VerticalAlignment="Center"
+                       Text="Kịch bản lớn: dán một kịch bản dài, tách thành nhiều phần (mỗi phần một video). App chạy lần lượt, lấy khung hình cuối của video trước làm ảnh mở đầu video sau, rồi ghép thành một video. Bạn xem, sắp xếp, sửa và làm lại từng phần."/>
+            <Button Grid.Column="1" Style="{StaticResource ModernPrimaryButton}" Command="{Binding NewProjectCommand}"
+                    Padding="18,9" VerticalAlignment="Top" Margin="20,0,0,0" Content="➕ Thêm kịch bản lớn"/>
+        </Grid>
+
+        <Border Grid.Row="1" Style="{StaticResource ModernCard}" Padding="14,10" Margin="0,0,0,12"
+                Visibility="{Binding HasProject, Converter={StaticResource BoolToVisibilityConverter}}">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="12,0,0,0">
+                    <Button Content="Sửa kịch bản" Command="{Binding EditProjectCommand}" Margin="0,0,8,0"/>
+                    <Button Content="Xóa" Command="{Binding DeleteProjectCommand}" Foreground="{StaticResource DangerBrush}"/>
+                </StackPanel>
+                <TextBlock Text="KỊCH BẢN" Style="{StaticResource FieldLabel}" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                <ComboBox ItemsSource="{Binding Projects}" SelectedItem="{Binding SelectedProject}" DisplayMemberPath="Summary" MinWidth="320" HorizontalAlignment="Left"/>
+            </DockPanel>
+        </Border>
+
+        <!-- Thanh công cụ -->
+        <Border Grid.Row="2" Style="{StaticResource ModernCard}" Padding="12,10,12,4" Margin="0,0,0,12"
+                Visibility="{Binding HasProject, Converter={StaticResource BoolToVisibilityConverter}}">
+            <WrapPanel>
+                <Button Content="▶ Chạy kịch bản" Command="{Binding RunProjectCommand}" Style="{StaticResource ModernPrimaryButton}" Margin="0,0,8,6"
+                        IsEnabled="{Binding CanRunProject}"
+                        ToolTip="Làm lần lượt từ phần chưa xong đầu tiên: phần trước xong mới chạy phần sau"/>
+                <Button Content="⏹ Dừng" Command="{Binding StopRunCommand}" Margin="0,0,20,6"
+                        ToolTip="Hủy các phần đang chờ / đang chạy; phần đã xong được giữ lại"/>
+                <Button Content="🎞 Ghép video" Command="{Binding MergeCommand}" Margin="0,0,8,6"
+                        IsEnabled="{Binding CanMerge}"
+                        ToolTip="Ghép các video đã có thành một video, theo đúng thứ tự trong bảng (cần ffmpeg)"/>
+                <Button Content="Thêm phần" Command="{Binding AddPartCommand}" Margin="0,0,20,6"/>
+                <Button Content="Mở thư mục video" Command="{Binding OpenFolderCommand}" Margin="0,0,0,6"/>
+                <TextBlock Text="{Binding ProgressText}" VerticalAlignment="Center" Margin="20,0,0,6" FontWeight="SemiBold"
+                           Foreground="{StaticResource AccentBrush}"/>
+            </WrapPanel>
+        </Border>
+
+        <!-- Bảng các phần -->
+        <Border Grid.Row="3" Style="{StaticResource ModernCard}" Padding="0" Margin="0,0,0,10">
+            <Grid>
+                <DataGrid ItemsSource="{Binding Parts}" AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True"
+                          GridLinesVisibility="Horizontal" HeadersVisibility="Column" SelectionMode="Single">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="#" Binding="{Binding Number}" Width="44"/>
+                        <DataGridTemplateColumn Header="NỘI DUNG PHẦN" Width="*" MinWidth="260">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Preview}" TextWrapping="Wrap" MaxHeight="58" TextTrimming="CharacterEllipsis"
+                                               Foreground="{StaticResource TextSecondaryBrush}" FontSize="12.5" VerticalAlignment="Center" Margin="4,6"
+                                               ToolTip="{Binding Text}"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTemplateColumn Header="TRẠNG THÁI" Width="170">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <Border Style="{StaticResource PartStatusBadge}">
+                                            <TextBlock Text="{Binding StatusText}" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
+                                        </Border>
+                                        <TextBlock Text="{Binding Error}" FontSize="11" Foreground="{StaticResource DangerBrush}" TextTrimming="CharacterEllipsis"
+                                                   MaxWidth="160" ToolTip="{Binding Error}" Margin="0,3,0,0"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTemplateColumn Header="VIDEO" Width="190">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding VideoText}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="4,0"
+                                               Foreground="{StaticResource TextSecondaryBrush}" ToolTip="{Binding VideoPath}"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTemplateColumn Header="THAO TÁC" Width="380">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <WrapPanel VerticalAlignment="Center" Margin="0,4">
+                                        <Button Content="▲" Style="{StaticResource RowAction}" ToolTip="Dời lên (thứ tự này cũng là thứ tự ghép)"
+                                                Command="{Binding DataContext.MoveUpCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}"/>
+                                        <Button Content="▼" Style="{StaticResource RowAction}" ToolTip="Dời xuống"
+                                                Command="{Binding DataContext.MoveDownCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}"/>
+                                        <Button Content="Sửa" Style="{StaticResource RowAction}"
+                                                Command="{Binding DataContext.EditPartCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}"/>
+                                        <Button Content="Xem prompt" Style="{StaticResource RowAction}" ToolTip="Xem prompt sẽ gửi (đã ghép nhân vật, bối cảnh, câu dặn nối tiếp)"
+                                                Command="{Binding DataContext.PreviewPartCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}"/>
+                                        <Button Content="Chạy từ đây" Style="{StaticResource RowAction}" ToolTip="Làm phần này rồi tiếp các phần sau"
+                                                Command="{Binding DataContext.RunFromPartCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}"/>
+                                        <Button Content="Làm lại phần này" Style="{StaticResource RowAction}" ToolTip="Chỉ làm lại đúng phần này"
+                                                Command="{Binding DataContext.RedoPartCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}"/>
+                                        <Button Content="Xem video" Style="{StaticResource RowAction}"
+                                                Command="{Binding DataContext.OpenVideoCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}"/>
+                                        <Button Content="Ảnh cuối" Style="{StaticResource RowAction}" ToolTip="Xem khung hình cuối (ảnh mở đầu của phần sau)"
+                                                Command="{Binding DataContext.OpenLastFrameCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}"/>
+                                        <Button Content="Xóa" Style="{StaticResource RowAction}" Foreground="{StaticResource DangerBrush}"
+                                                Command="{Binding DataContext.DeletePartCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}"/>
+                                    </WrapPanel>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                    </DataGrid.Columns>
+                </DataGrid>
+
+                <!-- Chưa có kịch bản -->
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
+                            Visibility="{Binding HasNoProject, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <TextBlock Text="Chưa có kịch bản lớn nào" FontSize="16" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" HorizontalAlignment="Center"/>
+                    <TextBlock Text="Bấm 'Thêm kịch bản lớn', dán kịch bản dài, tách thành các phần rồi bấm Chạy." Foreground="{StaticResource TextMutedBrush}" Margin="0,6,0,14" HorizontalAlignment="Center"/>
+                    <Button Content="Thêm kịch bản lớn đầu tiên" Style="{StaticResource ModernPrimaryButton}" Command="{Binding NewProjectCommand}" HorizontalAlignment="Center" Padding="18,9"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Trạng thái -->
+        <StackPanel Grid.Row="4">
+            <TextBlock Text="{Binding FfmpegWarning}" Foreground="{StaticResource WarningBrush}" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,4"/>
+            <TextBlock Text="{Binding StatusText}" Foreground="{StaticResource TextSecondaryBrush}" FontSize="12" TextWrapping="Wrap" MinHeight="18"/>
+        </StackPanel>
+    </Grid>
+</UserControl>

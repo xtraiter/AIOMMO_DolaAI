@@ -14,6 +14,7 @@ public class LiteDbDatabaseService : IDatabaseService
     private readonly ILiteCollection<AccountProfile> _profiles;
     private readonly ILiteCollection<RenderTask> _tasks;
     private readonly ILiteCollection<PromptItem> _prompts;
+    private readonly ILiteCollection<ScriptProject> _projects;
     private readonly ILiteCollection<AppSettings> _settings;
     private readonly object _lock = new();
 
@@ -48,6 +49,7 @@ public class LiteDbDatabaseService : IDatabaseService
         _profiles = _db.GetCollection<AccountProfile>("account_profiles");
         _tasks = _db.GetCollection<RenderTask>("tasks");
         _prompts = _db.GetCollection<PromptItem>("prompts");
+        _projects = _db.GetCollection<ScriptProject>("script_projects");
         _settings = _db.GetCollection<AppSettings>("settings");
 
         // Indexes
@@ -170,6 +172,32 @@ public class LiteDbDatabaseService : IDatabaseService
         lock (_lock)
         {
             foreach (var id in ids) _prompts.Delete(id);
+        }
+    }
+    #endregion
+
+    #region Kịch bản lớn
+    public List<ScriptProject> GetAllProjects()
+    {
+        lock (_lock)
+        {
+            return _projects.FindAll().OrderByDescending(p => p.UpdatedAt).ToList();
+        }
+    }
+
+    public void UpsertProject(ScriptProject project)
+    {
+        lock (_lock)
+        {
+            _projects.Upsert(project);
+        }
+    }
+
+    public void DeleteProject(string id)
+    {
+        lock (_lock)
+        {
+            _projects.Delete(id);
         }
     }
     #endregion

@@ -132,6 +132,19 @@
                     </RadioButton>
 
                     <RadioButton GroupName="Nav" Style="{StaticResource SidebarItem}"
+                                 IsChecked="{Binding SelectedTabIndex, Converter={StaticResource IntToBoolConverter}, ConverterParameter=4}">
+                        <StackPanel Orientation="Horizontal">
+                            <Image Source="Assets/Icons/film-reel.png" Style="{StaticResource NavIcon}"/>
+                            <TextBlock Text="Kịch bản lớn"/>
+                            <Border Margin="10,0,0,0" CornerRadius="9" Padding="7,1,7,2" Background="{StaticResource InfoSoftBrush}" VerticalAlignment="Center"
+                                    Visibility="{Binding ScriptsVm.TotalCount, Converter={StaticResource CountToVisibilityConverter}}">
+                                <TextBlock FontSize="11" FontWeight="Bold" Foreground="{StaticResource TextSecondaryBrush}"
+                                           Text="{Binding ScriptsVm.TotalCount}"/>
+                            </Border>
+                        </StackPanel>
+                    </RadioButton>
+
+                    <RadioButton GroupName="Nav" Style="{StaticResource SidebarItem}"
                                  IsChecked="{Binding SelectedTabIndex, Converter={StaticResource IntToBoolConverter}, ConverterParameter=0}">
                         <StackPanel Orientation="Horizontal">
                             <Image Source="Assets/Icons/dashboard.png" Style="{StaticResource NavIcon}"/>
@@ -211,6 +224,9 @@
                 </Grid>
                 <Grid Visibility="{Binding SelectedTabIndex, Converter={StaticResource IntToVisibilityConverter}, ConverterParameter=3}">
                     <views:PromptsView DataContext="{Binding PromptsVm}"/>
+                </Grid>
+                <Grid Visibility="{Binding SelectedTabIndex, Converter={StaticResource IntToVisibilityConverter}, ConverterParameter=4}">
+                    <views:ScriptsView DataContext="{Binding ScriptsVm}"/>
                 </Grid>
             </Grid>
 
