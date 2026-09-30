@@ -356,7 +356,7 @@ public class TaskDispatcher : ITaskDispatcher, IDisposable
 
     // ------------------------------------------------------------------ vòng điều phối
 
-    /// <summary>Số video được chạy cùng lúc = số luồng tối đa (chỉnh ở trang Vận hành, đọc lại mỗi vòng nên đổi là có hiệu lực ngay).</summary>
+    /// <summary>Số video được chạy cùng lúc = số luồng tối đa (chỉnh ở trang Tạo video, đọc lại mỗi vòng nên đổi là có hiệu lực ngay).</summary>
     private int Capacity() => Math.Clamp(_databaseService.GetSettings().ConcurrencyLimit, 1, 30);
 
     private void ResetRound()

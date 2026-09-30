@@ -16,6 +16,7 @@ using DolaCoordinator.Helpers;
 using DolaCoordinator.Models;
 using DolaCoordinator.Services.Gateway;
 using DolaCoordinator.Services.Profiles;
+using DolaCoordinator.Services.Proxy;
 using DolaCoordinator.Services.Network;
 using DolaCoordinator.Services.Security;
 using DolaCoordinator.Services.Sessions;
@@ -42,6 +43,7 @@ public partial class ProfilesViewModel : ObservableObject, IDisposable
     private readonly ISecurityService _security;
     private readonly IDolaGatewayClient _gateway;
     private readonly IGatewayHost _gatewayHost;
+    private readonly IProxyService _proxies;
 
     private readonly CancellationTokenSource _cts = new();
     private readonly PeriodicTimer _timer = new(MonitorInterval);
@@ -77,7 +79,8 @@ public partial class ProfilesViewModel : ObservableObject, IDisposable
         IQuotaTracker quota,
         ISecurityService security,
         IDolaGatewayClient gateway,
-        IGatewayHost gatewayHost)
+        IGatewayHost gatewayHost,
+        IProxyService proxies)
     {
         _chrome = chrome;
         _db = db;
@@ -86,12 +89,14 @@ public partial class ProfilesViewModel : ObservableObject, IDisposable
         _security = security;
         _gateway = gateway;
         _gatewayHost = gatewayHost;
+        _proxies = proxies;
 
         View = CollectionViewSource.GetDefaultView(Profiles);
         View.Filter = FilterProfile;
 
         LoadProfiles();
         WeakReferenceMessenger.Default.Register<ProfilesViewModel, SessionsChangedMessage>(this, static (vm, _) => vm.ReloadSessions());
+        WeakReferenceMessenger.Default.Register<ProfilesViewModel, ProxiesChangedMessage>(this, static (vm, _) => vm.OnProxiesChanged());
         _ = MonitorLoopAsync(_cts.Token);
     }
 
@@ -125,6 +130,68 @@ public partial class ProfilesViewModel : ObservableObject, IDisposable
         foreach (var p in profiles.OrderBy(p => p.CreatedAt))
             Profiles.Add(p);
         ReloadSessions();
+        if (!HasProblem) _proxies.SyncFiles(Profiles); // proxy.txt của từng tài khoản phải khớp proxy đang gán
+        RefreshProxyTexts();
+    }
+
+    // ------------------------------------------------------------------ proxy
+
+    /// <summary>Cột Proxy: tên proxy (+ quốc gia IP thoát nếu đã kiểm tra).</summary>
+    private void RefreshProxyTexts()
+    {
+        var all = _proxies.GetAll().ToDictionary(p => p.Id);
+        foreach (var a in Profiles)
+        {
+            if (string.IsNullOrEmpty(a.ProxyId)) { a.ProxyText = "—"; continue; }
+            if (!all.TryGetValue(a.ProxyId, out var px)) { a.ProxyText = "(proxy đã xóa)"; continue; }
+            a.ProxyText = px.DisplayName + (px.LastOk == true && !string.IsNullOrEmpty(px.LastCountry) ? $" · {px.LastCountry}" : string.Empty)
+                          + (px.LastOk == false ? " · lỗi" : string.Empty);
+        }
+    }
+
+    /// <summary>Proxy được sửa / xóa / kiểm tra ở trang khác: đọc lại việc gán từ DB rồi làm mới cột.</summary>
+    private void OnProxiesChanged()
+    {
+        if (Application.Current?.Dispatcher.CheckAccess() == false)
+        {
+            Application.Current.Dispatcher.InvokeAsync(OnProxiesChanged);
+            return;
+        }
+        var stored = _db.GetAllProfiles().ToDictionary(p => p.Id, p => p.ProxyId);
+        foreach (var a in Profiles)
+            if (stored.TryGetValue(a.Id, out var id)) a.ProxyId = id;
+        RefreshProxyTexts();
+    }
+
+    /// <summary>Gán proxy cho các tài khoản đã tích: một proxy cho tất cả, chia vòng tròn, hoặc bỏ proxy.</summary>
+    [RelayCommand]
+    private void AssignProxySelected()
+    {
+        var targets = Selected();
+        if (targets.Count == 0) { Log("Tích chọn tài khoản cần gán proxy."); return; }
+        var list = _proxies.GetAll();
+        var dlg = new ProxyAssignWindow(list, targets.Count) { Owner = Application.Current.MainWindow };
+        if (dlg.ShowDialog() != true) return;
+
+        switch (dlg.Mode)
+        {
+            case ProxyAssignMode.None:
+                foreach (var a in targets) _proxies.Assign(a, null);
+                Log($"Đã bỏ proxy của {targets.Count} tài khoản.");
+                break;
+            case ProxyAssignMode.RoundRobin:
+                for (var i = 0; i < targets.Count; i++) _proxies.Assign(targets[i], list[i % list.Count].Id);
+                Log($"Đã chia vòng tròn {list.Count} proxy cho {targets.Count} tài khoản.");
+                break;
+            default:
+                foreach (var a in targets) _proxies.Assign(a, dlg.Proxy!.Id);
+                Log($"Đã gán proxy '{dlg.Proxy!.DisplayName}' cho {targets.Count} tài khoản.");
+                break;
+        }
+        RefreshProxyTexts();
+        if (targets.Any(a => a.IsRunning))
+            Log("Có tài khoản đang mở Chromium: đóng rồi mở lại để dùng proxy mới.");
+        WeakReferenceMessenger.Default.Send(new ProxiesChangedMessage()); // trang Quản lý proxy cập nhật số tài khoản đang dùng
     }
 
     /// <summary>Nạp lại phiên/hạn ngạch từ DB lên từng dòng. Gọi trên luồng UI (TaskDispatcher gọi sau khi trừ quota).</summary>
@@ -665,7 +732,7 @@ public partial class ProfilesViewModel : ObservableObject, IDisposable
     {
         if (p.Session == null) return;
         _db.UpsertSession(p.Session);
-        Log($"'{p.Name}': {(p.UseForRender ? "được dùng" : "KHÔNG dùng")} khi chạy vận hành.");
+        Log($"'{p.Name}': {(p.UseForRender ? "được dùng" : "KHÔNG dùng")} khi tạo video.");
     }
 
     [RelayCommand]
@@ -677,13 +744,13 @@ public partial class ProfilesViewModel : ObservableObject, IDisposable
     private void SetUseForRender(bool value)
     {
         var targets = Selected().Where(p => p.Session != null).ToList();
-        if (targets.Count == 0) { Log("Tích chọn tài khoản (đã đăng nhập) để đưa vào / loại khỏi vận hành."); return; }
+        if (targets.Count == 0) { Log("Tích chọn tài khoản (đã đăng nhập) để đưa vào / loại khỏi tạo video."); return; }
         foreach (var p in targets)
         {
             p.UseForRender = value;
             _db.UpsertSession(p.Session!);
         }
-        Log($"{(value ? "Đã đưa" : "Đã loại")} {targets.Count} tài khoản {(value ? "vào" : "khỏi")} vận hành.");
+        Log($"{(value ? "Đã đưa" : "Đã loại")} {targets.Count} tài khoản {(value ? "vào" : "khỏi")} việc tạo video.");
     }
 
     [RelayCommand]

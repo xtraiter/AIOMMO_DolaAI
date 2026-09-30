@@ -146,7 +146,13 @@ public class ScriptProject : ObservableObject
         get
         {
             var done = Parts.Count(p => p.Status == ScriptPartStatus.Done);
-            return $"{Title} ({done}/{Parts.Count} phần xong)";
+            var failed = Parts.Count(p => p.Status == ScriptPartStatus.Failed);
+            var active = Parts.Count(p => p.Status is ScriptPartStatus.Waiting or ScriptPartStatus.Running);
+            var state = $"{done}/{Parts.Count} phần xong"
+                        + (active > 0 ? " · đang chạy" : string.Empty)
+                        + (failed > 0 ? $" · {failed} lỗi" : string.Empty)
+                        + (Parts.Count > 0 && done == Parts.Count ? " · hoàn tất" : string.Empty);
+            return $"{Title} ({state})";
         }
     }
 

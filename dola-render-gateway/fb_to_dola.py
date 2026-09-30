@@ -24,7 +24,7 @@ if sys.platform == "win32":
 
 from patchright.async_api import async_playwright
 import config
-from browser import LAUNCH_ARGS, cookie_value
+from browser import LAUNCH_ARGS, cookie_value, proxy_for_account, _proxy_from_url
 
 
 def parse_fb_cookie(raw: str) -> list[dict]:
@@ -111,9 +111,9 @@ async def convert_fb_to_dola_session(account: str, fb_cookie_str: str, proxy: st
         "locale": "vi-VN",
         "timezone_id": "Asia/Ho_Chi_Minh",
     }
-    use_proxy = proxy or config.PROXY
+    use_proxy = (_proxy_from_url(proxy) if proxy else None) or proxy_for_account(account)
     if use_proxy:
-        kwargs["proxy"] = {"server": use_proxy}
+        kwargs["proxy"] = use_proxy
 
     print(f"[{account}] Bắt đầu quy trình xác thực Dola qua Cookie Facebook...", flush=True)
 

@@ -41,12 +41,12 @@ public class AppSettings
     public bool QuotaDefaultMigrated { get; set; }
 
     /// <summary>
-    /// Thư mục lưu video tải về. Mặc định là thư mục Videos của Windows; chọn lại ngay trên trang Vận hành.
+    /// Thư mục lưu video tải về. Mặc định là thư mục Videos của Windows; chọn lại ngay trên trang Tạo video.
     /// </summary>
     public string DownloadDirectory { get; set; } = Environment.GetFolderPath(Environment.SpecialFolder.MyVideos);
 
     /// <summary>
-    /// Số luồng tối đa: số video chạy cùng lúc. Chỉnh ở trang Vận hành.
+    /// Số luồng tối đa: số video chạy cùng lúc. Chỉnh ở trang Tạo video.
     /// </summary>
     public int ConcurrencyLimit { get; set; } = 2;
 
@@ -79,7 +79,7 @@ public class AppSettings
     /// <summary>Nội dung tự trả lời (có thể sửa). Để trống = dùng mặc định.</summary>
     public string AskBackReply { get; set; } = DefaultAskBackReply;
 
-    /// <summary>Ẩn cửa sổ Chromium khi chạy vận hành (cửa sổ nằm ngoài màn hình). Đăng nhập tài khoản luôn hiện.</summary>
+    /// <summary>Ẩn cửa sổ Chromium khi tạo video (cửa sổ nằm ngoài màn hình). Đăng nhập tài khoản luôn hiện.</summary>
     public bool HideRenderWindow { get; set; }
 
     /// <summary>

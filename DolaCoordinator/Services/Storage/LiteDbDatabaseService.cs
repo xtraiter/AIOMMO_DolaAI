@@ -15,6 +15,7 @@ public class LiteDbDatabaseService : IDatabaseService
     private readonly ILiteCollection<RenderTask> _tasks;
     private readonly ILiteCollection<PromptItem> _prompts;
     private readonly ILiteCollection<ScriptProject> _projects;
+    private readonly ILiteCollection<ProxyItem> _proxies;
     private readonly ILiteCollection<AppSettings> _settings;
     private readonly object _lock = new();
 
@@ -50,6 +51,7 @@ public class LiteDbDatabaseService : IDatabaseService
         _tasks = _db.GetCollection<RenderTask>("tasks");
         _prompts = _db.GetCollection<PromptItem>("prompts");
         _projects = _db.GetCollection<ScriptProject>("script_projects");
+        _proxies = _db.GetCollection<ProxyItem>("proxies");
         _settings = _db.GetCollection<AppSettings>("settings");
 
         // Indexes
@@ -172,6 +174,32 @@ public class LiteDbDatabaseService : IDatabaseService
         lock (_lock)
         {
             foreach (var id in ids) _prompts.Delete(id);
+        }
+    }
+    #endregion
+
+    #region Proxy
+    public List<ProxyItem> GetAllProxies()
+    {
+        lock (_lock)
+        {
+            return _proxies.FindAll().OrderBy(p => p.CreatedAt).ToList();
+        }
+    }
+
+    public void UpsertProxy(ProxyItem proxy)
+    {
+        lock (_lock)
+        {
+            _proxies.Upsert(proxy);
+        }
+    }
+
+    public void DeleteProxy(string id)
+    {
+        lock (_lock)
+        {
+            _proxies.Delete(id);
         }
     }
     #endregion

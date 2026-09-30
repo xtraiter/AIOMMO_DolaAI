@@ -49,6 +49,45 @@ public partial class PromptItem : ObservableObject
     /// <summary>Đã thêm vào hàng đợi bao nhiêu video từ prompt này.</summary>
     public int QueuedCount { get; set; }
 
+    /// <summary>Số video của prompt này đang chờ / đang chạy.</summary>
+    public int ActiveCount { get; set; }
+
+    /// <summary>Số video của prompt này đã làm xong.</summary>
+    public int DoneCount { get; set; }
+
+    /// <summary>Số video của prompt này bị lỗi.</summary>
+    public int FailedCount { get; set; }
+
+    /// <summary>Trạng thái gộp: none (chưa làm) | active (đang làm) | done (đã xong) | partial (xong một phần, có lỗi) | failed (lỗi).</summary>
+    [BsonIgnore]
+    public string StatusKey => ActiveCount > 0 ? "active"
+        : FailedCount > 0 ? (DoneCount > 0 ? "partial" : "failed")
+        : DoneCount > 0 ? "done"
+        : "none";
+
+    [BsonIgnore]
+    public string StatusText => StatusKey switch
+    {
+        "active" => "Đang làm",
+        "done" => "Đã xong",
+        "partial" => "Xong một phần",
+        "failed" => "Lỗi",
+        _ => "Chưa làm",
+    };
+
+    [BsonIgnore]
+    public string StatusDetail
+    {
+        get
+        {
+            var parts = new List<string>();
+            if (ActiveCount > 0) parts.Add($"{ActiveCount} đang làm");
+            if (DoneCount > 0) parts.Add($"{DoneCount} xong");
+            if (FailedCount > 0) parts.Add($"{FailedCount} lỗi");
+            return parts.Count == 0 ? string.Empty : string.Join(" · ", parts);
+        }
+    }
+
     [ObservableProperty]
     [property: BsonIgnore]
     private bool _isSelected;

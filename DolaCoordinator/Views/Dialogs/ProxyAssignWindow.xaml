@@ -1,0 +1,37 @@
+<Window x:Class="DolaCoordinator.Views.Dialogs.ProxyAssignWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Width="560" SizeToContent="Height" ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+        Background="{DynamicResource SidebarBrush}">
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="../../Themes/DolaModule.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <StackPanel Margin="26,22,26,22">
+        <TextBlock x:Name="TitleText" FontSize="18" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}"/>
+        <TextBlock x:Name="SubText" FontSize="12" Foreground="{StaticResource TextMutedBrush}" Margin="0,4,0,16" TextWrapping="Wrap"/>
+
+        <RadioButton x:Name="OneRadio" GroupName="Mode" IsChecked="True" Margin="0,0,0,6" Content="Dùng MỘT proxy cho tất cả tài khoản đã tích"/>
+        <ComboBox x:Name="ProxyBox" Margin="26,0,0,14" DisplayMemberPath="DisplayName"/>
+
+        <RadioButton x:Name="RoundRadio" GroupName="Mode" Margin="0,0,0,6">
+            <TextBlock TextWrapping="Wrap" Text="Chia vòng tròn các proxy trong danh sách (mỗi tài khoản một proxy, hết thì quay lại từ đầu)"/>
+        </RadioButton>
+        <TextBlock x:Name="RoundHint" Margin="26,0,0,14" FontSize="11.5" Foreground="{StaticResource TextMutedBrush}" TextWrapping="Wrap"/>
+
+        <RadioButton x:Name="NoneRadio" GroupName="Mode" Margin="0,0,0,6">
+            <TextBlock TextWrapping="Wrap" Text="Bỏ proxy (các tài khoản đã tích chạy không qua proxy riêng)"/>
+        </RadioButton>
+
+        <TextBlock x:Name="ErrorText" Foreground="{StaticResource DangerBrush}" FontSize="12" TextWrapping="Wrap" Margin="0,10,0,0" Visibility="Collapsed"/>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,14,0,0">
+            <Button Content="Hủy" Width="90" Margin="0,0,10,0" IsCancel="True" Click="Cancel_Click"/>
+            <Button Content="Gán proxy" Style="{StaticResource ModernPrimaryButton}" MinWidth="120" Click="Ok_Click"/>
+        </StackPanel>
+    </StackPanel>
+</Window>

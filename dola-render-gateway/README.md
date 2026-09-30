@@ -111,6 +111,8 @@ If the greeting chat gets no answer the account is put on a 10-minute cooldown a
   `failure_code` is one of `account_limited`, `credit`, `risk_control`, `login_required`, `unhealthy`, `timeout`,
   `429`, `no_account`, `error`; `stage` is `warmup` → `new_chat` → `submitting` → `generating` → `done`.
 
+**Per-account proxy**: if `accounts/<name>/proxy.txt` exists (one line `scheme://user:pass@host:port`, written by DolaCoordinator's "Gán proxy"), every Chromium the gateway opens for that account (login, session check, render, cookie import) goes through it; otherwise `DOLA_PROXY` is used if set, otherwise no proxy. See `browser.proxy_for_account`.
+
 `open_profile.py <account> [--login google|facebook|facebook-cookie] [--after keep|close]` opens an account profile in a
 visible Chromium window (used by DolaCoordinator); credentials are read from one JSON line on stdin.
 

@@ -19,6 +19,32 @@
         <Style x:Key="NavSection" TargetType="TextBlock" BasedOn="{StaticResource SectionTitle}">
             <Setter Property="Margin" Value="22,18,0,6"/>
         </Style>
+        <Style x:Key="SubTabPill" TargetType="RadioButton">
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="Bd" CornerRadius="16" Padding="16,7" Background="{StaticResource SidebarBrush}"
+                                BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                            <ContentPresenter VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource SubtleBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource SubtleBrush}"/>
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource PrimaryAccentBrush}"/>
+                                <Setter Property="Foreground" Value="{StaticResource PrimaryAccentBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
         <Style x:Key="NavIcon" TargetType="Image">
             <Setter Property="Width" Value="20"/>
             <Setter Property="Height" Value="20"/>
@@ -119,6 +145,19 @@
                     </RadioButton>
 
                     <RadioButton GroupName="Nav" Style="{StaticResource SidebarItem}"
+                                 IsChecked="{Binding SelectedTabIndex, Converter={StaticResource IntToBoolConverter}, ConverterParameter=4}">
+                        <StackPanel Orientation="Horizontal">
+                            <Image Source="Assets/Icons/services.png" Style="{StaticResource NavIcon}"/>
+                            <TextBlock Text="Quản lý proxy"/>
+                            <Border Margin="10,0,0,0" CornerRadius="9" Padding="7,1,7,2" Background="{StaticResource InfoSoftBrush}" VerticalAlignment="Center"
+                                    Visibility="{Binding ProxiesVm.TotalCount, Converter={StaticResource CountToVisibilityConverter}}">
+                                <TextBlock FontSize="11" FontWeight="Bold" Foreground="{StaticResource TextSecondaryBrush}"
+                                           Text="{Binding ProxiesVm.TotalCount}"/>
+                            </Border>
+                        </StackPanel>
+                    </RadioButton>
+
+                    <RadioButton GroupName="Nav" Style="{StaticResource SidebarItem}"
                                  IsChecked="{Binding SelectedTabIndex, Converter={StaticResource IntToBoolConverter}, ConverterParameter=3}">
                         <StackPanel Orientation="Horizontal">
                             <Image Source="Assets/Icons/clapperboard.png" Style="{StaticResource NavIcon}"/>
@@ -132,23 +171,10 @@
                     </RadioButton>
 
                     <RadioButton GroupName="Nav" Style="{StaticResource SidebarItem}"
-                                 IsChecked="{Binding SelectedTabIndex, Converter={StaticResource IntToBoolConverter}, ConverterParameter=4}">
-                        <StackPanel Orientation="Horizontal">
-                            <Image Source="Assets/Icons/film-reel.png" Style="{StaticResource NavIcon}"/>
-                            <TextBlock Text="Kịch bản lớn"/>
-                            <Border Margin="10,0,0,0" CornerRadius="9" Padding="7,1,7,2" Background="{StaticResource InfoSoftBrush}" VerticalAlignment="Center"
-                                    Visibility="{Binding ScriptsVm.TotalCount, Converter={StaticResource CountToVisibilityConverter}}">
-                                <TextBlock FontSize="11" FontWeight="Bold" Foreground="{StaticResource TextSecondaryBrush}"
-                                           Text="{Binding ScriptsVm.TotalCount}"/>
-                            </Border>
-                        </StackPanel>
-                    </RadioButton>
-
-                    <RadioButton GroupName="Nav" Style="{StaticResource SidebarItem}"
                                  IsChecked="{Binding SelectedTabIndex, Converter={StaticResource IntToBoolConverter}, ConverterParameter=0}">
                         <StackPanel Orientation="Horizontal">
                             <Image Source="Assets/Icons/dashboard.png" Style="{StaticResource NavIcon}"/>
-                            <TextBlock Text="Vận hành"/>
+                            <TextBlock Text="Tạo video"/>
                             <Border Margin="10,0,0,0" CornerRadius="9" Padding="7,1,7,2" Background="{StaticResource InfoSoftBrush}" VerticalAlignment="Center"
                                     Visibility="{Binding QueueVm.ActiveCount, Converter={StaticResource CountToVisibilityConverter}}"
                                     ToolTip="Số video đang chờ / đang chạy">
@@ -223,10 +249,36 @@
                     <views:SettingsView DataContext="{Binding SettingsVm}"/>
                 </Grid>
                 <Grid Visibility="{Binding SelectedTabIndex, Converter={StaticResource IntToVisibilityConverter}, ConverterParameter=3}">
-                    <views:PromptsView DataContext="{Binding PromptsVm}"/>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <!-- Hai trang con: Prompt | Kịch bản lớn -->
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="24,14,24,0">
+                        <RadioButton GroupName="PromptSub" Style="{StaticResource SubTabPill}" Margin="0,0,8,0"
+                                     IsChecked="{Binding PromptsVm.SubTab, Converter={StaticResource IntToBoolConverter}, ConverterParameter=0}">
+                            <TextBlock>
+                                <Run Text="Prompt"/>
+                                <Run Text="{Binding PromptsVm.TotalCount, Mode=OneWay, StringFormat=' ({0})'}"/>
+                            </TextBlock>
+                        </RadioButton>
+                        <RadioButton GroupName="PromptSub" Style="{StaticResource SubTabPill}"
+                                     IsChecked="{Binding PromptsVm.SubTab, Converter={StaticResource IntToBoolConverter}, ConverterParameter=1}">
+                            <TextBlock>
+                                <Run Text="Kịch bản lớn"/>
+                                <Run Text="{Binding ScriptsVm.TotalCount, Mode=OneWay, StringFormat=' ({0})'}"/>
+                            </TextBlock>
+                        </RadioButton>
+                    </StackPanel>
+                    <Grid Grid.Row="1" Visibility="{Binding PromptsVm.SubTab, Converter={StaticResource IntToVisibilityConverter}, ConverterParameter=0}">
+                        <views:PromptsView DataContext="{Binding PromptsVm}"/>
+                    </Grid>
+                    <Grid Grid.Row="1" Visibility="{Binding PromptsVm.SubTab, Converter={StaticResource IntToVisibilityConverter}, ConverterParameter=1}">
+                        <views:ScriptsView DataContext="{Binding ScriptsVm}"/>
+                    </Grid>
                 </Grid>
                 <Grid Visibility="{Binding SelectedTabIndex, Converter={StaticResource IntToVisibilityConverter}, ConverterParameter=4}">
-                    <views:ScriptsView DataContext="{Binding ScriptsVm}"/>
+                    <views:ProxiesView DataContext="{Binding ProxiesVm}"/>
                 </Grid>
             </Grid>
 

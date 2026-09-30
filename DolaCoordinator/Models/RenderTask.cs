@@ -29,6 +29,12 @@ public partial class RenderTask : ObservableObject
 
     public string? ProjectPartId { get; set; }
 
+    /// <summary>Prompt trong thư viện đã tạo ra tác vụ này (để prompt có trạng thái: đang làm / xong / lỗi).</summary>
+    public string? PromptId { get; set; }
+
+    /// <summary>Nhóm đã được tính vào số đếm của prompt: "active" | "done" | "failed" | null.</summary>
+    public string? PromptBucket { get; set; }
+
     public string Prompt { get; set; } = string.Empty;
 
     /// <summary>Tên prompt trong thư viện (để dễ nhận ra trong hàng đợi); null nếu tác vụ tạo trực tiếp.</summary>

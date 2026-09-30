@@ -3,6 +3,7 @@ using DolaCoordinator.Services.Gateway;
 using DolaCoordinator.Services.Network;
 using DolaCoordinator.Services.Notification;
 using DolaCoordinator.Services.Profiles;
+using DolaCoordinator.Services.Proxy;
 using DolaCoordinator.Services.Queue;
 using DolaCoordinator.Services.Security;
 using DolaCoordinator.Services.Sessions;
@@ -33,6 +34,7 @@ public static class DolaModule
 
         // Tài khoản Dola (mỗi tài khoản = một profile của gateway)
         services.AddSingleton<IAccountProfileService, AccountProfileService>();
+        services.AddSingleton<IProxyService, ProxyService>();
 
         // Phiên & hạn ngạch
         services.AddSingleton<IQuotaTracker, QuotaTracker>();
@@ -51,6 +53,7 @@ public static class DolaModule
         services.AddSingleton<SettingsViewModel>();
         services.AddSingleton<PromptsViewModel>();
         services.AddSingleton<ScriptsViewModel>();
+        services.AddSingleton<ProxiesViewModel>();
         services.AddSingleton<MainViewModel>();
 
         return services;

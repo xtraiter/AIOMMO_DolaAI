@@ -37,7 +37,10 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private ScriptsViewModel _scriptsVm;
 
-    // 0 = Vận hành, 1 = Quản lý tài khoản (profile), 2 = Cài đặt, 3 = Quản lý prompt, 4 = Kịch bản lớn
+    [ObservableProperty]
+    private ProxiesViewModel _proxiesVm;
+
+    // 0 = Tạo video, 1 = Quản lý tài khoản (profile), 2 = Cài đặt, 3 = Quản lý prompt (Prompt + Kịch bản lớn), 4 = Quản lý proxy
     [ObservableProperty]
     private int _selectedTabIndex = 0;
 
@@ -49,11 +52,11 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
     private static readonly (string Title, string Subtitle)[] PageTitles =
     {
-        ("Vận hành", "Điều khiển tiến trình: chạy, tạm dừng, ưu tiên, quản lý hàng đợi và theo dõi từng video"),
+        ("Tạo video", "Điều khiển tiến trình: chạy, tạm dừng, ưu tiên, quản lý hàng đợi và theo dõi từng video"),
         ("Quản lý tài khoản", "Mỗi dòng là một tài khoản Dola: tích chọn rồi dùng các nút ở hàng trên (mở, đăng nhập tự động, sửa, kiểm tra, xóa...)"),
         ("Cài đặt", "Gateway, trình duyệt, thư mục lưu và cập nhật"),
-        ("Quản lý prompt", "Thư viện prompt: soạn, nhập/xuất rồi thêm vào hàng đợi để làm video"),
-        ("Kịch bản lớn", "Kịch bản dài tách thành nhiều phần, chạy nối tiếp bằng khung hình cuối của video trước, rồi ghép thành một video"),
+        ("Quản lý prompt", "Thư viện prompt (có trạng thái làm video) và Kịch bản lớn: kịch bản dài tách nhiều phần, chạy nối tiếp bằng khung hình cuối rồi ghép thành một video"),
+        ("Quản lý proxy", "Danh sách proxy, kiểm tra IP thoát; gán proxy cho từng tài khoản ở trang Quản lý tài khoản"),
     };
 
     partial void OnSelectedTabIndexChanged(int value)
@@ -78,6 +81,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         SettingsViewModel settingsVm,
         PromptsViewModel promptsVm,
         ScriptsViewModel scriptsVm,
+        ProxiesViewModel proxiesVm,
         IDolaGatewayClient gatewayClient,
         IQuotaTracker quotaTracker,
         IGatewayHost gatewayHost,
@@ -88,6 +92,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         _settingsVm = settingsVm;
         _promptsVm = promptsVm;
         _scriptsVm = scriptsVm;
+        _proxiesVm = proxiesVm;
         WeakReferenceMessenger.Default.Register<MainViewModel, NavigateMessage>(this, static (vm, m) => vm.SelectedTabIndex = m.TabIndex);
         _gatewayClient = gatewayClient;
         _quotaTracker = quotaTracker;

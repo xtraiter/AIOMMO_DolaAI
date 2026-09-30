@@ -21,7 +21,7 @@ if sys.platform == "win32":
 from patchright.async_api import async_playwright
 
 import config
-from browser import LAUNCH_ARGS, cookie_value
+from browser import LAUNCH_ARGS, cookie_value, proxy_for_account
 
 
 def parse_cookie_string(raw: str) -> list[dict]:
@@ -118,8 +118,9 @@ async def import_single_account(account: str, cookie_string: str) -> bool:
             "locale": "ja-JP",
             "timezone_id": "Asia/Tokyo",
         }
-        if config.PROXY:
-            kwargs["proxy"] = {"server": config.PROXY}
+        account_proxy = proxy_for_account(account)
+        if account_proxy:
+            kwargs["proxy"] = account_proxy
 
         context = await p.chromium.launch_persistent_context(str(profile_dir), **kwargs)
         try:

@@ -137,7 +137,7 @@
                 <StackPanel>
                     <TextBlock Text="4. Thông Báo &amp; Thử Lại" FontSize="14" FontWeight="Bold" Foreground="{StaticResource AccentBrush}" Margin="0,0,0,12" />
 
-                    <TextBlock Text="Thư mục lưu video chọn ngay trên trang Vận hành." Foreground="{StaticResource TextMutedBrush}" FontSize="11" Margin="0,0,0,12" />
+                    <TextBlock Text="Thư mục lưu video chọn ngay trên trang Tạo video." Foreground="{StaticResource TextMutedBrush}" FontSize="11" Margin="0,0,0,12" />
 
                     <CheckBox IsChecked="{Binding EnableToastNotification}" Content="Hiển thị Windows Toast Notification khi hoàn tất toàn bộ hàng đợi" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,10" />
                     <CheckBox IsChecked="{Binding AutoRetryOnFailure}" Content="Tự động thử lại tác vụ với Exponential Backoff khi gặp lỗi gián đoạn mạng" Foreground="{StaticResource TextPrimaryBrush}" />

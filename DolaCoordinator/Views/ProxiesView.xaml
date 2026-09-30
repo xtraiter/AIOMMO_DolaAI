@@ -1,0 +1,173 @@
+<UserControl x:Class="DolaCoordinator.Views.ProxiesView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             mc:Ignorable="d"
+             d:DesignHeight="760" d:DesignWidth="1200"
+             FontFamily="{DynamicResource ModernFont}">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="../Themes/DolaModule.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+            <Style x:Key="KpiNumber" TargetType="TextBlock">
+                <Setter Property="FontSize" Value="26"/>
+                <Setter Property="FontWeight" Value="Bold"/>
+                <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+            </Style>
+            <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <Grid Margin="24,20,24,16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <Grid Grid.Row="0" Margin="0,0,0,16">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock FontSize="12.5" Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap" VerticalAlignment="Center"
+                       Text="Danh sách proxy dùng chung. Gán proxy cho tài khoản ở trang Quản lý tài khoản (nút 'Gán proxy' hoặc cột Proxy): tài khoản có proxy sẽ mở Chromium qua proxy đó khi đăng nhập, kiểm tra phiên và tạo video, mỗi tài khoản một IP riêng nếu bạn gán proxy khác nhau."/>
+            <Button Grid.Column="1" Style="{StaticResource ModernPrimaryButton}" Command="{Binding AddProxyCommand}"
+                    Padding="18,9" VerticalAlignment="Top" Margin="20,0,0,0" Content="➕ Thêm proxy"/>
+        </Grid>
+
+        <UniformGrid Grid.Row="1" Columns="3" Margin="0,0,0,14">
+            <Border Style="{StaticResource ModernCard}" Margin="0,0,8,0">
+                <StackPanel Orientation="Horizontal">
+                    <Image Source="/Assets/Icons/services.png" Width="38" Height="38" RenderOptions.BitmapScalingMode="HighQuality"/>
+                    <StackPanel Margin="14,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="TỔNG PROXY" Style="{StaticResource SectionTitle}"/>
+                        <TextBlock Text="{Binding TotalCount}" Style="{StaticResource KpiNumber}"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+            <Border Style="{StaticResource ModernCard}" Margin="4,0,4,0">
+                <StackPanel Orientation="Horizontal">
+                    <Image Source="/Assets/Icons/kpi-logged-in.png" Width="38" Height="38" RenderOptions.BitmapScalingMode="HighQuality"/>
+                    <StackPanel Margin="14,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="CHẠY ĐƯỢC (đã kiểm tra)" Style="{StaticResource SectionTitle}"/>
+                        <TextBlock Text="{Binding OkCount}" Style="{StaticResource KpiNumber}" Foreground="{StaticResource SuccessBrush}"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+            <Border Style="{StaticResource ModernCard}" Margin="8,0,0,0">
+                <StackPanel Orientation="Horizontal">
+                    <Image Source="/Assets/Icons/kpi-login-failed.png" Width="38" Height="38" RenderOptions.BitmapScalingMode="HighQuality"/>
+                    <StackPanel Margin="14,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="LỖI (đã kiểm tra)" Style="{StaticResource SectionTitle}"/>
+                        <TextBlock Text="{Binding FailedCount}" Style="{StaticResource KpiNumber}" Foreground="{StaticResource DangerBrush}"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </UniformGrid>
+
+        <Border Grid.Row="2" Style="{StaticResource ModernCard}" Padding="12,10,12,4" Margin="0,0,0,14">
+            <WrapPanel>
+                <Button Content="Nhập nhiều proxy" Command="{Binding ImportProxiesCommand}" Margin="0,0,8,6"
+                        ToolTip="Dán nhiều dòng: host:port, host:port:user:pass, user:pass@host:port, scheme://..."/>
+                <Button Content="Sửa" Command="{Binding EditProxyCommand}" Margin="0,0,20,6" ToolTip="Sửa proxy đã tích (hoặc bấm đúp vào dòng)"/>
+                <Button Content="Kiểm tra đã chọn" Command="{Binding TestSelectedCommand}" Style="{StaticResource ModernPrimaryButton}" Margin="0,0,8,6"
+                        ToolTip="Đi qua proxy tới dịch vụ hỏi IP: cho biết IP thoát, quốc gia và độ trễ"/>
+                <Button Content="Kiểm tra tất cả" Command="{Binding TestAllCommand}" Margin="0,0,20,6"/>
+                <Button Content="Xóa đã chọn" Command="{Binding DeleteProxiesCommand}" Foreground="{StaticResource DangerBrush}" Margin="0,0,0,6"/>
+            </WrapPanel>
+        </Border>
+
+        <Border Grid.Row="3" Style="{StaticResource ModernCard}" Padding="0" Margin="0,0,0,10">
+            <Grid>
+                <DataGrid ItemsSource="{Binding Items}" AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True"
+                          GridLinesVisibility="Horizontal" HeadersVisibility="Column" MouseDoubleClick="Grid_MouseDoubleClick">
+                    <DataGrid.Columns>
+                        <DataGridTemplateColumn Width="46">
+                            <DataGridTemplateColumn.Header>
+                                <CheckBox IsChecked="{Binding DataContext.IsAllSelected, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay}"
+                                          HorizontalAlignment="Center"/>
+                            </DataGridTemplateColumn.Header>
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" HorizontalAlignment="Center"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+
+                        <DataGridTemplateColumn Header="TÊN PROXY" Width="200">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <StackPanel VerticalAlignment="Center" Margin="4,6">
+                                        <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" FontSize="13.5" TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock Text="{Binding Note}" FontSize="11.5" Foreground="{StaticResource TextMutedBrush}" TextTrimming="CharacterEllipsis"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+
+                        <DataGridTextColumn Header="ĐỊA CHỈ" Binding="{Binding Address}" Width="230"/>
+                        <DataGridTextColumn Header="ĐĂNG NHẬP" Binding="{Binding AuthText}" Width="150"/>
+
+                        <DataGridTemplateColumn Header="KẾT QUẢ KIỂM TRA" Width="*" MinWidth="260">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <StackPanel VerticalAlignment="Center" Margin="4,4">
+                                        <TextBlock Text="{Binding TestText}" TextWrapping="Wrap" FontSize="12.5">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding LastOk}" Value="True">
+                                                            <Setter Property="Foreground" Value="{StaticResource SuccessBrush}"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding LastOk}" Value="False">
+                                                            <Setter Property="Foreground" Value="{StaticResource DangerBrush}"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                        <TextBlock Text="IP thoát ngoài Nhật/Hàn: Dola thường cần IP Nhật hoặc Hàn." FontSize="11" Foreground="{StaticResource WarningBrush}"
+                                                   Visibility="{Binding CountryWarning, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+
+                        <DataGridTemplateColumn Header="TÀI KHOẢN ĐANG DÙNG" Width="240">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding UsageText}" TextWrapping="Wrap" MaxHeight="44" VerticalAlignment="Center" Margin="4,4"
+                                               Foreground="{StaticResource TextSecondaryBrush}" FontSize="12.5" ToolTip="{Binding UsageText}"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                    </DataGrid.Columns>
+                </DataGrid>
+
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <StackPanel.Style>
+                        <Style TargetType="StackPanel">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding TotalCount}" Value="0">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </StackPanel.Style>
+                    <TextBlock Text="Chưa có proxy nào" FontSize="16" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" HorizontalAlignment="Center"/>
+                    <TextBlock Text="Bấm 'Thêm proxy' hoặc 'Nhập nhiều proxy' (dán mỗi dòng một proxy)." Foreground="{StaticResource TextMutedBrush}" Margin="0,6,0,14" HorizontalAlignment="Center"/>
+                    <Button Content="Thêm proxy đầu tiên" Style="{StaticResource ModernPrimaryButton}" Command="{Binding AddProxyCommand}" HorizontalAlignment="Center" Padding="18,9"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <TextBlock Grid.Row="4" Text="{Binding StatusText}" Foreground="{StaticResource TextSecondaryBrush}" FontSize="12" TextWrapping="Wrap" MinHeight="18"/>
+    </Grid>
+</UserControl>

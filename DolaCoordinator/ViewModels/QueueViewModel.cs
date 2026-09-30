@@ -19,7 +19,7 @@ using Microsoft.Win32;
 namespace DolaCoordinator.ViewModels;
 
 /// <summary>
-/// Trang "Vận hành": KHÔNG nhập prompt (việc đó ở "Quản lý prompt") mà quản lý tiến trình: chạy / tạm dừng / dừng,
+/// Trang "Tạo video": KHÔNG nhập prompt (việc đó ở "Quản lý prompt") mà quản lý tiến trình: chạy / tạm dừng / dừng,
 /// độ ưu tiên, thử lại, hủy, dọn hàng đợi và theo dõi từng video đang làm.
 /// </summary>
 public partial class QueueViewModel : ObservableObject
@@ -54,7 +54,7 @@ public partial class QueueViewModel : ObservableObject
     [ObservableProperty] private int _completedCount;
     [ObservableProperty] private int _failedCount;
 
-    /// <summary>Số tác vụ chưa xong (chờ + đang chạy): hiện cạnh tên mục Vận hành.</summary>
+    /// <summary>Số tác vụ chưa xong (chờ + đang chạy): hiện cạnh tên mục Tạo video.</summary>
     [ObservableProperty] private int _activeCount;
 
     // ---- tiến độ tổng của đợt đang chạy (thanh ở đáy cửa sổ): 100% = xong toàn bộ
@@ -409,7 +409,7 @@ public partial class QueueViewModel : ObservableObject
     {
         selected = Selected();
         if (selected.Count > 0) return true;
-        MessageBox.Show($"Tích chọn ít nhất một tác vụ (ô vuông đầu dòng) để {what}.", "Vận hành", MessageBoxButton.OK, MessageBoxImage.Information);
+        MessageBox.Show($"Tích chọn ít nhất một tác vụ (ô vuông đầu dòng) để {what}.", "Tạo video", MessageBoxButton.OK, MessageBoxImage.Information);
         return false;
     }
 
@@ -468,7 +468,7 @@ public partial class QueueViewModel : ObservableObject
         var target = selected.FirstOrDefault(t => !string.IsNullOrWhiteSpace(t.LocalFilePath) && File.Exists(t.LocalFilePath));
         if (target == null)
         {
-            MessageBox.Show("Các tác vụ đã tích chưa có video tải về (hoặc file không còn).", "Vận hành", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show("Các tác vụ đã tích chưa có video tải về (hoặc file không còn).", "Tạo video", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
         Process.Start(new ProcessStartInfo { FileName = target.LocalFilePath!, UseShellExecute = true });

@@ -150,7 +150,7 @@ public static class ImportTemplates
             ("Facebook (email/SĐT + mật khẩu)", "Cần Email hoặc SĐT + Mật khẩu. Khóa 2FA tùy chọn như trên. Captcha / kiểm tra bảo mật bạn tự xử lý."),
             ("Facebook cookie", "Cần cột Cookie chứa c_user= và/hoặc xs=. App nạp cookie, vào Facebook xác nhận, rồi đăng nhập Dola bằng Facebook."),
             ("Cookie Dola", "Cần cột Cookie chứa sessionid=. Dùng thẳng, không cần đăng nhập; nên bấm Kiểm tra phiên sau khi nhập."),
-            ("Dùng để chạy", "Có (mặc định) = tham gia chạy ở trang Vận hành; Không = loại khỏi vận hành (chỉ áp dụng được với tài khoản đã có phiên)."),
+            ("Dùng để chạy", "Có (mặc định) = tham gia chạy ở trang Tạo video; Không = loại khỏi tạo video (chỉ áp dụng được với tài khoản đã có phiên)."),
             ("Sau khi đăng nhập", "Đóng (mặc định) = tự đóng trình duyệt khi đăng nhập xong; Giữ = giữ cửa sổ mở."),
             ("BẢO MẬT", "File này chứa mật khẩu / cookie ở dạng chữ thường. Sau khi nhập xong hãy XÓA file. App lưu thông tin đăng nhập đã mã hóa bằng Windows DPAPI (chỉ giải mã được trên tài khoản Windows này)."),
         });

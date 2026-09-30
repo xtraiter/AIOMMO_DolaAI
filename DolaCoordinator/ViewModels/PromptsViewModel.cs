@@ -13,20 +13,43 @@ using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using DolaCoordinator.Helpers;
 using DolaCoordinator.Models;
+using DolaCoordinator.Services.Queue;
 using DolaCoordinator.Services.Storage;
 using DolaCoordinator.Views.Dialogs;
 using Microsoft.Win32;
 
 namespace DolaCoordinator.ViewModels;
 
+/// <summary>Một lựa chọn trong ô lọc trạng thái (cần là thuộc tính để ComboBox đọc được).</summary>
+public sealed record StatusOption(string Key, string Label);
+
 /// <summary>
 /// Trang "Quản lý prompt": thư viện prompt (nhiều dòng, dạng bảng…) — soạn, nhập/xuất, nhân bản, xóa và
-/// "Thêm vào hàng đợi" để làm video. Việc chạy / dừng / ưu tiên do trang Vận hành lo.
+/// "Thêm vào hàng đợi" để làm video. Việc chạy / dừng / ưu tiên do trang Tạo video lo.
 /// </summary>
 public partial class PromptsViewModel : ObservableObject
 {
     private readonly IDatabaseService _db;
     private readonly QueueViewModel _queue;
+    private readonly ITaskDispatcher _dispatcher;
+
+    /// <summary>Hai trang con của mục Quản lý prompt: 0 = Prompt, 1 = Kịch bản lớn.</summary>
+    [ObservableProperty] private int _subTab;
+
+    /// <summary>Lọc theo trạng thái: all | none | active | done | failed.</summary>
+    [ObservableProperty] private string _statusFilter = "all";
+
+    [ObservableProperty] private int _activePromptCount;
+    [ObservableProperty] private int _donePromptCount;
+    [ObservableProperty] private int _failedPromptCount;
+
+    public IReadOnlyList<StatusOption> StatusFilters { get; } = new[]
+    {
+        new StatusOption("all", "Mọi trạng thái"), new StatusOption("none", "Chưa làm"), new StatusOption("active", "Đang làm"),
+        new StatusOption("done", "Đã xong"), new StatusOption("failed", "Có lỗi"),
+    };
+
+    partial void OnStatusFilterChanged(string value) => View.Refresh();
 
     public ObservableCollection<PromptItem> Prompts { get; } = new();
     public ICollectionView View { get; }
@@ -46,10 +69,11 @@ public partial class PromptsViewModel : ObservableObject
         UpdateCounters();
     }
 
-    public PromptsViewModel(IDatabaseService db, QueueViewModel queue)
+    public PromptsViewModel(IDatabaseService db, QueueViewModel queue, ITaskDispatcher dispatcher)
     {
         _db = db;
         _queue = queue;
+        _dispatcher = dispatcher;
 
         var view = new ListCollectionView(Prompts) { Filter = FilterPrompt };
         view.SortDescriptions.Add(new SortDescription(nameof(PromptItem.UpdatedAt), ListSortDirection.Descending));
@@ -66,12 +90,112 @@ public partial class PromptsViewModel : ObservableObject
             p.PropertyChanged += OnPromptPropertyChanged;
             Prompts.Add(p);
         }
+        ReconcileActive();
         UpdateCounters();
+        _dispatcher.TaskUpdated += OnTaskUpdated;
     }
+
+    // ------------------------------------------------------------------ trạng thái của prompt
+
+    private static string? BucketOf(RenderTaskStatus s) => s switch
+    {
+        RenderTaskStatus.Pending or RenderTaskStatus.Queued or RenderTaskStatus.Processing or RenderTaskStatus.Downloading => "active",
+        RenderTaskStatus.Completed => "done",
+        RenderTaskStatus.Failed => "failed",
+        _ => null, // đã hủy: không tính là xong hay lỗi
+    };
+
+    private static void Adjust(PromptItem p, string? bucket, int delta)
+    {
+        switch (bucket)
+        {
+            case "active": p.ActiveCount = Math.Max(0, p.ActiveCount + delta); break;
+            case "done": p.DoneCount = Math.Max(0, p.DoneCount + delta); break;
+            case "failed": p.FailedCount = Math.Max(0, p.FailedCount + delta); break;
+        }
+    }
+
+    /// <summary>Mỗi lần trạng thái tác vụ đổi, chuyển nó sang đúng nhóm đếm của prompt (chỉ tính một lần cho mỗi lần đổi nhóm).</summary>
+    private void OnTaskUpdated(RenderTask task)
+    {
+        if (string.IsNullOrEmpty(task.PromptId)) return;
+        Application.Current?.Dispatcher.InvokeAsync(() => ApplyTaskState(task));
+    }
+
+    private void ApplyTaskState(RenderTask task)
+    {
+        var prompt = Prompts.FirstOrDefault(p => p.Id == task.PromptId);
+        if (prompt == null) return;
+        var newBucket = BucketOf(task.Status);
+        if (newBucket == task.PromptBucket) return;
+
+        Adjust(prompt, task.PromptBucket, -1);
+        Adjust(prompt, newBucket, +1);
+        task.PromptBucket = newBucket;
+        _db.UpsertTask(task);
+        _db.UpsertPrompt(prompt);
+        prompt.NotifyChanged();
+        UpdateCounters();
+        if (StatusFilter != "all") View.Refresh();
+    }
+
+    /// <summary>Số "đang làm" của mỗi prompt phải khớp các tác vụ còn trong hàng đợi (tác vụ có thể đã bị xóa khỏi hàng đợi).</summary>
+    public void ReconcileActive()
+    {
+        var active = _db.GetAllTasks()
+            .Where(t => !string.IsNullOrEmpty(t.PromptId) && BucketOf(t.Status) == "active")
+            .GroupBy(t => t.PromptId!)
+            .ToDictionary(g => g.Key, g => g.Count());
+        foreach (var p in Prompts)
+        {
+            var actual = active.TryGetValue(p.Id, out var n) ? n : 0;
+            if (p.ActiveCount == actual) continue;
+            p.ActiveCount = actual;
+            _db.UpsertPrompt(p);
+            p.NotifyChanged();
+        }
+    }
+
+    [RelayCommand]
+    private void RefreshStatuses()
+    {
+        ReconcileActive();
+        UpdateCounters();
+        View.Refresh();
+    }
+
+    /// <summary>Xóa các prompt có trạng thái đã chọn (đã xong / lỗi / chưa làm) sau khi hỏi lại.</summary>
+    private void DeleteByStatus(string what, Func<PromptItem, bool> match)
+    {
+        var victims = Prompts.Where(match).ToList();
+        if (victims.Count == 0) { StatusText = $"Không có prompt nào {what}."; return; }
+        var question = $"Xóa {victims.Count} prompt {what}?" + Environment.NewLine + "(Video đã tạo vẫn nằm trong thư mục lưu video.)";
+        if (MessageBox.Show(question, "Xóa prompt", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
+        _db.DeletePrompts(victims.Select(v => v.Id));
+        foreach (var v in victims) Prompts.Remove(v);
+        UpdateCounters();
+        StatusText = $"Đã xóa {victims.Count} prompt {what}.";
+    }
+
+    [RelayCommand] private void DeleteDone() => DeleteByStatus("đã xong", p => p.StatusKey == "done");
+    [RelayCommand] private void DeleteFailed() => DeleteByStatus("bị lỗi", p => p.StatusKey is "failed" or "partial");
+    [RelayCommand] private void DeleteUnused() => DeleteByStatus("chưa làm video nào", p => p.StatusKey == "none");
 
     private bool FilterPrompt(object o)
     {
         if (o is not PromptItem p) return false;
+        if (StatusFilter != "all")
+        {
+            var ok = StatusFilter switch
+            {
+                "none" => p.StatusKey == "none",
+                "active" => p.StatusKey == "active",
+                "done" => p.StatusKey is "done" or "partial",
+                "failed" => p.StatusKey is "failed" or "partial",
+                _ => true,
+            };
+            if (!ok) return false;
+        }
         if (string.IsNullOrWhiteSpace(SearchText)) return true;
         var q = SearchText.Trim();
         return p.Title.Contains(q, StringComparison.OrdinalIgnoreCase)
@@ -91,6 +215,9 @@ public partial class PromptsViewModel : ObservableObject
         TotalCount = Prompts.Count;
         SelectedCount = Prompts.Count(p => p.IsSelected);
         UsedCount = Prompts.Count(p => p.QueuedCount > 0);
+        ActivePromptCount = Prompts.Count(p => p.StatusKey == "active");
+        DonePromptCount = Prompts.Count(p => p.StatusKey is "done" or "partial");
+        FailedPromptCount = Prompts.Count(p => p.StatusKey is "failed" or "partial");
     }
 
     private void Add(PromptItem p)
@@ -330,6 +457,8 @@ public partial class PromptsViewModel : ObservableObject
                 var composed = PromptComposer.Compose(p.Text, p.ReferenceLocalPaths, p.Characters, p.SceneText, p.SceneImages);
                 tasks.Add(new RenderTask
                 {
+                    PromptId = p.Id,
+                    PromptBucket = "active",
                     Prompt = composed.Text,
                     PromptTitle = p.Title,
                     Model = dlg.ModelOverride ?? p.Model,
@@ -342,6 +471,7 @@ public partial class PromptsViewModel : ObservableObject
             }
             p.LastQueuedAt = DateTime.UtcNow;
             p.QueuedCount += dlg.Copies;
+            p.ActiveCount += dlg.Copies;
             _db.UpsertPrompt(p);
             p.NotifyChanged();
         }

@@ -47,6 +47,14 @@ public partial class AccountProfile : ObservableObject
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
+    /// <summary>Proxy gán cho tài khoản này (ProxyItem.Id); null = không dùng proxy riêng.</summary>
+    public string? ProxyId { get; set; }
+
+    /// <summary>Tên proxy + quốc gia IP thoát để hiện trong bảng (do trang tính khi nạp / đổi).</summary>
+    [ObservableProperty]
+    [property: BsonIgnore]
+    private string _proxyText = "—";
+
     public DateTime? LastLaunchAt { get; set; }
 
     public DateTime? LastLoginAt { get; set; }
@@ -158,7 +166,7 @@ public partial class AccountProfile : ObservableObject
         _ => "Chưa đăng nhập",
     };
 
-    /// <summary>Có được dùng khi chạy vận hành không (mặc định có). Lưu ở phiên: DolaSession.IsEnabled.</summary>
+    /// <summary>Có được dùng khi tạo video không (mặc định có). Lưu ở phiên: DolaSession.IsEnabled.</summary>
     [BsonIgnore]
     public bool UseForRender
     {

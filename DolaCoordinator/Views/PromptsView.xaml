@@ -18,6 +18,26 @@
                 <Setter Property="HorizontalAlignment" Value="Center"/>
                 <Setter Property="VerticalAlignment" Value="Center"/>
             </Style>
+            <Style x:Key="PromptStatusBadge" TargetType="Border">
+                <Setter Property="CornerRadius" Value="10"/>
+                <Setter Property="Padding" Value="9,2,9,3"/>
+                <Setter Property="HorizontalAlignment" Value="Left"/>
+                <Setter Property="Background" Value="{StaticResource WindowBackgroundBrush}"/>
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding StatusKey}" Value="active">
+                        <Setter Property="Background" Value="{StaticResource InfoSoftBrush}"/>
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding StatusKey}" Value="done">
+                        <Setter Property="Background" Value="{StaticResource SuccessSoftBrush}"/>
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding StatusKey}" Value="partial">
+                        <Setter Property="Background" Value="{StaticResource WarningSoftBrush}"/>
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding StatusKey}" Value="failed">
+                        <Setter Property="Background" Value="{StaticResource DangerSoftBrush}"/>
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
             <Style x:Key="KpiNumber" TargetType="TextBlock">
                 <Setter Property="FontSize" Value="26"/>
                 <Setter Property="FontWeight" Value="Bold"/>
@@ -42,7 +62,7 @@
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
             <TextBlock FontSize="12.5" Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap" VerticalAlignment="Center"
-                       Text="Thư viện prompt: mỗi prompt có nội dung nhiều dòng (bảng phân cảnh, danh sách…) và thiết lập mặc định. Tích chọn prompt rồi bấm 'Thêm vào hàng đợi' để làm video; việc chạy, tạm dừng, ưu tiên nằm ở trang Vận hành."/>
+                       Text="Thư viện prompt: mỗi prompt có nội dung nhiều dòng (bảng phân cảnh, danh sách…) và thiết lập mặc định. Tích chọn prompt rồi bấm 'Thêm vào hàng đợi' để làm video; việc chạy, tạm dừng, ưu tiên nằm ở trang Tạo video."/>
             <Button Grid.Column="1" Style="{StaticResource ModernPrimaryButton}" Command="{Binding AddPromptCommand}"
                     Padding="18,9" VerticalAlignment="Top" Margin="20,0,0,0">
                 <StackPanel Orientation="Horizontal">
@@ -53,7 +73,7 @@
         </Grid>
 
         <!-- KPI -->
-        <UniformGrid Grid.Row="1" Columns="3" Margin="0,0,0,14">
+        <UniformGrid Grid.Row="1" Columns="4" Margin="0,0,0,14">
             <Border Style="{StaticResource ModernCard}" Margin="0,0,8,0">
                 <StackPanel Orientation="Horizontal">
                     <Image Source="/Assets/Icons/clapperboard.png" Width="38" Height="38" RenderOptions.BitmapScalingMode="HighQuality"/>
@@ -72,12 +92,25 @@
                     </StackPanel>
                 </StackPanel>
             </Border>
-            <Border Style="{StaticResource ModernCard}" Margin="8,0,0,0">
+            <Border Style="{StaticResource ModernCard}" Margin="4,0,4,0">
                 <StackPanel Orientation="Horizontal">
                     <Image Source="/Assets/Icons/film-reel.png" Width="38" Height="38" RenderOptions.BitmapScalingMode="HighQuality"/>
                     <StackPanel Margin="14,0,0,0" VerticalAlignment="Center">
-                        <TextBlock Text="ĐÃ TỪNG LÀM VIDEO" Style="{StaticResource SectionTitle}"/>
-                        <TextBlock Text="{Binding UsedCount}" Style="{StaticResource KpiNumber}" Foreground="{StaticResource SuccessBrush}"/>
+                        <TextBlock Text="ĐANG LÀM" Style="{StaticResource SectionTitle}"/>
+                        <TextBlock Text="{Binding ActivePromptCount}" Style="{StaticResource KpiNumber}" Foreground="{StaticResource InfoBrush}"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+            <Border Style="{StaticResource ModernCard}" Margin="8,0,0,0">
+                <StackPanel Orientation="Horizontal">
+                    <Image Source="/Assets/Icons/video.png" Width="38" Height="38" RenderOptions.BitmapScalingMode="HighQuality"/>
+                    <StackPanel Margin="14,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="ĐÃ XONG · CÓ LỖI" Style="{StaticResource SectionTitle}"/>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{Binding DonePromptCount}" Style="{StaticResource KpiNumber}" Foreground="{StaticResource SuccessBrush}"/>
+                            <TextBlock Text=" · " Style="{StaticResource KpiNumber}" Foreground="{StaticResource TextMutedBrush}"/>
+                            <TextBlock Text="{Binding FailedPromptCount}" Style="{StaticResource KpiNumber}" Foreground="{StaticResource DangerBrush}"/>
+                        </StackPanel>
                     </StackPanel>
                 </StackPanel>
             </Border>
@@ -102,6 +135,9 @@
                     </TextBlock>
                 </Grid>
 
+                <ComboBox Width="160" Margin="0,0,20,6" ItemsSource="{Binding StatusFilters}" DisplayMemberPath="Label" SelectedValuePath="Key"
+                          SelectedValue="{Binding StatusFilter}" ToolTip="Lọc prompt theo trạng thái làm video"/>
+
                 <Button Content="➕ Thêm vào hàng đợi" Command="{Binding AddToQueueCommand}" Style="{StaticResource ModernPrimaryButton}"
                         Margin="0,0,20,6" ToolTip="Làm video từ các prompt đã tích: chọn tỷ lệ, thời lượng, số video, độ ưu tiên"/>
                 <Button Content="Sửa" Command="{Binding EditSelectedCommand}" Margin="0,0,8,6" ToolTip="Sửa prompt đã tích (tích đúng 1 dòng; hoặc bấm đúp vào dòng)"/>
@@ -112,7 +148,16 @@
                 <Button Content="File mẫu Excel" Command="{Binding DownloadTemplateCommand}" Margin="0,0,20,6" ToolTip="Tải file Excel mẫu (có sheet Hướng dẫn) để điền nhiều prompt rồi Nhập từ file"/>
                 <Button Content="Quy tắc đặt prompt" Command="{Binding ShowRulesCommand}" Margin="0,0,20,6"
                         ToolTip="Đoạn prompt quy tắc để dán cho AI khi nhờ viết prompt video, có nút chép"/>
-                <Button Content="Xóa đã chọn" Command="{Binding DeleteSelectedCommand}" Foreground="{StaticResource DangerBrush}" Margin="0,0,0,6"/>
+                <Button Content="Xóa đã chọn" Command="{Binding DeleteSelectedCommand}" Foreground="{StaticResource DangerBrush}" Margin="0,0,8,6"/>
+                <Button Content="Dọn dẹp ▾" Margin="0,0,0,6" Click="Cleanup_Click" ToolTip="Xóa nhanh các prompt theo trạng thái">
+                    <Button.ContextMenu>
+                        <ContextMenu>
+                            <MenuItem Header="Xóa các prompt đã xong" Command="{Binding DeleteDoneCommand}"/>
+                            <MenuItem Header="Xóa các prompt bị lỗi" Command="{Binding DeleteFailedCommand}"/>
+                            <MenuItem Header="Xóa các prompt chưa làm video nào" Command="{Binding DeleteUnusedCommand}"/>
+                        </ContextMenu>
+                    </Button.ContextMenu>
+                </Button>
             </WrapPanel>
         </Border>
 
@@ -145,6 +190,19 @@
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
 
+                        <DataGridTemplateColumn Header="TRẠNG THÁI" Width="150">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <StackPanel VerticalAlignment="Center" Margin="2,4">
+                                        <Border Style="{StaticResource PromptStatusBadge}">
+                                            <TextBlock Text="{Binding StatusText}" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
+                                        </Border>
+                                        <TextBlock Text="{Binding StatusDetail}" FontSize="11" Foreground="{StaticResource TextMutedBrush}" Margin="0,3,0,0"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+
                         <DataGridTemplateColumn Header="NỘI DUNG" Width="*" MinWidth="240">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
@@ -155,13 +213,13 @@
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
 
-                        <DataGridTextColumn Header="DÒNG" Binding="{Binding LineCount}" Width="60"/>
+                        <DataGridTextColumn Header="DÒNG" Binding="{Binding LineCount}" Width="68"/>
                         <DataGridTextColumn Header="MODEL" Binding="{Binding ModelLabel}" Width="105"/>
                         <DataGridTextColumn Header="TỈ LỆ" Binding="{Binding Ratio}" Width="65"/>
                         <DataGridTextColumn Header="THỜI LƯỢNG" Binding="{Binding Duration, StringFormat='{}{0}s'}" Width="95"/>
-                        <DataGridTextColumn Header="ẢNH" Binding="{Binding ReferenceSummary}" Width="65"/>
-                        <DataGridTextColumn Header="NHÂN VẬT / BỐI CẢNH" Binding="{Binding CastSummary}" Width="150"/>
-                        <DataGridTextColumn Header="ĐÃ LÀM" Binding="{Binding QueuedCount}" Width="70"/>
+                        <DataGridTextColumn Header="ẢNH" Binding="{Binding ReferenceSummary}" Width="72"/>
+                        <DataGridTextColumn Header="NHÂN VẬT / BỐI CẢNH" Binding="{Binding CastSummary}" Width="185"/>
+                        <DataGridTextColumn Header="ĐÃ LÀM" Binding="{Binding QueuedCount}" Width="82"/>
                         <DataGridTemplateColumn Header="CẬP NHẬT" Width="120">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>

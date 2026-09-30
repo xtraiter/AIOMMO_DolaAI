@@ -2,6 +2,7 @@
 import asyncio
 import json
 from pathlib import Path
+from urllib.parse import unquote, urlsplit
 
 import config
 
@@ -10,6 +11,39 @@ LAUNCH_ARGS = [
     "--no-first-run",
     "--no-default-browser-check",
 ]
+
+def _proxy_from_url(raw: str) -> dict | None:
+    """"scheme://user:pass@host:port" (or "host:port") -> Playwright proxy dict; None if it cannot be read."""
+    raw = (raw or "").strip()
+    if not raw:
+        return None
+    if "://" not in raw:
+        raw = "http://" + raw
+    parts = urlsplit(raw)
+    if not parts.hostname:
+        return None
+    port = parts.port or (443 if parts.scheme == "https" else 80)
+    proxy = {"server": f"{parts.scheme}://{parts.hostname}:{port}"}
+    if parts.username:
+        proxy["username"] = unquote(parts.username)
+        proxy["password"] = unquote(parts.password or "")
+    return proxy
+
+
+def proxy_for_account(account: str | None) -> dict | None:
+    """Proxy of one account: accounts/<account>/proxy.txt (written by DolaCoordinator's "Gán proxy", one line
+    "scheme://user:pass@host:port") wins; otherwise the global DOLA_PROXY; otherwise no proxy."""
+    if account:
+        try:
+            f = Path("accounts") / account / "proxy.txt"
+            if f.is_file():
+                found = _proxy_from_url(f.read_text(encoding="utf-8"))
+                if found:
+                    return found
+        except OSError:
+            pass
+    return _proxy_from_url(config.PROXY) if config.PROXY else None
+
 
 # "Hidden" render window. The Dola extension needs a HEADED Chromium, so instead of headless mode the window is
 # opened far off-screen (and kept from being throttled as "occluded"). It behaves exactly like a normal window for the
@@ -59,8 +93,9 @@ async def launch_account_context(p, account: str, headless: bool = None, use_ext
         "locale": "ja-JP",
         "timezone_id": "Asia/Tokyo",
     }
-    if config.PROXY:
-        kwargs["proxy"] = {"server": config.PROXY}
+    proxy = proxy_for_account(account)
+    if proxy:
+        kwargs["proxy"] = proxy
     context = await p.chromium.launch_persistent_context(str(profile_dir), **kwargs)
 
     # Automatically ensure persistent cookies from cookie.txt

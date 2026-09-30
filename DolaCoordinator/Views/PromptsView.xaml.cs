@@ -11,6 +11,17 @@ public partial class PromptsView : UserControl
     public PromptsView()
     {
         InitializeComponent();
+        // mỗi lần mở trang: đối chiếu số "đang làm" của prompt với hàng đợi thật
+        Loaded += (_, _) => (DataContext as PromptsViewModel)?.RefreshStatusesCommand.Execute(null);
+    }
+
+    // Nút "Dọn dẹp ▾" mở menu xóa nhanh theo trạng thái
+    private void Cleanup_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { ContextMenu: { } menu } button) return;
+        menu.DataContext = DataContext;
+        menu.PlacementTarget = button;
+        menu.IsOpen = true;
     }
 
     // Bấm đúp vào một dòng = sửa prompt đó

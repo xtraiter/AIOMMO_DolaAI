@@ -20,7 +20,7 @@
 | Thư mục | Nội dung |
 |---|---|
 | `DolaModule.cs` | `services.AddDolaModule()` — điểm đăng ký DI duy nhất của module |
-| `Views/` | `QueueView` (Vận hành: điều khiển tiến trình), `PromptsView` (thư viện prompt), `ProfilesView` (Quản lý tài khoản), `SettingsView` + `Dialogs/` (thêm/sửa tài khoản, đăng nhập tự động, soạn prompt, thêm vào hàng đợi) |
+| `Views/` | `QueueView` (Tạo video: điều khiển tiến trình), `PromptsView` (thư viện prompt), `ProfilesView` (Quản lý tài khoản), `SettingsView` + `Dialogs/` (thêm/sửa tài khoản, đăng nhập tự động, soạn prompt, thêm vào hàng đợi) |
 | `ViewModels/` | CommunityToolkit.Mvvm (`[ObservableProperty]`, `[RelayCommand]`), `WeakReferenceMessenger` |
 | `Services/Queue` | `TaskDispatcher`: chọn tài khoản, gửi, poll, tải, đổi tài khoản khi lỗi |
 | `Services/Sessions` | `QuotaTracker` (hạn ngạch/ngày do app quản), `SessionValidator` |
@@ -33,7 +33,7 @@
 
 ### Từ prompt đến video
 
-`PromptsViewModel` giữ thư viện prompt (LiteDB, collection `prompts`; nội dung nhiều dòng giữ nguyên). "Thêm vào hàng đợi" tạo các `RenderTask` (kèm `Priority`, `PromptTitle`) rồi giao cho `QueueViewModel.EnqueueAsync`. `TaskDispatcher` không còn hàng đợi FIFO trong bộ nhớ: mỗi lần có chỗ trống nó nhận tác vụ `Pending` có `Priority` cao nhất (cùng mức: tạo trước) từ DB, nên đổi ưu tiên có hiệu lực đến phút chót. Tạm dừng chỉ chặn việc nhận tác vụ mới; dừng hẳn mới hủy tác vụ đang chạy. Số tác vụ chạy cùng lúc (`Capacity()`) là số luồng tối đa chỉnh ở trang Vận hành; chọn tài khoản theo `AccountStrategy` (chia đều theo số video đã giao / dồn vào tài khoản đầu) và bỏ qua tài khoản vừa lỗi 15 phút. Gateway do app bật nhận `DOLA_MAX_CONCURRENCY` đủ lớn cho mọi tài khoản, và `hide_window` (Chromium mở ngoài màn hình vì extension Dola bắt buộc cửa sổ có giao diện nên không dùng headless).
+`PromptsViewModel` giữ thư viện prompt (LiteDB, collection `prompts`; nội dung nhiều dòng giữ nguyên). "Thêm vào hàng đợi" tạo các `RenderTask` (kèm `Priority`, `PromptTitle`) rồi giao cho `QueueViewModel.EnqueueAsync`. `TaskDispatcher` không còn hàng đợi FIFO trong bộ nhớ: mỗi lần có chỗ trống nó nhận tác vụ `Pending` có `Priority` cao nhất (cùng mức: tạo trước) từ DB, nên đổi ưu tiên có hiệu lực đến phút chót. Tạm dừng chỉ chặn việc nhận tác vụ mới; dừng hẳn mới hủy tác vụ đang chạy. Số tác vụ chạy cùng lúc (`Capacity()`) là số luồng tối đa chỉnh ở trang Tạo video; chọn tài khoản theo `AccountStrategy` (chia đều theo số video đã giao / dồn vào tài khoản đầu) và bỏ qua tài khoản vừa lỗi 15 phút. Gateway do app bật nhận `DOLA_MAX_CONCURRENCY` đủ lớn cho mọi tài khoản, và `hide_window` (Chromium mở ngoài màn hình vì extension Dola bắt buộc cửa sổ có giao diện nên không dùng headless).
 
 ### Điều phối một tác vụ
 

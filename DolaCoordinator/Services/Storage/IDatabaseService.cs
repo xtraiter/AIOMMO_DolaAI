@@ -25,6 +25,11 @@ public interface IDatabaseService : IDisposable
     void UpsertProject(ScriptProject project);
     void DeleteProject(string id);
 
+    // Proxy
+    List<ProxyItem> GetAllProxies();
+    void UpsertProxy(ProxyItem proxy);
+    void DeleteProxy(string id);
+
     // Tài khoản Dola (profile của gateway)
     List<AccountProfile> GetAllProfiles();
     AccountProfile? GetProfileById(string id);
