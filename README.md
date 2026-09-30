@@ -17,7 +17,7 @@ cd AIOMMO_DolaAI\release\DolaCoordinator
 .\DolaCoordinator.exe
 ```
 
-Bản đóng gói sẵn nằm trong [`release/DolaCoordinator/`](release/DolaCoordinator). **Không cần cài Python hay .NET, không có file .bat nào phải chạy.** Yêu cầu: Windows 10/11 x64, có mạng ở lần chạy đầu tiên (tải Chromium). Thư mục `release` nặng khoảng 370 MB nên clone lần đầu hơi lâu.
+Bản đóng gói sẵn nằm trong [`release/DolaCoordinator/`](release/DolaCoordinator). **Không cần cài Python hay .NET, không có file .bat nào phải chạy.** Yêu cầu: Windows 10/11 x64, có mạng ở lần chạy đầu tiên (tải Chromium). Thư mục `release` nặng khoảng 370 MB nên clone lần đầu hơi lâu. Clone vào đường dẫn ngắn (ví dụ `D:\App\`): Windows giới hạn đường dẫn 260 ký tự và bản đóng gói có vài file nằm sâu; nếu Git báo `Filename too long` thì chạy `git config --global core.longpaths true` rồi clone lại.
 
 ```
 DolaCoordinator.exe          Ứng dụng
