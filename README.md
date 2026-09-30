@@ -30,7 +30,9 @@ gateway\accounts\            (tự tạo) phiên đăng nhập của từng tài
 - Cài trình duyệt tự động thử 3 cách: (1) bộ tải của Playwright (dùng proxy hệ thống nếu có), (2) tải trực tiếp cùng các file đó từ storage.googleapis.com / cdn.playwright.dev theo cấu hình proxy của Windows (như trình duyệt web), (3) gói dự phòng `dola-browser-1243.zip` trên GitHub Releases (tùy chọn, tạo bằng `scripts\pack-browser.ps1`). Nếu vẫn lỗi: **Cài đặt → Trình duyệt Chromium → Cài đặt trình duyệt** hoặc nút **Cài đặt ngay** ở thẻ vàng cột trái.
 - Đặt cả thư mục ở nơi có quyền ghi (không đặt trong `Program Files`), vì dữ liệu tài khoản nằm cạnh file exe.
 
-1. **Tab Dola Super**: *Thêm tài khoản* → đăng nhập thủ công / Google / Facebook / cookie Facebook. Mỗi tài khoản là một thư mục `gateway\accounts\<tên>`; phiên được lưu lại dùng lâu dài.
+1. **Tab Quản lý tài khoản**: *Thêm tài khoản* → đăng nhập thủ công / Google / Facebook / cookie Facebook. Mỗi tài khoản là một thư mục `gateway\accounts\<tên>`; phiên được lưu lại dùng lâu dài.
+   - Tích ô đầu dòng rồi dùng các nút ở hàng trên cho các tài khoản đã tích: **Mở/Đóng đã chọn**, **Đăng nhập tự động**, **Sửa**, **Kiểm tra phiên**, **Reset hạn ngạch**, **Mở thư mục**, **Xóa đã chọn**. Cột cuối mỗi dòng chỉ còn nút Mở/Đóng.
+   - Thông tin đăng nhập (tài khoản, mật khẩu, khóa 2FA, cookie Facebook) được **ghi nhớ** nếu để tích "Ghi nhớ": mã hóa bằng Windows DPAPI (chỉ giải mã được bởi tài khoản Windows này, lưu trong `coordinator.db`), lần sau chỉ bấm *Đăng nhập tự động*. Sửa hoặc xóa thông tin đã lưu bằng nút **Sửa** (tích đúng 1 dòng).
 2. **Tab Vận hành**: nhập prompt (mỗi dòng một video), chọn tỷ lệ, thời lượng, ảnh tham chiếu, thư mục lưu → *Bắt đầu điều phối*.
 3. **Tab Cài đặt**: hạn ngạch/ngày, số luồng, thư mục lưu video.
 

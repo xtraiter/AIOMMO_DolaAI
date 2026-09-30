@@ -230,11 +230,18 @@
                 </Grid>
                 <ComboBox Width="150" ItemsSource="{Binding StatusFilters}" SelectedIndex="{Binding StatusFilterIndex}" Margin="0,0,20,6"/>
 
-                <Button Content="Mở đã chọn" Command="{Binding OpenSelectedCommand}" Margin="0,0,8,6"/>
+                <Button Content="Mở đã chọn" Command="{Binding OpenSelectedCommand}" Margin="0,0,8,6"
+                        ToolTip="Mở trình duyệt cho các tài khoản đã tích"/>
                 <Button Content="Đóng đã chọn" Command="{Binding CloseSelectedCommand}" Margin="0,0,8,6"/>
+                <Button Content="Đăng nhập tự động" Command="{Binding AutoLoginSelectedCommand}" Margin="0,0,8,6"
+                        ToolTip="Đăng nhập Google / Facebook / cookie Facebook cho các tài khoản đã tích, dùng thông tin đã ghi nhớ (chưa có thì hỏi một lần)"/>
+                <Button Content="Sửa" Command="{Binding EditSelectedCommand}" Margin="0,0,8,6"
+                        ToolTip="Sửa tài khoản đã tích (tích đúng 1 dòng): cách đăng nhập, tài khoản/mật khẩu đã lưu, ghi chú"/>
                 <Button Content="Kiểm tra phiên" Command="{Binding ValidateSelectedCommand}" Margin="0,0,8,6"
-                        ToolTip="Nhờ gateway kiểm tra đăng nhập thật (các dòng đã chọn, hoặc tất cả nếu chưa chọn)"/>
+                        ToolTip="Nhờ gateway kiểm tra đăng nhập thật (các dòng đã tích, hoặc tất cả nếu chưa tích)"/>
                 <Button Content="Reset hạn ngạch" Command="{Binding ResetQuotaSelectedCommand}" Margin="0,0,8,6"/>
+                <Button Content="Mở thư mục" Command="{Binding OpenFolderSelectedCommand}" Margin="0,0,8,6"
+                        ToolTip="Mở thư mục accounts/&lt;tên&gt; của các tài khoản đã tích (chưa tích thì mở thư mục accounts)"/>
                 <Button Content="Nhập / Xuất / Gateway ▾" Click="IoMenu_Click" Margin="0,0,8,6"/>
                 <Button Content="Xóa đã chọn" Command="{Binding DeleteSelectedCommand}" Foreground="{StaticResource DangerBrush}" Margin="0,0,0,6"/>
             </WrapPanel>
@@ -263,7 +270,7 @@
                                     <StackPanel VerticalAlignment="Center" Margin="4,0">
                                         <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="13.5" TextTrimming="CharacterEllipsis"/>
                                         <TextBlock FontSize="11.5" Foreground="{StaticResource TextMutedBrush}" TextTrimming="CharacterEllipsis"
-                                                   Text="{Binding Notes, Converter={StaticResource EmptyToDashConverter}}"/>
+                                                   Text="{Binding SubText}" ToolTip="{Binding SubText}"/>
                                     </StackPanel>
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
@@ -315,44 +322,12 @@
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
 
-                        <DataGridTemplateColumn Header="THAO TÁC" Width="310">
+                        <DataGridTemplateColumn Header="THAO TÁC" Width="120">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
-                                    <StackPanel Orientation="Horizontal">
-                                        <Button Style="{StaticResource OpenButton}" Margin="0,0,6,0"
-                                                Command="{Binding DataContext.ToggleProfileCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                CommandParameter="{Binding}"/>
-                                        <Button Style="{StaticResource GhostButton}" ToolTip="Đăng nhập tự động: Google / Facebook / cookie Facebook"
-                                                Command="{Binding DataContext.AutoLoginCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                CommandParameter="{Binding}">
-                                            <TextBlock Style="{StaticResource GlyphText}" Text="&#xE77B;"/>
-                                        </Button>
-                                        <Button Style="{StaticResource GhostButton}" ToolTip="Nhờ gateway kiểm tra đăng nhập (cần đóng profile)"
-                                                Command="{Binding DataContext.ValidateProfileCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                CommandParameter="{Binding}">
-                                            <TextBlock Style="{StaticResource GlyphText}" Text="&#xE73E;"/>
-                                        </Button>
-                                        <Button Style="{StaticResource GhostButton}" ToolTip="Reset hạn ngạch hôm nay"
-                                                Command="{Binding DataContext.ResetQuotaProfileCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                CommandParameter="{Binding}">
-                                            <TextBlock Style="{StaticResource GlyphText}" Text="&#xE72C;"/>
-                                        </Button>
-                                        <Button Style="{StaticResource GhostButton}" ToolTip="Sửa ghi chú"
-                                                Command="{Binding DataContext.EditProfileCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                CommandParameter="{Binding}">
-                                            <TextBlock Style="{StaticResource GlyphText}" Text="&#xE70F;"/>
-                                        </Button>
-                                        <Button Style="{StaticResource GhostButton}" ToolTip="Mở thư mục accounts/&lt;tên&gt; của tài khoản"
-                                                Command="{Binding DataContext.OpenFolderCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                CommandParameter="{Binding}">
-                                            <TextBlock Style="{StaticResource GlyphText}" Text="&#xE8B7;"/>
-                                        </Button>
-                                        <Button Style="{StaticResource GhostButton}" ToolTip="Xóa tài khoản" Foreground="{StaticResource DangerBrush}"
-                                                Command="{Binding DataContext.DeleteProfileCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                CommandParameter="{Binding}">
-                                            <TextBlock Style="{StaticResource GlyphText}" Text="&#xE74D;"/>
-                                        </Button>
-                                    </StackPanel>
+                                    <Button Style="{StaticResource OpenButton}"
+                                            Command="{Binding DataContext.ToggleProfileCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            CommandParameter="{Binding}"/>
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>

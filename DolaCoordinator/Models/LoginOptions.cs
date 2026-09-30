@@ -17,8 +17,8 @@ public enum AfterLogin
 }
 
 /// <summary>
-/// Tùy chọn mở profile: đăng nhập tự động hay thủ công. Mật khẩu, khóa 2FA và cookie Facebook chỉ nằm trong bộ nhớ,
-/// được đưa cho script qua stdin và không lưu ở đâu cả.
+/// Tùy chọn mở profile: đăng nhập tự động hay thủ công. Mật khẩu, khóa 2FA và cookie Facebook được đưa cho script
+/// qua stdin; chỉ khi bật Remember thì mới lưu lại (mã hóa DPAPI, xem AccountProfile.SavedSecret).
 /// </summary>
 public sealed partial class LoginOptions : ObservableObject
 {
@@ -43,6 +43,10 @@ public sealed partial class LoginOptions : ObservableObject
 
     [ObservableProperty]
     private AfterLogin _after = AfterLogin.Keep;
+
+    /// <summary>Ghi nhớ thông tin đăng nhập (mã hóa DPAPI) để lần sau chỉ cần bấm "Đăng nhập tự động".</summary>
+    [ObservableProperty]
+    private bool _remember = true;
 
     public bool IsAutomatic => Method != LoginMethod.Manual;
 

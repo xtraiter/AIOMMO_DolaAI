@@ -15,14 +15,15 @@ public partial class ProfileEditorWindow : Window
     public bool OpenAfterCreate { get; set; } = true;
 
     /// <summary>Cách đăng nhập (thủ công / Google / Facebook / cookie Facebook) và việc làm sau khi xong.</summary>
-    public LoginOptions Login { get; } = new();
+    public LoginOptions Login { get; private set; } = new();
 
     /// <summary>Thêm tài khoản mới.</summary>
     public ProfileEditorWindow() : this(null) { }
 
     /// <summary>Sửa tài khoản có sẵn (chỉ đổi được ghi chú: tên là khóa của gateway).</summary>
-    public ProfileEditorWindow(AccountProfile? editing)
+    public ProfileEditorWindow(AccountProfile? editing, LoginOptions? savedLogin = null)
     {
+        if (savedLogin != null) Login = savedLogin;
         IsEditMode = editing != null;
 
         InitializeComponent();
@@ -34,12 +35,11 @@ public partial class ProfileEditorWindow : Window
             Notes = editing.Notes ?? string.Empty;
             Title = "Sửa tài khoản";
             TitleText.Text = "Sửa tài khoản";
-            SubtitleText.Text = "Tên là tên thư mục accounts/… của gateway nên không đổi được. Chỉ sửa ghi chú.";
+            SubtitleText.Text = "Tên là tên thư mục accounts/… của gateway nên không đổi được. Sửa được cách đăng nhập, tài khoản/mật khẩu đã lưu và ghi chú.";
             NameBox.IsReadOnly = true;
             CountPanel.Visibility = Visibility.Collapsed;
             CountColumn.Width = new GridLength(0);
             OpenAfterBox.Visibility = Visibility.Collapsed;
-            LoginBox.Visibility = Visibility.Collapsed;
             OkButton.Content = "Lưu thay đổi";
         }
         else
@@ -70,17 +70,19 @@ public partial class ProfileEditorWindow : Window
                 return;
             }
 
-            var loginError = Login.Validate();
-            if (loginError != null)
-            {
-                ShowError(loginError);
-                return;
-            }
             if (Login.IsAutomatic && Count > 1)
             {
                 ShowError("Đăng nhập tự động chỉ dùng khi tạo 1 tài khoản (mỗi tài khoản có thông tin và có thể có captcha/2FA riêng).");
                 return;
             }
+        }
+
+        // Sửa tài khoản + bỏ tích "Ghi nhớ" = xóa thông tin đã lưu, không cần đủ mật khẩu
+        var loginError = IsEditMode && !Login.Remember ? null : Login.Validate();
+        if (loginError != null)
+        {
+            ShowError(loginError);
+            return;
         }
 
         DialogResult = true;

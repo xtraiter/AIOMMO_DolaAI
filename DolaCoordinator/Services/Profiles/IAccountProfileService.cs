@@ -31,6 +31,12 @@ public interface IAccountProfileService
     /// <summary>Tạo tài khoản mới: thư mục accounts/&lt;name&gt; + bản ghi profile. Tên phải hợp lệ theo gateway.</summary>
     AccountProfile CreateProfile(string name, string? notes);
 
+    /// <summary>Thông tin đăng nhập đã ghi nhớ của tài khoản (giải mã DPAPI). Method = Manual nếu chưa lưu.</summary>
+    LoginOptions GetSavedLogin(AccountProfile profile);
+
+    /// <summary>Ghi nhớ (hoặc xóa, khi options.Method = Manual) thông tin đăng nhập và lưu tài khoản vào DB.</summary>
+    void SaveLogin(AccountProfile profile, LoginOptions options);
+
     /// <summary>Tạo profile cho một DolaSession đã có (dữ liệu cũ chưa có profile). Tên được chuẩn hóa theo gateway.</summary>
     AccountProfile AdoptSession(DolaSession session);
 

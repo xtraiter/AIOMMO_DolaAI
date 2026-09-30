@@ -51,6 +51,10 @@
                        Text="Các bước: nạp cookie → mở Facebook xác nhận đã đăng nhập → chuyển sang Dola, chọn 'Tiếp tục với Facebook' → lưu phiên Dola vào profile (giống fb_to_dola.py)."/>
         </StackPanel>
 
+        <CheckBox Content="Ghi nhớ thông tin đăng nhập (mã hóa, chỉ dùng trên máy này) — lần sau chỉ cần bấm 'Đăng nhập tự động'"
+                  IsChecked="{Binding Remember}" Margin="0,0,0,12"
+                  Visibility="{Binding Method, Converter={StaticResource EnumToVisibilityConverter}, ConverterParameter=Google|Facebook|FacebookCookie}"/>
+
         <!-- Sau khi đăng nhập xong -->
         <StackPanel Visibility="{Binding Method, Converter={StaticResource EnumToVisibilityConverter}, ConverterParameter=Manual|Google|Facebook|FacebookCookie}">
             <TextBlock Text="KHI ĐĂNG NHẬP XONG" Style="{StaticResource FieldLabel}"/>
@@ -64,6 +68,6 @@
 
         <TextBlock Foreground="{StaticResource TextMutedBrush}" FontSize="11.5" TextWrapping="Wrap"
                    Visibility="{Binding Method, Converter={StaticResource EnumToVisibilityConverter}, ConverterParameter=Google|Facebook|FacebookCookie}"
-                   Text="Captcha, 2FA (khi không nhập khóa TOTP), checkpoint hoặc sai mật khẩu: cửa sổ trình duyệt sẽ dừng chờ và dòng tài khoản hiện 'Cần bạn xử lý' — bạn tự giải, script tự chạy tiếp. Mật khẩu/khóa 2FA/cookie chỉ dùng trong bộ nhớ, không lưu lại."/>
+                   Text="Captcha, 2FA (khi không nhập khóa TOTP), checkpoint hoặc sai mật khẩu: cửa sổ trình duyệt sẽ dừng chờ và dòng tài khoản hiện 'Cần bạn xử lý' — bạn tự giải, script tự chạy tiếp. Nếu bật 'Ghi nhớ', mật khẩu/khóa 2FA/cookie được mã hóa bằng Windows DPAPI (chỉ giải mã được bởi tài khoản Windows này) và lưu trong dữ liệu của app; tắt thì chỉ dùng một lần trong bộ nhớ."/>
     </StackPanel>
 </UserControl>

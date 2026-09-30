@@ -26,7 +26,7 @@ using Microsoft.Win32;
 namespace DolaCoordinator.ViewModels;
 
 /// <summary>
-/// Trang "Dola Super": mỗi dòng là một tài khoản Dola = một profile Chromium của dola-render-gateway
+/// Trang "Quản lý tài khoản": mỗi dòng là một tài khoản Dola = một profile Chromium của dola-render-gateway
 /// (accounts/&lt;tên&gt;) + phiên (cookie) + hạn ngạch + trạng thái thật do gateway giữ.
 /// </summary>
 public partial class ProfilesViewModel : ObservableObject, IDisposable
@@ -399,6 +399,8 @@ public partial class ProfilesViewModel : ObservableObject, IDisposable
             }
 
             var p = _chrome.CreateProfile(name, dlg.Notes);
+            if (dlg.Count == 1 && options.IsAutomatic && options.Remember)
+                _chrome.SaveLogin(p, options); // phải lưu TRƯỚC khi mở: sau khi đưa cho script, mật khẩu bị xóa khỏi bộ nhớ
             Profiles.Add(p);
             created.Add(p);
         }
@@ -422,17 +424,28 @@ public partial class ProfilesViewModel : ObservableObject, IDisposable
             await ToggleProfileAsync(created[0]);
     }
 
+    /// <summary>Sửa tài khoản đã tích: cách đăng nhập, tài khoản/mật khẩu/2FA/cookie đã ghi nhớ và ghi chú.</summary>
     [RelayCommand]
-    private void EditProfile(AccountProfile? p)
+    private void EditSelected()
     {
-        if (p == null) return;
-        var dlg = new ProfileEditorWindow(p) { Owner = Application.Current.MainWindow };
+        var targets = Selected();
+        if (targets.Count != 1)
+        {
+            MessageBox.Show(targets.Count == 0 ? "Tích chọn 1 tài khoản (ô vuông đầu dòng) rồi bấm Sửa." : "Chỉ sửa được từng tài khoản một. Hãy tích đúng 1 dòng.",
+                "Sửa tài khoản", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var p = targets[0];
+        var dlg = new ProfileEditorWindow(p, _chrome.GetSavedLogin(p)) { Owner = Application.Current.MainWindow };
         if (dlg.ShowDialog() != true) return;
 
         p.Notes = string.IsNullOrWhiteSpace(dlg.Notes) ? null : dlg.Notes.Trim();
-        _db.UpsertProfile(p);
+        if (dlg.Login.IsAutomatic && !dlg.Login.Remember)
+            dlg.Login.Method = LoginMethod.Manual; // bỏ tích "Ghi nhớ" = xóa thông tin đã lưu
+        _chrome.SaveLogin(p, dlg.Login); // lưu luôn cả tài khoản vào DB
         View.Refresh();
-        Log($"Đã lưu ghi chú của '{p.Name}'.");
+        Log(p.HasSavedLogin ? $"Đã lưu '{p.Name}' — đăng nhập {p.SubText}." : $"Đã lưu '{p.Name}' (đăng nhập thủ công).");
     }
 
     /// <summary>Mở profile với đăng nhập tự động. Mật khẩu / khóa 2FA / cookie chỉ sống trong bộ nhớ và bị xóa ngay sau khi đưa cho script.</summary>
@@ -488,20 +501,36 @@ public partial class ProfilesViewModel : ObservableObject, IDisposable
         }
     }
 
-    /// <summary>Đăng nhập tự động cho tài khoản đã có (đăng nhập lại khi phiên hết hạn).</summary>
+    /// <summary>
+    /// Đăng nhập tự động cho các tài khoản đã tích: tài khoản đã ghi nhớ thông tin thì chạy luôn, chưa có thì hỏi một lần
+    /// (và ghi nhớ nếu bạn để tích "Ghi nhớ").
+    /// </summary>
     [RelayCommand]
-    private async Task AutoLoginAsync(AccountProfile? p)
+    private async Task AutoLoginSelectedAsync()
     {
-        if (p == null) return;
-        if (p.IsRunning || p.IsBusy)
-        {
-            MessageBox.Show("Profile đang mở. Đóng profile trước rồi đăng nhập tự động.", "Không thể đăng nhập", MessageBoxButton.OK, MessageBoxImage.Information);
-            return;
-        }
+        var targets = Selected();
+        if (targets.Count == 0) { Log("Tích chọn tài khoản cần đăng nhập tự động."); return; }
         if (!EnsureEnvironment()) return;
 
-        var initial = new LoginOptions();
-        if (p.Session != null)
+        var busy = targets.Where(p => p.IsRunning || p.IsBusy).ToList();
+        if (busy.Count > 0)
+            Log($"Bỏ qua {busy.Count} tài khoản đang mở/đang bận: {string.Join(", ", busy.Select(p => p.Name))} (đóng profile trước).");
+
+        foreach (var p in targets.Except(busy))
+        {
+            if (p.HasSavedLogin)
+                await LaunchWithOptionsAsync(p, _chrome.GetSavedLogin(p));
+            else if (!await PromptAndLoginAsync(p))
+                break; // bấm Hủy: dừng cả loạt
+            await Task.Delay(2000); // mở lần lượt để máy không bị nghẽn
+        }
+    }
+
+    /// <summary>Hỏi thông tin đăng nhập cho một tài khoản chưa lưu. Trả false nếu người dùng bấm Hủy.</summary>
+    private async Task<bool> PromptAndLoginAsync(AccountProfile p)
+    {
+        var initial = _chrome.GetSavedLogin(p);
+        if (!initial.IsAutomatic && p.Session != null)
         {
             // Phiên đang giữ cookie Facebook chưa chuyển thành cookie Dola: đề xuất luôn luồng cookie Facebook
             var token = p.Session.PlainToken ?? _security.Decrypt(p.Session.EncryptedToken);
@@ -513,9 +542,12 @@ public partial class ProfilesViewModel : ObservableObject, IDisposable
         }
 
         var dlg = new AutoLoginWindow(p.Name, initial) { Owner = Application.Current.MainWindow };
-        if (dlg.ShowDialog() != true) return;
+        if (dlg.ShowDialog() != true) return false;
 
+        if (dlg.Options.IsAutomatic && dlg.Options.Remember)
+            _chrome.SaveLogin(p, dlg.Options); // lưu trước khi mở: mở xong mật khẩu bị xóa khỏi bộ nhớ
         await LaunchWithOptionsAsync(p, dlg.Options);
+        return true;
     }
 
     private bool NameExists(string name, AccountProfile? except)
@@ -587,15 +619,6 @@ public partial class ProfilesViewModel : ObservableObject, IDisposable
 
     // ------------------------------------------------------------------ session validation / quota
 
-    [RelayCommand]
-    private async Task ValidateProfileAsync(AccountProfile? p)
-    {
-        if (p == null || IsValidating) return;
-        IsValidating = true;
-        try { await ValidateAsync(p); }
-        finally { IsValidating = false; }
-    }
-
     /// <summary>Kiểm tra phiên của các dòng đã chọn (hoặc tất cả dòng đang hiển thị nếu chưa chọn).</summary>
     [RelayCommand]
     private async Task ValidateSelectedAsync()
@@ -616,15 +639,6 @@ public partial class ProfilesViewModel : ObservableObject, IDisposable
         {
             IsValidating = false;
         }
-    }
-
-    [RelayCommand]
-    private void ResetQuotaProfile(AccountProfile? p)
-    {
-        if (p?.LinkedSessionId == null) return;
-        _quota.ResetQuota(p.LinkedSessionId);
-        ReloadSessions();
-        Log($"Đã reset hạn ngạch hôm nay của '{p.Name}'.");
     }
 
     [RelayCommand]
@@ -791,10 +805,13 @@ public partial class ProfilesViewModel : ObservableObject, IDisposable
 
     // ------------------------------------------------------------------ folders / delete / misc
 
+    /// <summary>Mở thư mục accounts/&lt;tên&gt; của tài khoản đã tích (chưa tích thì mở thư mục accounts chung).</summary>
     [RelayCommand]
-    private void OpenFolder(AccountProfile? p)
+    private void OpenFolderSelected()
     {
-        if (p != null) _chrome.OpenFolder(p);
+        var picked = Selected();
+        if (picked.Count == 0) { OpenProfilesRoot(); return; }
+        foreach (var p in picked.Take(5)) _chrome.OpenFolder(p);
     }
 
     [RelayCommand]
@@ -808,12 +825,6 @@ public partial class ProfilesViewModel : ObservableObject, IDisposable
     {
         LoadProfiles();
         Log($"Đã đồng bộ với thư mục accounts/ của gateway: {TotalCount} tài khoản.");
-    }
-
-    [RelayCommand]
-    private async Task DeleteProfileAsync(AccountProfile? p)
-    {
-        if (p != null) await DeleteManyAsync(new List<AccountProfile> { p });
     }
 
     [RelayCommand]

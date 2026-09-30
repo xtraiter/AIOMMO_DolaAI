@@ -31,7 +31,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private SettingsViewModel _settingsVm;
 
-    // 0 = Vận hành, 1 = Dola Super (tài khoản/profile), 2 = Cài đặt
+    // 0 = Vận hành, 1 = Quản lý tài khoản (profile), 2 = Cài đặt
     [ObservableProperty]
     private int _selectedTabIndex = 0;
 
@@ -44,8 +44,8 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private static readonly (string Title, string Subtitle)[] PageTitles =
     {
         ("Vận hành", "Hàng đợi render video và tiến độ tải về"),
-        ("Dola Super", "Mỗi profile là một tài khoản Dola của gateway: đăng nhập (thủ công/Google/Facebook), lưu phiên, theo dõi hạn ngạch"),
-        ("Cài đặt", "Gateway, thư mục lưu và cập nhật"),
+        ("Quản lý tài khoản", "Mỗi dòng là một tài khoản Dola: tích chọn rồi dùng các nút ở hàng trên (mở, đăng nhập tự động, sửa, kiểm tra, xóa...)"),
+        ("Cài đặt", "Gateway, trình duyệt, thư mục lưu và cập nhật"),
     };
 
     partial void OnSelectedTabIndexChanged(int value)

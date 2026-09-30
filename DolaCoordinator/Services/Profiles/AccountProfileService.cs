@@ -168,6 +168,50 @@ public class AccountProfileService : IAccountProfileService
         return !Directory.EnumerateFileSystemEntries(dir).Any(); // vừa tạo, chưa đăng nhập
     }
 
+    public LoginOptions GetSavedLogin(AccountProfile profile)
+    {
+        var options = new LoginOptions { Method = profile.SavedMethod, Email = profile.SavedEmail ?? string.Empty, After = profile.SavedAfter };
+        if (string.IsNullOrEmpty(profile.SavedSecret)) return options;
+        try
+        {
+            using var doc = JsonDocument.Parse(_security.Decrypt(profile.SavedSecret));
+            string Read(string name) => doc.RootElement.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() ?? string.Empty : string.Empty;
+            options.Password = Read("password");
+            options.Totp = Read("totp");
+            options.Cookie = Read("cookie");
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException or FormatException)
+        {
+            // Dữ liệu đã lưu không giải mã được (vd. chép DB sang máy/tài khoản Windows khác): coi như chưa lưu
+            options.Method = LoginMethod.Manual;
+        }
+        return options;
+    }
+
+    public void SaveLogin(AccountProfile profile, LoginOptions options)
+    {
+        if (!options.IsAutomatic)
+        {
+            profile.SavedMethod = LoginMethod.Manual;
+            profile.SavedEmail = null;
+            profile.SavedSecret = null;
+        }
+        else
+        {
+            profile.SavedMethod = options.Method;
+            profile.SavedEmail = string.IsNullOrWhiteSpace(options.Email) ? null : options.Email.Trim();
+            profile.SavedSecret = _security.Encrypt(JsonSerializer.Serialize(new
+            {
+                password = options.Password,
+                totp = options.Totp,
+                cookie = options.Cookie,
+            }));
+        }
+        profile.SavedAfter = options.After;
+        profile.NotifyLoginChanged();
+        _db.UpsertProfile(profile);
+    }
+
     public DolaSession AttachCookie(AccountProfile profile, string cookieHeader)
     {
         var header = cookieHeader.Trim();
