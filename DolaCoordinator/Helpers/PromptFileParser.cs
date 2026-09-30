@@ -42,11 +42,11 @@ public static class PromptFileParser
 
     public static List<PromptItem> Parse(string path)
     {
-        var text = File.ReadAllText(path, Encoding.UTF8).TrimStart('﻿');
         var ext = Path.GetExtension(path).ToLowerInvariant();
-        return ext is ".csv" or ".tsv"
-            ? ParseCsv(text)
-            : ParseBlocks(text, Path.GetFileNameWithoutExtension(path));
+        if (ext is ".xlsx" or ".csv" or ".tsv") return FromRows(TableFile.ReadRows(path));
+
+        var text = File.ReadAllText(path, Encoding.UTF8).TrimStart('﻿');
+        return ParseBlocks(text, Path.GetFileNameWithoutExtension(path));
     }
 
     // ------------------------------------------------------------------ txt / md
@@ -78,18 +78,20 @@ public static class PromptFileParser
 
     // ------------------------------------------------------------------ csv
 
-    public static List<PromptItem> ParseCsv(string text)
+    public static List<PromptItem> ParseCsv(string text) => FromRows(ReadCsv(text));
+
+    /// <summary>Bảng (dòng đầu là tiêu đề) từ Excel hoặc CSV → danh sách prompt. Ô nhiều dòng được giữ nguyên.</summary>
+    public static List<PromptItem> FromRows(List<string[]> rows)
     {
-        var rows = ReadCsv(text);
         var result = new List<PromptItem>();
         if (rows.Count == 0) return result;
 
         var header = rows[0].Select(Norm).ToList();
-        int Col(params string[] names) => header.FindIndex(h => names.Contains(h));
+        int Col(params string[] names) => header.FindIndex(h => names.Any(n => h == n || h.StartsWith(n)));
         var iText = Col("prompt", "noidung", "content", "text", "kichban", "script");
         var hasHeader = iText >= 0;
 
-        int iTitle, iRatio, iDuration, iNotes, iModel = -1;
+        int iTitle, iRatio, iDuration, iNotes, iModel = -1, iRefs = -1;
         if (hasHeader)
         {
             iTitle = Col("title", "ten", "name", "tenprompt", "tieude");
@@ -97,6 +99,7 @@ public static class PromptFileParser
             iDuration = Col("duration", "thoiluong", "giay", "seconds");
             iNotes = Col("notes", "note", "ghichu");
             iModel = Col("model", "mohinh", "seedance");
+            iRefs = Col("anhthamchieu", "refimages", "images", "reference");
         }
         else
         {
@@ -119,6 +122,7 @@ public static class PromptFileParser
                 Ratio = NormalizeRatio(Get(iRatio)),
                 Duration = NormalizeDuration(Get(iDuration)),
                 Model = NormalizeModel(Get(iModel)),
+                ReferenceLocalPaths = Get(iRefs).Split(new[] { ';', '\n' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList(),
                 Notes = Get(iNotes) is { Length: > 0 } n ? n : null,
             });
         }
@@ -126,7 +130,7 @@ public static class PromptFileParser
     }
 
     /// <summary>CSV RFC 4180: ô trong ngoặc kép có thể chứa dấu phân cách, xuống dòng và "" (một dấu ngoặc kép).</summary>
-    private static List<string[]> ReadCsv(string text)
+    public static List<string[]> ReadCsv(string text)
     {
         var firstLine = text.Split('\n', 2)[0];
         var delimiter = new[] { ',', ';', '\t' }.MaxBy(d => firstLine.Count(c => c == d));

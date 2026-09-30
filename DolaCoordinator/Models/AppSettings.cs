@@ -35,7 +35,10 @@ public class AppSettings
     /// <summary>
     /// Giới hạn quota mặc định cho mỗi session / ngày (1-2 tác vụ)
     /// </summary>
-    public int DefaultDailyQuota { get; set; } = 2;
+    public int DefaultDailyQuota { get; set; } = 5;
+
+    /// <summary>Đã đổi hạn ngạch mặc định cũ (2) sang 5 một lần cho bản cài cũ (xem LiteDbDatabaseService.GetSettings).</summary>
+    public bool QuotaDefaultMigrated { get; set; }
 
     /// <summary>
     /// Thư mục lưu video tải về. Mặc định là thư mục Videos của Windows; chọn lại ngay trên trang Vận hành.

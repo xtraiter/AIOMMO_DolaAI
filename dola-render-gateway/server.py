@@ -189,6 +189,8 @@ class TaskResponse(BaseModel):
     account: str | None = None
     # Progress: warmup -> new_chat -> submitting -> generating -> done
     stage: str | None = None
+    # What Dola's chat agent said next to the video (e.g. it produced a different length than requested)
+    note: str | None = None
 
 
 def _is_loopback(request: Request) -> bool:
@@ -263,7 +265,7 @@ async def _run_task(task_id, model, prompt, ratio, duration, reference_images, c
         public_url = f"{config.PUBLIC_BASE}/videos/{Path(result['local_path']).name}"
         store.update(task_id, status="completed", video_url=public_url, stage="done",
                      account=result.get("account"), last_poll_at=time.time(),
-                     finished_at=time.time())
+                     finished_at=time.time(), note=result.get("note") or None)
     except Exception as e:
         store.update(task_id, status="failed", error=str(e)[:500],
                      failure_code=_classify_failure(e), finished_at=time.time())
@@ -470,6 +472,7 @@ async def get_video(task_id: str, authorization: str | None = Header(default=Non
         id=row["id"], status=row["status"], model=row["model"],
         prompt=row["prompt"], video_url=row["video_url"], error=row["error"],
         failure_code=row.get("failure_code"), account=row.get("account"), stage=row.get("stage"),
+        note=row.get("note"),
     )
 
 

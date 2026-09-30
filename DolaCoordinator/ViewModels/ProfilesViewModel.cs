@@ -705,6 +705,10 @@ public partial class ProfilesViewModel : ObservableObject, IDisposable
 
     // ------------------------------------------------------------------ import / export
 
+    /// <summary>
+    /// Nhập hàng loạt từ Excel / CSV / TXT: Google (Gmail), Facebook thường, Facebook cookie, Cookie Dola, tài khoản thủ công.
+    /// Thông tin đăng nhập được ghi nhớ (mã hóa) để bấm "Đăng nhập tự động" là chạy.
+    /// </summary>
     [RelayCommand]
     private async Task ImportFromFileAsync()
     {
@@ -712,75 +716,115 @@ public partial class ProfilesViewModel : ObservableObject, IDisposable
 
         var dialog = new OpenFileDialog
         {
-            Filter = "Text / CSV (*.txt;*.csv)|*.txt;*.csv|Tất cả (*.*)|*.*",
-            Title = "Import danh sách tài khoản (Tên|Cookie)"
+            Filter = "Excel / CSV / văn bản (*.xlsx;*.csv;*.tsv;*.txt)|*.xlsx;*.csv;*.tsv;*.txt|Tất cả (*.*)|*.*",
+            Title = "Nhập danh sách tài khoản (Excel / CSV)",
         };
         if (dialog.ShowDialog() != true) return;
 
+        List<AccountRow> rows;
         try
         {
-            var imported = new List<AccountProfile>();
-            var skipped = 0;
+            rows = AccountFileParser.Parse(dialog.FileName);
+        }
+        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException or DecoderFallbackException)
+        {
+            MessageBox.Show($"Không đọc được file: {ex.Message}", "Nhập tài khoản", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
 
-            foreach (var raw in File.ReadAllLines(dialog.FileName, Encoding.UTF8))
+        if (rows.Count == 0)
+        {
+            MessageBox.Show("Không tìm thấy dòng tài khoản nào trong file. Bấm 'Tải file mẫu Excel' để xem các cột và từng loại tài khoản.",
+                "Nhập tài khoản", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var bad = rows.Where(r => r.Error != null).ToList();
+        var good = rows.Where(r => r.Error == null).ToList();
+        var existing = good.Where(r => NameExists(r.Name, null) || Directory.Exists(Path.Combine(_chrome.AccountsDir!, r.Name))).ToList();
+        var toCreate = good.Except(existing).ToList();
+
+        var summary = new StringBuilder($"File có {rows.Count} dòng tài khoản:{Environment.NewLine}");
+        foreach (var g in toCreate.GroupBy(r => r.KindLabel))
+            summary.AppendLine($"  • {g.Count()} × {g.Key}");
+        if (existing.Count > 0)
+            summary.AppendLine($"  • {existing.Count} bỏ qua vì tên đã tồn tại: {string.Join(", ", existing.Take(5).Select(r => r.Name))}{(existing.Count > 5 ? "…" : string.Empty)}");
+        if (bad.Count > 0)
+        {
+            summary.AppendLine($"  • {bad.Count} dòng lỗi (bỏ qua):");
+            foreach (var b in bad.Take(8)) summary.AppendLine($"      dòng {b.Line}: {b.Error}");
+            if (bad.Count > 8) summary.AppendLine($"      … và {bad.Count - 8} dòng nữa");
+        }
+
+        if (toCreate.Count == 0)
+        {
+            MessageBox.Show(summary.ToString(), "Nhập tài khoản", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        summary.AppendLine().Append($"Nhập {toCreate.Count} tài khoản?");
+        if (MessageBox.Show(summary.ToString(), "Nhập tài khoản", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
+
+        var created = new List<(AccountProfile Profile, AccountRow Row)>();
+        foreach (var r in toCreate)
+        {
+            var p = _chrome.CreateProfile(r.Name, r.Notes);
+            if (r.IsAutomatic)
             {
-                var line = raw.Trim();
-                if (line.Length == 0 || line.StartsWith('#')) continue;
-
-                string name, cookie;
-                if (line.Contains('|'))
+                _chrome.SaveLogin(p, new LoginOptions
                 {
-                    var parts = line.Split('|');
-                    name = parts[0].Trim();
-                    cookie = parts.Length > 1 ? parts[1].Trim() : "";
-                }
-                else
-                {
-                    name = string.Empty;
-                    cookie = line;
-                }
-
-                if (cookie.Length == 0) continue;
-                if (string.IsNullOrWhiteSpace(name)) name = $"Account_{Profiles.Count + imported.Count + 1}";
-
-                // Gateway chỉ nhận tên A-Z a-z 0-9 _ -; chuẩn hóa thay vì từ chối cả dòng
-                var clean = GatewayLocator.SanitizeAccountName(name);
-                if (clean != name) Log($"Đổi tên '{name}' → '{clean}' cho hợp lệ với gateway.");
-
-                if (NameExists(clean, null) || Directory.Exists(Path.Combine(_chrome.AccountsDir!, clean)))
-                {
-                    skipped++;
-                    Log($"Bỏ qua '{clean}': tài khoản đã tồn tại.");
-                    continue;
-                }
-
-                var p = _chrome.CreateProfile(clean, null);
-                _chrome.AttachCookie(p, cookie);
-                Profiles.Add(p);
-                imported.Add(p);
+                    Method = r.LoginMethod, Email = r.Email, Password = r.Password, Totp = r.Totp, Cookie = r.Cookie,
+                    After = r.After, Remember = true,
+                });
             }
-
-            ReloadSessions();
-            Log($"Đã import {imported.Count} tài khoản{(skipped > 0 ? $", bỏ qua {skipped} trùng tên" : "")}.");
-
-            if (imported.Count > 0 && MessageBox.Show(
-                    $"Đã import {imported.Count} tài khoản.\nNhờ gateway kiểm tra đăng nhập từng tài khoản ngay bây giờ?\n(Mỗi tài khoản mở Chromium headless vài chục giây.)",
-                    "Import thành công", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+            else if (r.Kind == AccountKind.DolaCookie)
             {
-                IsValidating = true;
-                try
-                {
-                    foreach (var p in imported) await ValidateAsync(p);
-                }
-                finally
-                {
-                    IsValidating = false;
-                }
+                _chrome.AttachCookie(p, r.Cookie);
+            }
+            Profiles.Add(p);
+            created.Add((p, r));
+        }
+
+        ReloadSessions();
+        foreach (var (p, r) in created.Where(c => !c.Row.Use))
+        {
+            if (p.Session == null) { Log($"'{p.Name}': chưa có phiên nên chưa đặt được 'Không dùng để chạy' (đặt sau khi đăng nhập)."); continue; }
+            p.UseForRender = false;
+            _db.UpsertSession(p.Session);
+        }
+        UpdateCounters();
+        Log($"Đã nhập {created.Count} tài khoản từ {Path.GetFileName(dialog.FileName)}" +
+            (existing.Count + bad.Count > 0 ? $" (bỏ qua {existing.Count} trùng tên, {bad.Count} lỗi)." : "."));
+
+        // Google / Facebook / cookie Facebook: mời đăng nhập luôn
+        var autos = created.Where(c => c.Row.IsAutomatic).Select(c => c.Profile).ToList();
+        if (autos.Count > 0 && MessageBox.Show(
+                $"Đăng nhập tự động ngay cho {autos.Count} tài khoản (Google / Facebook / cookie Facebook)?\n\n" +
+                "Mỗi tài khoản mở một cửa sổ Chromium; captcha / 2FA (khi không có khóa TOTP) bạn tự xử lý.\n" +
+                "Chọn Không thì để sau: tích tài khoản rồi bấm 'Đăng nhập tự động'.",
+                "Đăng nhập tự động", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+        {
+            foreach (var p in autos)
+            {
+                await LaunchWithOptionsAsync(p, _chrome.GetSavedLogin(p));
+                await Task.Delay(2000); // mở lần lượt để máy không bị nghẽn
             }
         }
-        catch (Exception ex) when (ex is IOException or ArgumentException)
+
+        // Cookie Dola: mời kiểm tra phiên qua gateway
+        var dolas = created.Where(c => c.Row.Kind == AccountKind.DolaCookie).Select(c => c.Profile).ToList();
+        if (dolas.Count > 0 && MessageBox.Show(
+                $"Nhờ gateway kiểm tra đăng nhập của {dolas.Count} tài khoản cookie Dola ngay bây giờ?\n(Mỗi tài khoản mở Chromium ẩn vài chục giây.)",
+                "Kiểm tra phiên", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
         {
-            MessageBox.Show($"Import lỗi: {ex.Message}", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
+            IsValidating = true;
+            try
+            {
+                foreach (var p in dolas) await ValidateAsync(p);
+            }
+            finally
+            {
+                IsValidating = false;
+            }
         }
     }
 
@@ -789,26 +833,21 @@ public partial class ProfilesViewModel : ObservableObject, IDisposable
     {
         var dialog = new SaveFileDialog
         {
-            Filter = "Text (*.txt)|*.txt",
-            FileName = "mau_import_tai_khoan.txt",
-            Title = "Lưu file mẫu import tài khoản Dola"
+            Filter = "Excel (*.xlsx)|*.xlsx|CSV (*.csv)|*.csv",
+            FileName = "mau_nhap_tai_khoan.xlsx",
+            Title = "Lưu file mẫu nhập tài khoản",
         };
         if (dialog.ShowDialog() != true) return;
 
-        var sb = new StringBuilder();
-        sb.AppendLine("# Mỗi dòng một tài khoản: Tên|Cookie");
-        sb.AppendLine("# Tên chỉ gồm A-Z a-z 0-9 _ - (tối đa 32 ký tự) vì là tên thư mục accounts/<tên> của gateway.");
-        sb.AppendLine("# Cookie phải chứa sessionid=... (cũng nhận cookie Facebook c_user=...; xs=... như gateway).");
-        sb.AppendLine("Acc_Dola_01|sessionid=xxxx; sid_guard=xxxx; uid_tt=xxxx");
-        sb.AppendLine("Acc_Dola_02|sessionid=yyyy; sid_guard=yyyy");
         try
         {
-            File.WriteAllText(dialog.FileName, sb.ToString(), Encoding.UTF8);
-            Log($"Đã lưu file mẫu: {dialog.FileName}");
+            if (TableFile.IsExcel(dialog.FileName)) ImportTemplates.WriteAccountTemplate(dialog.FileName);
+            else File.WriteAllText(dialog.FileName, ImportTemplates.AccountTemplateCsv(), new UTF8Encoding(true));
+            Log($"Đã lưu file mẫu: {dialog.FileName} (Excel có sheet 'Hướng dẫn' ghi rõ từng loại tài khoản).");
         }
-        catch (IOException ex)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            MessageBox.Show($"Không lưu được file: {ex.Message}", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show($"Không lưu được file (đang mở trong Excel?): {ex.Message}", "File mẫu", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 

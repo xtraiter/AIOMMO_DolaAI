@@ -548,12 +548,15 @@ public class TaskDispatcher : ITaskDispatcher, IDisposable
 
                 var progress = new Progress<int>(pct =>
                 {
+                    // Progress<T> báo về luồng UI trễ: một mốc % cũ có thể tới SAU khi tác vụ đã xong và kéo thanh tiến độ lùi lại
+                    if (task.Status != RenderTaskStatus.Downloading) return;
                     task.ProgressPercent = pct;
                     TaskUpdated?.Invoke(task);
                 });
 
                 var localPath = await DownloadWithRetryAsync(task, task.VideoUrl, progress, ct);
                 task.StageText = null;
+                ReportActualDuration(task, localPath, completed.Note);
                 Log($"[Thành Công] [{session.Name}] Đã lưu: {localPath}");
                 TaskUpdated?.Invoke(task);
                 return;
@@ -672,6 +675,31 @@ public class TaskDispatcher : ITaskDispatcher, IDisposable
     /// <summary>
     /// Xử lý lỗi gateway theo failure_code. Trả về true nếu nên đổi sang tài khoản khác, false nếu nên dừng tác vụ.
     /// </summary>
+    /// <summary>
+    /// Ghi rõ vào nhật ký thời lượng THỰC TẾ của video (đọc từ file) và lời Dola kèm theo, để khi Dola tạo khác thời lượng đã chọn
+    /// thì người dùng biết đó là kết quả của Dola chứ không phải app chọn sai.
+    /// </summary>
+    private void ReportActualDuration(RenderTask task, string localPath, string? dolaNote)
+    {
+        task.ActualDurationSeconds = Helpers.Mp4Info.GetDurationSeconds(localPath);
+        task.DolaNote = string.IsNullOrWhiteSpace(dolaNote) ? null : dolaNote.Trim();
+
+        if (task.ActualDurationSeconds is double actual)
+        {
+            if (task.HasDurationMismatch)
+                Log($"[Thời lượng] ⚠ Đã yêu cầu {task.Duration}s nhưng video Dola tạo ra chỉ dài {actual:0.#}s. App đã gửi đúng {task.Duration}s; độ dài do Dola quyết định, không phải lỗi của app.");
+            else
+                Log($"[Thời lượng] Video dài {actual:0.#}s (yêu cầu {task.Duration}s).");
+        }
+        else
+        {
+            Log($"[Thời lượng] Không đọc được độ dài thực tế của file video (yêu cầu {task.Duration}s).");
+        }
+
+        if (task.DolaNote != null) Log($"[Dola nói] {task.DolaNote}");
+        _databaseService.UpsertTask(task);
+    }
+
     private static string DescribeAskedBack(string question)
         => $"Dola hỏi lại thay vì tạo video: \"{question}\" — sửa prompt cho rõ (thời lượng đúng bằng thời lượng đã chọn, có ảnh tham chiếu hoặc ghi 'tự tạo nhân vật') " +
            "và giữ bật 'Chỉ dẫn tự động' trong Cài đặt.";

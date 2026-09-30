@@ -32,7 +32,7 @@ public partial class SettingsViewModel : ObservableObject
     private string? _clientApiKey;
 
     [ObservableProperty]
-    private int _defaultDailyQuota = 2;
+    private int _defaultDailyQuota = 5;
 
 
     [ObservableProperty]

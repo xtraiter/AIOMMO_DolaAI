@@ -60,6 +60,12 @@ public partial class RenderTask : ObservableObject
 
     public long FileSizeBytes { get; set; } = 0;
 
+    /// <summary>Thời lượng THỰC TẾ của video tải về (đọc từ file MP4). Có thể khác thời lượng yêu cầu vì do Dola quyết định.</summary>
+    public double? ActualDurationSeconds { get; set; }
+
+    /// <summary>Lời Dola viết kèm video (vd. "video chỉ dài 10s thay vì 15s").</summary>
+    public string? DolaNote { get; set; }
+
     public int ProgressPercent { get; set; } = 0;
 
     public string? ErrorMessage { get; set; }
@@ -84,6 +90,18 @@ public partial class RenderTask : ObservableObject
 
     [BsonIgnore]
     public string ModelLabel => DolaCoordinator.Helpers.PromptFileParser.ModelLabel(Model);
+
+    [BsonIgnore]
+    public string ActualDurationText => ActualDurationSeconds is double d ? $"{d:0.#}s" : "—";
+
+    /// <summary>Video thực tế lệch quá 1,5s so với yêu cầu.</summary>
+    [BsonIgnore]
+    public bool HasDurationMismatch => ActualDurationSeconds is double d && Math.Abs(d - Duration) > 1.5;
+
+    [BsonIgnore]
+    public string? DurationNote => HasDurationMismatch
+        ? $"Yêu cầu {Duration}s, Dola tạo {ActualDurationSeconds:0.#}s (do Dola, không phải lỗi của app)"
+        : null;
 
     [BsonIgnore]
     public string PriorityText => Priority switch

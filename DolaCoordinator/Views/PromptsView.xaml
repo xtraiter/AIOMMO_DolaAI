@@ -107,9 +107,9 @@
                 <Button Content="Sửa" Command="{Binding EditSelectedCommand}" Margin="0,0,8,6" ToolTip="Sửa prompt đã tích (tích đúng 1 dòng; hoặc bấm đúp vào dòng)"/>
                 <Button Content="Nhân bản" Command="{Binding DuplicateSelectedCommand}" Margin="0,0,20,6"/>
                 <Button Content="Nhập từ file" Command="{Binding ImportFromFileCommand}" Margin="0,0,8,6"
-                        ToolTip=".csv (cột Prompt/Nội dung, ô nhiều dòng để trong ngoặc kép) hoặc .txt/.md (các prompt cách nhau bằng dòng ---)"/>
-                <Button Content="Xuất CSV" Command="{Binding ExportToFileCommand}" Margin="0,0,8,6" ToolTip="Xuất các prompt đã tích (chưa tích thì xuất tất cả đang hiển thị)"/>
-                <Button Content="File mẫu" Command="{Binding DownloadTemplateCommand}" Margin="0,0,20,6"/>
+                        ToolTip="Excel (.xlsx) hoặc .csv — ô nhiều dòng giữ nguyên; hoặc .txt/.md (các prompt cách nhau bằng dòng ---). Tải File mẫu để xem cột."/>
+                <Button Content="Xuất Excel" Command="{Binding ExportToFileCommand}" Margin="0,0,8,6" ToolTip="Xuất các prompt đã tích (chưa tích thì xuất tất cả đang hiển thị)"/>
+                <Button Content="File mẫu Excel" Command="{Binding DownloadTemplateCommand}" Margin="0,0,20,6" ToolTip="Tải file Excel mẫu (có sheet Hướng dẫn) để điền nhiều prompt rồi Nhập từ file"/>
                 <Button Content="Xóa đã chọn" Command="{Binding DeleteSelectedCommand}" Foreground="{StaticResource DangerBrush}" Margin="0,0,0,6"/>
             </WrapPanel>
         </Border>
@@ -182,7 +182,7 @@
                         </Style>
                     </StackPanel.Style>
                     <TextBlock Text="Chưa có prompt nào" FontSize="16" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" HorizontalAlignment="Center"/>
-                    <TextBlock Text="Bấm 'Thêm prompt' để soạn, hoặc 'Nhập từ file' (.csv / .txt / .md)" Foreground="{StaticResource TextMutedBrush}" Margin="0,6,0,14" HorizontalAlignment="Center"/>
+                    <TextBlock Text="Bấm 'Thêm prompt' để soạn, hoặc 'Nhập từ file' (Excel / .csv / .txt / .md)" Foreground="{StaticResource TextMutedBrush}" Margin="0,6,0,14" HorizontalAlignment="Center"/>
                     <Button Content="Thêm prompt đầu tiên" Style="{StaticResource ModernPrimaryButton}" Command="{Binding AddPromptCommand}" HorizontalAlignment="Center" Padding="18,9"/>
                 </StackPanel>
             </Grid>

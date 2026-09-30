@@ -270,6 +270,23 @@ public class LiteDbDatabaseService : IDatabaseService
                 s.UpdateCheckUrl = string.Empty;
                 _settings.Upsert(s);
             }
+
+            // Hạn ngạch mặc định đổi từ 2 lên 5: bản cài cũ còn giá trị mặc định cũ (2) thì nâng lên 5 một lần
+            // (cả các tài khoản đang giữ đúng giá trị cũ). Ai đã tự chỉnh sang số khác thì giữ nguyên.
+            if (!s.QuotaDefaultMigrated)
+            {
+                s.QuotaDefaultMigrated = true;
+                if (s.DefaultDailyQuota == 2)
+                {
+                    s.DefaultDailyQuota = 5;
+                    foreach (var session in _sessions.FindAll().Where(x => x.DailyLimit == 2).ToList())
+                    {
+                        session.DailyLimit = 5;
+                        _sessions.Upsert(session);
+                    }
+                }
+                _settings.Upsert(s);
+            }
             return s;
         }
     }

@@ -46,6 +46,10 @@ public class TaskApiResponse
     [JsonPropertyName("model")]
     public string? Model { get; set; }
 
+    /// <summary>Lời Dola viết kèm video (gateway: note).</summary>
+    [JsonPropertyName("note")]
+    public string? Note { get; set; }
+
     [JsonPropertyName("prompt")]
     public string? Prompt { get; set; }
 

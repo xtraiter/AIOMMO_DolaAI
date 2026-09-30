@@ -25,7 +25,7 @@ public class DolaSession : System.ComponentModel.INotifyPropertyChanged
     /// <summary>
     /// Giới hạn quota cho phiên (mặc định 2).
     /// </summary>
-    public int DailyLimit { get; set; } = 2;
+    public int DailyLimit { get; set; } = 5;
 
     /// <summary>
     /// Ngày ghi nhận quota gần nhất dạng yyyy-MM-dd để reset lúc 00:00.

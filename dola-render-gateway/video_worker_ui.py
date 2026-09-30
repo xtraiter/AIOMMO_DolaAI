@@ -44,6 +44,21 @@ def _is_dola_question(text: str, prompt: str) -> bool:
     return True
 
 
+def _dola_note(texts, prompt: str) -> str:
+    """What Dola's chat agent wrote in the conversation besides our own prompt (e.g. "the video came out at 10s instead of 15s")."""
+    head = (prompt or "").strip()[:30]
+    seen, out = set(), []
+    for t in texts or []:
+        t = (t or "").strip()
+        if not t or t in seen:
+            continue
+        if head and (t.startswith(head) or head.startswith(t[:30])):
+            continue  # our own prompt echoed back
+        seen.add(t)
+        out.append(t)
+    return " | ".join(out)[:600]
+
+
 class AccountLimitedError(Exception):
     """Account reached daily video generation limit."""
 
@@ -367,7 +382,8 @@ async def poll_conversation(account: str, page, context, conversation_id: str,
             local = await _download(url, account)
             print(f"[{account}] Downloaded {local} ({local.stat().st_size / 1e6:.1f} MB)", flush=True)
             return {"video_url": url, "local_path": str(local),
-                    "conversation_id": conversation_id, "account": account}
+                    "conversation_id": conversation_id, "account": account,
+                    "note": _dola_note(poll.get("texts", []), prompt)}
         print(f"  ...Generating ({int(time.time() - start)}s)", flush=True)
     raise TimeoutError(f"No video generated within {timeout}s (conversation_id={conversation_id})")
 

@@ -54,6 +54,17 @@ public partial class QueueViewModel : ObservableObject
     [ObservableProperty] private int _completedCount;
     [ObservableProperty] private int _failedCount;
 
+    /// <summary>Số tác vụ chưa xong (chờ + đang chạy): hiện cạnh tên mục Vận hành.</summary>
+    [ObservableProperty] private int _activeCount;
+
+    // ---- tiến độ tổng của đợt đang chạy (thanh ở đáy cửa sổ): 100% = xong toàn bộ
+    [ObservableProperty] private int _batchCount;
+    [ObservableProperty] private double _overallPercent;
+    [ObservableProperty] private string _overallText = string.Empty;
+
+    private readonly HashSet<string> _batch = new();
+    private int _lastActive;
+
     // ---- trạng thái điều phối
     [ObservableProperty] private bool _isQueueRunning;
     [ObservableProperty] private bool _isPaused;
@@ -267,6 +278,47 @@ public partial class QueueViewModel : ObservableObject
         CompletedCount = Tasks.Count(t => t.Status == RenderTaskStatus.Completed);
         FailedCount = Tasks.Count(t => t.Status == RenderTaskStatus.Failed);
         SyncRunState();
+        UpdateBatch();
+    }
+
+    /// <summary>
+    /// "Đợt" = các tác vụ đã chờ/chạy kể từ lần gần nhất hàng đợi trống. Xong / lỗi / hủy đều tính là 100% của tác vụ đó
+    /// nên thanh chạm 100% khi cả đợt đã kết thúc (số lỗi ghi ở dòng chữ bên cạnh).
+    /// </summary>
+    private void UpdateBatch()
+    {
+        var active = Tasks.Where(t => t.Status is RenderTaskStatus.Pending or RenderTaskStatus.Queued or RenderTaskStatus.Processing or RenderTaskStatus.Downloading).ToList();
+        ActiveCount = active.Count;
+        if (active.Count > 0 && _lastActive == 0) _batch.Clear(); // có việc mới sau lúc trống: bắt đầu đợt mới
+        foreach (var t in active) _batch.Add(t.Id);
+        _lastActive = active.Count;
+        var present = Tasks.Select(t => t.Id).ToHashSet();
+        _batch.RemoveWhere(id => !present.Contains(id));
+
+        var items = Tasks.Where(t => _batch.Contains(t.Id)).ToList();
+        BatchCount = items.Count;
+        if (items.Count == 0) { OverallPercent = 0; OverallText = string.Empty; return; }
+
+        double sum = items.Sum(t => t.Status switch
+        {
+            RenderTaskStatus.Completed or RenderTaskStatus.Failed or RenderTaskStatus.Cancelled => 100,
+            RenderTaskStatus.Processing or RenderTaskStatus.Downloading => Math.Clamp(t.ProgressPercent, 0, 100),
+            _ => 0,
+        });
+        OverallPercent = sum / items.Count;
+
+        var done = items.Count(t => t.Status == RenderTaskStatus.Completed);
+        var failed = items.Count(t => t.Status == RenderTaskStatus.Failed);
+        var cancelled = items.Count(t => t.Status == RenderTaskStatus.Cancelled);
+        var running = items.Count(t => t.Status is RenderTaskStatus.Processing or RenderTaskStatus.Downloading);
+        var waiting = items.Count(t => t.Status is RenderTaskStatus.Pending or RenderTaskStatus.Queued);
+        OverallText = $"{done}/{items.Count} video xong"
+                      + (failed > 0 ? $" · {failed} lỗi" : string.Empty)
+                      + (cancelled > 0 ? $" · {cancelled} hủy" : string.Empty)
+                      + (running > 0 ? $" · {running} đang chạy" : string.Empty)
+                      + (waiting > 0 ? $" · {waiting} đang chờ" : string.Empty)
+                      + (IsPaused && (running + waiting) > 0 ? " · đang tạm dừng" : string.Empty)
+                      + (running + waiting == 0 ? " · HOÀN TẤT" : string.Empty);
     }
 
     private void SyncRunState()

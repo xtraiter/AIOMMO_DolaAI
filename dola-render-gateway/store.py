@@ -64,6 +64,7 @@ class TaskStore:
                 ("deadline_at", "REAL"),
                 ("last_poll_at", "REAL"),
                 ("failure_code", "TEXT"),
+                ("note", "TEXT"),
                 ("reference_images", "TEXT"),
                 ("api_key_hash", "TEXT"),
                 ("api_key_name", "TEXT"),

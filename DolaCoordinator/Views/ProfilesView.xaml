@@ -117,8 +117,8 @@
 
         <!-- Menu Nhập / Xuất -->
         <ContextMenu x:Key="IoMenu">
-            <MenuItem Header="Nhập từ file (Tên|Cookie)…" Command="{Binding ImportFromFileCommand}"/>
-            <MenuItem Header="Tải file mẫu…" Command="{Binding DownloadTemplateCommand}"/>
+            <MenuItem Header="Nhập tài khoản từ Excel / CSV…" Command="{Binding ImportFromFileCommand}"/>
+            <MenuItem Header="Tải file mẫu Excel (đủ các loại tài khoản)…" Command="{Binding DownloadTemplateCommand}"/>
             <MenuItem Header="Đồng bộ lại từ gateway (accounts/)" Command="{Binding SyncFromGatewayCommand}"/>
             <MenuItem Header="Mở thư mục accounts của gateway" Command="{Binding OpenProfilesRootCommand}"/>
             <Separator/>

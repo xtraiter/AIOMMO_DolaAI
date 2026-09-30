@@ -207,7 +207,7 @@ public partial class PromptsViewModel : ObservableObject
         var dialog = new OpenFileDialog
         {
             Title = "Nhập prompt từ file",
-            Filter = "Prompt (*.csv;*.tsv;*.txt;*.md)|*.csv;*.tsv;*.txt;*.md|Tất cả (*.*)|*.*",
+            Filter = "Excel / CSV / văn bản (*.xlsx;*.csv;*.tsv;*.txt;*.md)|*.xlsx;*.csv;*.tsv;*.txt;*.md|Tất cả (*.*)|*.*",
             Multiselect = true,
         };
         if (dialog.ShowDialog() != true) return;
@@ -225,7 +225,7 @@ public partial class PromptsViewModel : ObservableObject
                     added++;
                 }
             }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException or System.Text.DecoderFallbackException)
             {
                 problems.Add($"{Path.GetFileName(file)}: {ex.Message}");
             }
@@ -234,7 +234,7 @@ public partial class PromptsViewModel : ObservableObject
         View.Refresh();
         StatusText = $"Đã nhập {added} prompt." + (problems.Count > 0 ? " Lỗi: " + string.Join("; ", problems) : string.Empty);
         if (added == 0 && problems.Count == 0)
-            MessageBox.Show("Không tìm thấy prompt nào trong file.\n\n• .csv: cần cột 'Prompt' (hoặc 'Nội dung'); ô nhiều dòng phải nằm trong dấu ngoặc kép.\n• .txt / .md: các prompt cách nhau bằng một dòng chỉ có ---; không có dòng đó thì cả file là một prompt.",
+            MessageBox.Show("Không tìm thấy prompt nào trong file.\n\n• Excel / .csv: cần cột 'Nội dung' (hoặc 'Prompt'); ô nhiều dòng trong Excel xuống dòng bằng Alt+Enter, trong CSV phải nằm trong dấu ngoặc kép. Tải 'File mẫu' để xem đầy đủ.\n• .txt / .md: các prompt cách nhau bằng một dòng chỉ có ---; không có dòng đó thì cả file là một prompt.",
                 "Nhập prompt", MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
@@ -248,27 +248,49 @@ public partial class PromptsViewModel : ObservableObject
         var dialog = new SaveFileDialog
         {
             Title = "Xuất prompt",
-            Filter = "CSV (*.csv)|*.csv",
-            FileName = $"prompts_{DateTime.Now:yyyyMMdd_HHmm}.csv",
+            Filter = "Excel (*.xlsx)|*.xlsx|CSV (*.csv)|*.csv",
+            FileName = $"prompts_{DateTime.Now:yyyyMMdd_HHmm}.xlsx",
         };
         if (dialog.ShowDialog() != true) return;
 
-        File.WriteAllText(dialog.FileName, PromptFileParser.ToCsv(targets), new UTF8Encoding(true)); // BOM để Excel đọc đúng tiếng Việt
-        StatusText = $"Đã xuất {targets.Count} prompt ra {dialog.FileName}.";
+        try
+        {
+            SavePromptFile(dialog.FileName, targets);
+            StatusText = $"Đã xuất {targets.Count} prompt ra {dialog.FileName}.";
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            MessageBox.Show($"Không ghi được file (đang mở trong Excel?): {ex.Message}", "Xuất prompt", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    /// <summary>.xlsx → Excel (kèm sheet hướng dẫn); còn lại → CSV UTF-8 có BOM để Excel đọc đúng tiếng Việt.</summary>
+    private static void SavePromptFile(string path, IEnumerable<PromptItem> items)
+    {
+        if (TableFile.IsExcel(path)) ImportTemplates.WritePromptWorkbook(path, items);
+        else File.WriteAllText(path, PromptFileParser.ToCsv(items), new UTF8Encoding(true));
     }
 
     [RelayCommand]
     private void DownloadTemplate()
     {
-        var dialog = new SaveFileDialog { Title = "Lưu file mẫu", Filter = "CSV (*.csv)|*.csv", FileName = "prompt_mau.csv" };
-        if (dialog.ShowDialog() != true) return;
-        var sample = new[]
+        var dialog = new SaveFileDialog
         {
-            new PromptItem { Title = "Cảnh biển hoàng hôn", Text = "Cảnh biển lúc hoàng hôn, sóng nhẹ.\nMáy quay lướt chậm từ trái sang phải.", Ratio = "16:9", Duration = 15, Notes = "ví dụ" },
-            new PromptItem { Title = "Phân cảnh 3 bước", Text = "Cảnh 1 | Cô gái mở cửa sổ | 5s\nCảnh 2 | Ánh nắng tràn vào phòng | 5s\nCảnh 3 | Cô mỉm cười nhìn ra xa | 5s", Ratio = "9:16", Duration = 15 },
+            Title = "Lưu file mẫu nhập prompt",
+            Filter = "Excel (*.xlsx)|*.xlsx|CSV (*.csv)|*.csv",
+            FileName = "mau_nhap_prompt.xlsx",
         };
-        File.WriteAllText(dialog.FileName, PromptFileParser.ToCsv(sample), new UTF8Encoding(true));
-        StatusText = $"Đã lưu file mẫu: {dialog.FileName}";
+        if (dialog.ShowDialog() != true) return;
+
+        try
+        {
+            SavePromptFile(dialog.FileName, ImportTemplates.SamplePrompts());
+            StatusText = $"Đã lưu file mẫu: {dialog.FileName} (có sheet 'Hướng dẫn' ghi rõ từng cột).";
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            MessageBox.Show($"Không ghi được file: {ex.Message}", "File mẫu", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
     }
 
     // ------------------------------------------------------------------ thêm vào hàng đợi

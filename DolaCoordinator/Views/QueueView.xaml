@@ -230,7 +230,26 @@
                     </DataGridTemplateColumn>
                     <DataGridTextColumn Header="MODEL" Binding="{Binding ModelLabel}" Width="105"/>
                     <DataGridTextColumn Header="TỈ LỆ" Binding="{Binding Ratio}" Width="65"/>
-                    <DataGridTextColumn Header="THỜI LƯỢNG" Binding="{Binding Duration, StringFormat='{}{0}s'}" Width="95"/>
+                    <DataGridTextColumn Header="YÊU CẦU" Binding="{Binding Duration, StringFormat='{}{0}s'}" Width="80"/>
+                    <DataGridTemplateColumn Header="THỰC TẾ" Width="80">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding ActualDurationText}" VerticalAlignment="Center" FontWeight="SemiBold"
+                                           ToolTip="{Binding DurationNote}">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding HasDurationMismatch}" Value="True">
+                                                    <Setter Property="Foreground" Value="{StaticResource WarningBrush}"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
                     <DataGridTextColumn Header="ẢNH" Binding="{Binding ReferenceSummary}" Width="65"/>
                     <DataGridTextColumn Header="TÀI KHOẢN" Binding="{Binding AssignedSessionName}" Width="120"/>
 
@@ -271,6 +290,19 @@
                                                 <Setter Property="Visibility" Value="Visible"/>
                                                 <Style.Triggers>
                                                     <DataTrigger Binding="{Binding StageText}" Value="{x:Null}">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                    <TextBlock Text="{Binding DurationNote}" FontSize="10.5" Foreground="{StaticResource WarningBrush}" TextTrimming="CharacterEllipsis"
+                                               ToolTip="{Binding DolaNote}">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding DurationNote}" Value="{x:Null}">
                                                         <Setter Property="Visibility" Value="Collapsed"/>
                                                     </DataTrigger>
                                                 </Style.Triggers>
