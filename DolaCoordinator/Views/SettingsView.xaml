@@ -121,6 +121,29 @@
                 </StackPanel>
             </Border>
 
+            <!-- Card 3b: Trình duyệt Chromium -->
+            <Border Style="{StaticResource ModernCard}" Margin="0,0,0,16">
+                <StackPanel>
+                    <TextBlock Text="Trình duyệt Chromium của gateway" FontSize="14" FontWeight="Bold" Foreground="{StaticResource AccentBrush}" Margin="0,0,0,12" />
+                    <TextBlock Text="{Binding BrowserStatusText}" Foreground="{StaticResource TextPrimaryBrush}" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,10" />
+                    <Button Content="⬇ Cài đặt trình duyệt" Command="{Binding InstallBrowserCommand}" Style="{StaticResource ModernSecondaryButton}" HorizontalAlignment="Left" Height="34" Padding="18,0" />
+                    <ProgressBar IsIndeterminate="True" Height="6" Margin="0,10,0,0" Foreground="{StaticResource AccentBrush}" Background="{StaticResource WindowBackgroundBrush}">
+                        <ProgressBar.Style>
+                            <Style TargetType="ProgressBar" BasedOn="{StaticResource {x:Type ProgressBar}}">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsInstallingBrowser}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </ProgressBar.Style>
+                    </ProgressBar>
+                    <TextBlock Text="{Binding BrowserProgressText}" Foreground="{StaticResource TextMutedBrush}" FontSize="11" TextWrapping="Wrap" Margin="0,6,0,0" />
+                    <TextBlock Text="* App tự cài ở lần dùng đầu tiên; dùng nút này khi lần tự cài bị lỗi (mạng, proxy, tường lửa). Nếu Playwright tải không được, app sẽ tải gói dự phòng từ GitHub." Foreground="{StaticResource TextMutedBrush}" FontSize="11" TextWrapping="Wrap" Margin="0,8,0,0" />
+                </StackPanel>
+            </Border>
+
             <!-- Card 4: Storage & Notification -->
             <Border Style="{StaticResource ModernCard}" Margin="0,0,0,20">
                 <StackPanel>

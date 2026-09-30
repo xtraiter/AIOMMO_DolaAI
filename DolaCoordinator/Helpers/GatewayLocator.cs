@@ -18,7 +18,7 @@ public static class GatewayLocator
     public static bool IsPackaged(string gatewayDir) => File.Exists(Path.Combine(gatewayDir, ExeName));
 
     /// <summary>
-    /// Lệnh chạy gateway: verb = "serve" (server API) hoặc "open-profile" (mở/đăng nhập một profile).
+    /// Lệnh chạy gateway: verb = "serve" (server API), "open-profile" (mở/đăng nhập một profile) hoặc "install-browser" (tải Chromium).
     /// Bản đóng gói: dola-gateway.exe &lt;verb&gt; ...; bản mã nguồn: python -m uvicorn server:app ... / python open_profile.py ...
     /// </summary>
     public static (string FileName, List<string> Args) BuildCommand(string gatewayDir, string? pythonCommand, string verb, IEnumerable<string> args)
@@ -34,7 +34,9 @@ public static class GatewayLocator
         var (python, pythonArgs) = ParsePython(pythonCommand);
         list.AddRange(pythonArgs);
         if (verb == "serve") list.AddRange(new[] { "-m", "uvicorn", "server:app" });
+        else if (verb == "install-browser") list.Add("gateway_main.py");
         else list.Add("open_profile.py");
+        if (verb == "install-browser") list.Add(verb);
         list.AddRange(args);
         return (ResolveExecutable(python), list);
     }

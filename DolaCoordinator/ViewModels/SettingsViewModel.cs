@@ -125,6 +125,42 @@ public partial class SettingsViewModel : ObservableObject
         AdminKey = s.AdminKey;
         UpdateCheckUrl = s.UpdateCheckUrl;
         RefreshGatewayDirDetected();
+        RefreshBrowserStatus();
+    }
+
+    [ObservableProperty]
+    private string _browserStatusText = string.Empty;
+
+    [ObservableProperty]
+    private string _browserProgressText = string.Empty;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(InstallBrowserCommand))]
+    private bool _isInstallingBrowser;
+
+    private void RefreshBrowserStatus()
+        => BrowserStatusText = _gatewayHost.IsBrowserInstalled
+            ? "✔ Đã cài trình duyệt Chromium cho gateway."
+            : "✖ Chưa có trình duyệt Chromium. Bấm \"Cài đặt trình duyệt\" (cần mạng, ~150 MB).";
+
+    private bool CanInstallBrowser() => !IsInstallingBrowser;
+
+    [RelayCommand(CanExecute = nameof(CanInstallBrowser))]
+    private async Task InstallBrowserAsync()
+    {
+        IsInstallingBrowser = true;
+        BrowserProgressText = "Đang bắt đầu...";
+        try
+        {
+            var result = await _gatewayHost.InstallBrowserAsync(new Progress<string>(line => BrowserProgressText = line));
+            if (!result.Ok) BrowserProgressText = result.Error ?? "Cài đặt thất bại.";
+        }
+        catch (OperationCanceledException) { }
+        finally
+        {
+            IsInstallingBrowser = false;
+            RefreshBrowserStatus();
+        }
     }
 
     private void RefreshGatewayDirDetected()

@@ -1,3 +1,4 @@
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -20,6 +21,15 @@ public interface IGatewayHost
     /// Bản chạy bằng Python thì bỏ qua (bạn tự chạy `patchright install chromium`).
     /// </summary>
     Task<(bool Ok, string? Error)> EnsureBrowserAsync(CancellationToken ct = default);
+
+    /// <summary>Chromium của gateway đã được cài trên máy này chưa (thư mục ms-playwright\\chromium-*).</summary>
+    bool IsBrowserInstalled { get; }
+
+    /// <summary>
+    /// Tải/cài Chromium ngay (nút "Cài đặt trình duyệt"). Thử CDN của Playwright, không được thì tải gói dự phòng từ GitHub.
+    /// progress nhận từng dòng tiến trình để hiện lên giao diện.
+    /// </summary>
+    Task<(bool Ok, string? Error)> InstallBrowserAsync(IProgress<string>? progress = null, CancellationToken ct = default);
 
     /// <summary>Đường dẫn log của gateway do app bật (ghi đè mỗi lần bật).</summary>
     string LogPath { get; }

@@ -199,7 +199,7 @@ public class AccountProfileService : IAccountProfileService
             throw new InvalidOperationException($"Tài khoản '{profile.Name}' đang render trên gateway. Chờ render xong rồi mở profile.");
 
         var browser = await _host.EnsureBrowserAsync(ct); // bản đóng gói: tải Chromium lần đầu nếu máy chưa có
-        if (!browser.Ok) throw new InvalidOperationException(browser.Error);
+        if (!browser.Ok) throw new BrowserMissingException(browser.Error ?? "Chưa có trình duyệt Chromium cho gateway.");
 
         var (fileName, launchArgs) = GatewayLocator.BuildCommand(gatewayDir, _db.GetSettings().PythonCommand, "open-profile", new[] { profile.Name });
         var python = fileName;

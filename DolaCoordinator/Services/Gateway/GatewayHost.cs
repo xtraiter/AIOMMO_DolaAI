@@ -138,20 +138,46 @@ public sealed class GatewayHost : IGatewayHost, IDisposable
         return (false, $"Gateway không sẵn sàng sau {StartupTimeout.TotalSeconds:0}s.\n{Tail(LogPath)}");
     }
 
+    public bool IsBrowserInstalled
+    {
+        get
+        {
+            try
+            {
+                var cache = Environment.GetEnvironmentVariable("PLAYWRIGHT_BROWSERS_PATH");
+                if (string.IsNullOrWhiteSpace(cache) || cache == "0")
+                    cache = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ms-playwright");
+                return Directory.Exists(cache)
+                       && Directory.EnumerateDirectories(cache, "chromium-*")
+                           .Any(d => File.Exists(Path.Combine(d, "INSTALLATION_COMPLETE")));
+            }
+            catch (IOException) { return false; }
+            catch (UnauthorizedAccessException) { return false; }
+        }
+    }
+
     public async Task<(bool Ok, string? Error)> EnsureBrowserAsync(CancellationToken ct = default)
     {
         var gatewayDir = GatewayLocator.FindDir(_db.GetSettings().GatewayDir);
-        if (gatewayDir == null || !GatewayLocator.IsPackaged(gatewayDir)) return (true, null);
+        // Bản chạy bằng Python: người dùng tự cài (patchright install chromium) hoặc dùng nút "Cài đặt trình duyệt"
+        if (gatewayDir == null || !GatewayLocator.IsPackaged(gatewayDir) || IsBrowserInstalled) return (true, null);
+        return await InstallBrowserAsync(null, ct);
+    }
 
-        var marker = Path.Combine(gatewayDir, ".browser_installed");
-        if (File.Exists(marker)) return (true, null);
+    public async Task<(bool Ok, string? Error)> InstallBrowserAsync(IProgress<string>? progress = null, CancellationToken ct = default)
+    {
+        var settings = _db.GetSettings();
+        var gatewayDir = GatewayLocator.FindDir(settings.GatewayDir);
+        if (gatewayDir == null)
+            return (false, "Không tìm thấy gateway (thư mục 'gateway' có dola-gateway.exe, hoặc dola-render-gateway có server.py).");
 
         await _browserGate.WaitAsync(ct);
         try
         {
-            if (File.Exists(marker)) return (true, null);
+            if (IsBrowserInstalled) { progress?.Report("Trình duyệt đã được cài."); return (true, null); }
 
-            var psi = new ProcessStartInfo(Path.Combine(gatewayDir, GatewayLocator.ExeName))
+            var (fileName, args) = GatewayLocator.BuildCommand(gatewayDir, settings.PythonCommand, "install-browser", Array.Empty<string>());
+            var psi = new ProcessStartInfo(fileName)
             {
                 WorkingDirectory = gatewayDir,
                 UseShellExecute = false,
@@ -161,19 +187,29 @@ public sealed class GatewayHost : IGatewayHost, IDisposable
                 StandardOutputEncoding = Encoding.UTF8,
                 StandardErrorEncoding = Encoding.UTF8,
             };
-            psi.ArgumentList.Add("install-browser");
+            foreach (var a in args) psi.ArgumentList.Add(a);
+            psi.Environment["PYTHONUNBUFFERED"] = "1";
+            psi.Environment["PYTHONIOENCODING"] = "utf-8";
 
             var log = new StringBuilder();
+            void OnLine(string? line)
+            {
+                if (string.IsNullOrWhiteSpace(line)) return;
+                lock (log) log.AppendLine(line);
+                progress?.Report(line.Trim());
+            }
+
             using var process = new Process { StartInfo = psi };
-            process.OutputDataReceived += (_, e) => { if (e.Data != null) lock (log) log.AppendLine(e.Data); };
-            process.ErrorDataReceived += (_, e) => { if (e.Data != null) lock (log) log.AppendLine(e.Data); };
+            process.OutputDataReceived += (_, e) => OnLine(e.Data);
+            process.ErrorDataReceived += (_, e) => OnLine(e.Data);
+            progress?.Report("Đang tải trình duyệt Chromium (~150 MB), vui lòng chờ...");
             try
             {
                 process.Start();
                 process.BeginOutputReadLine();
                 process.BeginErrorReadLine();
                 using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-                cts.CancelAfter(TimeSpan.FromMinutes(15));
+                cts.CancelAfter(TimeSpan.FromMinutes(20));
                 await process.WaitForExitAsync(cts.Token);
             }
             catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or OperationCanceledException)
@@ -183,14 +219,14 @@ public sealed class GatewayHost : IGatewayHost, IDisposable
                 return (false, $"Không tải được trình duyệt Chromium cho gateway: {ex.Message}");
             }
 
-            if (process.ExitCode != 0)
+            if (process.ExitCode != 0 && !IsBrowserInstalled)
             {
                 string tail;
                 lock (log) tail = string.Join(Environment.NewLine, log.ToString().Split('\n').Select(l => l.TrimEnd()).Where(l => l.Length > 0).TakeLast(6));
-                return (false, $"Tải Chromium cho gateway thất bại (mã {process.ExitCode}). Kiểm tra kết nối mạng rồi thử lại.\n{tail}");
+                return (false, $"Không tải được trình duyệt Chromium (mã {process.ExitCode}). Kiểm tra mạng / proxy / VPN rồi bấm Cài đặt lại.\n{tail}");
             }
 
-            File.WriteAllText(marker, DateTime.Now.ToString("O"));
+            progress?.Report("Đã cài xong trình duyệt.");
             return (true, null);
         }
         finally

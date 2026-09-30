@@ -14,6 +14,7 @@ using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using DolaCoordinator.Helpers;
 using DolaCoordinator.Models;
+using DolaCoordinator.Services.Gateway;
 using DolaCoordinator.Services.Profiles;
 using DolaCoordinator.Services.Network;
 using DolaCoordinator.Services.Security;
@@ -40,6 +41,7 @@ public partial class ProfilesViewModel : ObservableObject, IDisposable
     private readonly IQuotaTracker _quota;
     private readonly ISecurityService _security;
     private readonly IDolaGatewayClient _gateway;
+    private readonly IGatewayHost _gatewayHost;
 
     private readonly CancellationTokenSource _cts = new();
     private readonly PeriodicTimer _timer = new(MonitorInterval);
@@ -74,7 +76,8 @@ public partial class ProfilesViewModel : ObservableObject, IDisposable
         ISessionValidator validator,
         IQuotaTracker quota,
         ISecurityService security,
-        IDolaGatewayClient gateway)
+        IDolaGatewayClient gateway,
+        IGatewayHost gatewayHost)
     {
         _chrome = chrome;
         _db = db;
@@ -82,6 +85,7 @@ public partial class ProfilesViewModel : ObservableObject, IDisposable
         _quota = quota;
         _security = security;
         _gateway = gateway;
+        _gatewayHost = gatewayHost;
 
         View = CollectionViewSource.GetDefaultView(Profiles);
         View.Filter = FilterProfile;
@@ -455,6 +459,18 @@ public partial class ProfilesViewModel : ObservableObject, IDisposable
                 : $"Đã mở '{p.Name}'.");
             if (options.After == AfterLogin.Close)
                 Log($"'{p.Name}' sẽ tự đóng khi đăng nhập xong.");
+        }
+        catch (BrowserMissingException bex)
+        {
+            Log($"✖ '{p.Name}': {bex.Message}");
+            var answer = MessageBox.Show(bex.Message + Environment.NewLine + Environment.NewLine + "Cài đặt lại trình duyệt ngay bây giờ?",
+                $"Tài khoản '{p.Name}'", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+            if (answer == MessageBoxResult.Yes)
+            {
+                var result = await _gatewayHost.InstallBrowserAsync(new Progress<string>(line => Log(line)));
+                Log(result.Ok ? "✔ Đã cài xong trình duyệt. Bấm Mở để đăng nhập." : $"✖ {result.Error}");
+                if (!result.Ok) MessageBox.Show(result.Error, "Cài đặt trình duyệt", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
         }
         catch (Exception ex) when (ex is IOException or InvalidOperationException or TimeoutException or Win32Exception or ArgumentException)
         {

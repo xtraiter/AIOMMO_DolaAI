@@ -27,6 +27,7 @@ gateway\accounts\            (tự tạo) phiên đăng nhập của từng tài
 
 - Gateway chạy ngầm (không hiện cửa sổ) khi bạn dùng điều phối, *Kiểm tra phiên*, *Kiểm tra kết nối* hoặc mở/đăng nhập tài khoản; log ở `%LOCALAPPDATA%\DolaCoordinator\gateway.log`.
 - **Lần đầu dùng trên một máy**, app tự tải trình duyệt Chromium (~150 MB, có thể mất vài phút; cần mạng). Từ lần sau không tải lại.
+- Nếu tải Chromium bị lỗi (mạng, proxy, tường lửa): mở **Cài đặt → Trình duyệt Chromium → Cài đặt trình duyệt** (hoặc bấm *Có* ở hộp thoại lỗi khi mở tài khoản). App thử CDN của Playwright, không được thì tải gói dự phòng `dola-browser-1243.zip` từ GitHub Releases (tag `browser-1243`, tạo bằng `scripts\pack-browser.ps1`).
 - Đặt cả thư mục ở nơi có quyền ghi (không đặt trong `Program Files`), vì dữ liệu tài khoản nằm cạnh file exe.
 
 1. **Tab Dola Super**: *Thêm tài khoản* → đăng nhập thủ công / Google / Facebook / cookie Facebook. Mỗi tài khoản là một thư mục `gateway\accounts\<tên>`; phiên được lưu lại dùng lâu dài.
