@@ -70,7 +70,7 @@ async ({conversationId, msToken, fp}) => {
     if (!Array.isArray(content)) continue;
     for (const block of content) {
       const text = (((block.content || {}).text_block) || {}).text || "";
-      if (text) texts.push(text.slice(0, 120));
+      if (text) texts.push(text.slice(0, 500));
       if (block.block_type !== 2074) continue;
       const creations = (((block.content || {}).creation_block) || {}).creations || [];
       for (const cre of creations) {

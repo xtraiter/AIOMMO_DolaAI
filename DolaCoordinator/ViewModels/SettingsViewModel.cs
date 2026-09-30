@@ -34,8 +34,6 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     private int _defaultDailyQuota = 2;
 
-    [ObservableProperty]
-    private int _concurrencyLimit = 2;
 
     [ObservableProperty]
     private int _pollingIntervalSeconds = 5;
@@ -57,6 +55,15 @@ public partial class SettingsViewModel : ObservableObject
 
     [ObservableProperty]
     private string? _adminKey;
+
+    [ObservableProperty]
+    private bool _appendInstruction = true;
+
+    [ObservableProperty]
+    private string _instructionText = AppSettings.DefaultInstruction;
+
+    [RelayCommand]
+    private void ResetInstruction() => InstructionText = AppSettings.DefaultInstruction;
 
     [ObservableProperty]
     private string _gatewayDirDetectedText = string.Empty;
@@ -116,7 +123,6 @@ public partial class SettingsViewModel : ObservableObject
         GatewayUrl = s.GatewayUrl;
         ClientApiKey = s.ClientApiKey;
         DefaultDailyQuota = s.DefaultDailyQuota;
-        ConcurrencyLimit = s.ConcurrencyLimit;
         PollingIntervalSeconds = s.PollingIntervalSeconds;
         EnableToastNotification = s.EnableToastNotification;
         AutoRetryOnFailure = s.AutoRetryOnFailure;
@@ -124,6 +130,8 @@ public partial class SettingsViewModel : ObservableObject
         GatewayDir = s.GatewayDir ?? string.Empty;
         PythonCommand = string.IsNullOrWhiteSpace(s.PythonCommand) ? "py -3" : s.PythonCommand;
         AdminKey = s.AdminKey;
+        AppendInstruction = s.AppendInstruction;
+        InstructionText = string.IsNullOrWhiteSpace(s.InstructionText) ? AppSettings.DefaultInstruction : s.InstructionText;
         UpdateCheckUrl = s.UpdateCheckUrl;
         RefreshGatewayDirDetected();
         RefreshBrowserStatus();
@@ -289,7 +297,6 @@ public partial class SettingsViewModel : ObservableObject
             s.GatewayUrl = GatewayUrl?.Trim().TrimEnd('/') ?? "http://127.0.0.1:8000";
             s.ClientApiKey = ClientApiKey?.Trim();
             s.DefaultDailyQuota = Math.Clamp(DefaultDailyQuota, 1, 1000);
-            s.ConcurrencyLimit = Math.Clamp(ConcurrencyLimit, 1, 30);
             s.PollingIntervalSeconds = Math.Clamp(PollingIntervalSeconds, 2, 60);
             s.EnableToastNotification = EnableToastNotification;
             s.AutoRetryOnFailure = AutoRetryOnFailure;
@@ -297,6 +304,8 @@ public partial class SettingsViewModel : ObservableObject
             s.GatewayDir = string.IsNullOrWhiteSpace(GatewayDir) ? null : GatewayDir.Trim();
             s.PythonCommand = string.IsNullOrWhiteSpace(PythonCommand) ? "py -3" : PythonCommand.Trim();
             s.AdminKey = string.IsNullOrWhiteSpace(AdminKey) ? null : AdminKey.Trim();
+            s.AppendInstruction = AppendInstruction;
+            s.InstructionText = string.IsNullOrWhiteSpace(InstructionText) ? AppSettings.DefaultInstruction : InstructionText.Trim();
             s.UpdateCheckUrl = UpdateCheckUrl?.Trim() ?? string.Empty;
 
             _databaseService.SaveSettings(s);

@@ -235,13 +235,8 @@ public sealed class GatewayHost : IGatewayHost, IDisposable
         }
     }
 
-    /// <summary>Số video gateway được render cùng lúc: theo số tài khoản (mỗi tài khoản một luồng) hoặc số luồng cố định, có dư chỗ.</summary>
-    private int GatewayCapacity()
-    {
-        var s = _db.GetSettings();
-        var wanted = s.ThreadMode == ThreadMode.Fixed ? s.ConcurrencyLimit : _db.GetAllSessions().Count(x => x.IsEnabled);
-        return Math.Clamp(wanted + 2, 8, 30);
-    }
+    /// <summary>Số video gateway được render cùng lúc: bằng số luồng tối đa trong cài đặt (có dư chỗ để tăng số luồng mà không phải bật lại gateway).</summary>
+    private int GatewayCapacity() => Math.Clamp(_db.GetSettings().ConcurrencyLimit + 2, 8, 32);
 
     private async Task<bool> IsHealthyAsync(string url, CancellationToken ct)
     {

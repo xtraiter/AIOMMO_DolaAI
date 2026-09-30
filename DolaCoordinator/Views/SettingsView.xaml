@@ -56,7 +56,7 @@
             <!-- Card 2: Quota & Concurrency -->
             <Border Style="{StaticResource ModernCard}" Margin="0,0,0,16">
                 <StackPanel>
-                    <TextBlock Text="2. Hạn Ngạch &amp; Luồng Xử Lý" FontSize="14" FontWeight="Bold" Foreground="{StaticResource AccentBrush}" Margin="0,0,0,12" />
+                    <TextBlock Text="2. Hạn Ngạch &amp; Theo Dõi Tiến Trình" FontSize="14" FontWeight="Bold" Foreground="{StaticResource AccentBrush}" Margin="0,0,0,12" />
 
                     <Grid Margin="0,0,0,12">
                         <Grid.ColumnDefinitions>
@@ -68,18 +68,6 @@
                             <TextBlock Text="Áp dụng ngay cho mọi tài khoản khi bấm Lưu. Reset 00:00 mỗi ngày; Dola báo hết lượt sớm hơn thì tài khoản tự khóa tới ngày mai." Foreground="{StaticResource TextMutedBrush}" FontSize="11" TextWrapping="Wrap" />
                         </StackPanel>
                         <TextBox Grid.Column="1" Text="{Binding DefaultDailyQuota}" Style="{StaticResource ModernTextBox}" HorizontalContentAlignment="Center" VerticalAlignment="Center" />
-                    </Grid>
-
-                    <Grid Margin="0,0,0,12">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="100" />
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Grid.Column="0">
-                            <TextBlock Text="Số luồng cố định (chỉ dùng khi chọn 'Cố định số luồng' ở trang Vận hành):" Foreground="{StaticResource TextSecondaryBrush}" FontSize="12" />
-                            <TextBlock Text="Số tác vụ render được điều phối đồng thời tới gateway (Khuyến nghị: 1 - 3)." Foreground="{StaticResource TextMutedBrush}" FontSize="11" />
-                        </StackPanel>
-                        <TextBox Grid.Column="1" Text="{Binding ConcurrencyLimit}" Style="{StaticResource ModernTextBox}" HorizontalContentAlignment="Center" VerticalAlignment="Center" />
                     </Grid>
 
                     <Grid Margin="0,0,0,6">
@@ -213,6 +201,19 @@
                             <Button Content="⚡ TẢI VÀ CẬP NHẬT NGAY" Command="{Binding DownloadAndApplyUpdateCommand}" Style="{StaticResource ModernPrimaryButton}" Height="34" Width="200" HorizontalAlignment="Left" />
                         </StackPanel>
                     </Border>
+                </StackPanel>
+            </Border>
+
+            <!-- Chỉ dẫn tự động thêm vào mỗi prompt -->
+            <Border Style="{StaticResource ModernCard}" Margin="0,0,0,20">
+                <StackPanel>
+                    <TextBlock Text="Chỉ dẫn tự động thêm vào mỗi prompt" FontSize="14" FontWeight="Bold" Foreground="{StaticResource AccentBrush}" Margin="0,0,0,12" />
+                    <CheckBox IsChecked="{Binding AppendInstruction}" Content="Thêm câu chỉ dẫn 'tạo video ngay, đừng hỏi lại' vào cuối mỗi prompt gửi cho Dola" Margin="0,0,0,10" />
+                    <TextBlock Text="Nội dung chỉ dẫn ({duration} được thay bằng thời lượng đã chọn cho video):" Foreground="{StaticResource TextSecondaryBrush}" FontSize="12" Margin="0,0,0,4" />
+                    <TextBox Text="{Binding InstructionText, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" TextWrapping="Wrap"
+                             Height="96" VerticalScrollBarVisibility="Auto" VerticalContentAlignment="Top" Style="{StaticResource ModernTextBox}" />
+                    <Button Content="Đặt lại nội dung mặc định" Command="{Binding ResetInstructionCommand}" Style="{StaticResource ModernSecondaryButton}" HorizontalAlignment="Left" Margin="0,10,0,6" />
+                    <TextBlock Text="* Dola hay hỏi lại (ví dụ 'dùng 15 giây được không?', 'bạn có ảnh khuôn mặt không?') thay vì tạo video, khiến tác vụ đứng chờ. Câu này bảo Dola tự quyết định. Nếu Dola vẫn hỏi lại, app phát hiện sau khoảng 1 phút, ghi câu hỏi của Dola vào tác vụ lỗi và không đổi sang tài khoản khác." Foreground="{StaticResource TextMutedBrush}" FontSize="11" TextWrapping="Wrap" />
                 </StackPanel>
             </Border>
 

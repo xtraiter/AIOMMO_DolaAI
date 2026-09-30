@@ -356,17 +356,8 @@ public class TaskDispatcher : ITaskDispatcher, IDisposable
 
     // ------------------------------------------------------------------ vòng điều phối
 
-    /// <summary>
-    /// Số video được chạy cùng lúc. Mặc định mỗi tài khoản dùng được một luồng (N tài khoản = N video song song);
-    /// hoặc số luồng cố định trong cài đặt. Tính lại mỗi vòng nên thêm/bớt tài khoản có hiệu lực ngay.
-    /// </summary>
-    private int Capacity()
-    {
-        var settings = _databaseService.GetSettings();
-        if (settings.ThreadMode == ThreadMode.Fixed) return Math.Clamp(settings.ConcurrencyLimit, 1, 30);
-        var accounts = _databaseService.GetAllSessions().Count(s => s.IsSchedulable);
-        return Math.Clamp(accounts, 1, 30);
-    }
+    /// <summary>Số video được chạy cùng lúc = số luồng tối đa (chỉnh ở trang Vận hành, đọc lại mỗi vòng nên đổi là có hiệu lực ngay).</summary>
+    private int Capacity() => Math.Clamp(_databaseService.GetSettings().ConcurrencyLimit, 1, 30);
 
     private void ResetRound()
     {
@@ -521,7 +512,7 @@ public class TaskDispatcher : ITaskDispatcher, IDisposable
                 var req = new VideoGenApiRequest
                 {
                     Model = task.Model,
-                    Prompt = task.Prompt,
+                    Prompt = BuildPrompt(task, settings),
                     Ratio = task.Ratio,
                     Duration = task.Duration,
                     ReferenceImages = task.ReferenceImages,
@@ -578,7 +569,7 @@ public class TaskDispatcher : ITaskDispatcher, IDisposable
             {
                 if (!HandleGatewayFailure(task, session, gx, tried))
                 {
-                    FailTask(task, gx.Message);
+                    FailTask(task, gx.FailureCode == "asked_back" ? DescribeAskedBack(gx.Message) : gx.Message);
                     return;
                 }
                 // đã đánh dấu tài khoản lỗi → vòng lặp chọn tài khoản khác
@@ -647,6 +638,18 @@ public class TaskDispatcher : ITaskDispatcher, IDisposable
         TaskUpdated?.Invoke(task);
     }
 
+    /// <summary>
+    /// Nội dung thật gửi cho Dola = prompt của bạn + (nếu bật) câu chỉ dẫn "tạo ngay, đừng hỏi lại". Dola hay hỏi lại khi
+    /// thời lượng trong kịch bản vượt giới hạn hoặc thiếu ảnh tham chiếu; câu chỉ dẫn giúp nó tự quyết định.
+    /// </summary>
+    private static string BuildPrompt(RenderTask task, AppSettings settings)
+    {
+        if (!settings.AppendInstruction) return task.Prompt;
+        var text = string.IsNullOrWhiteSpace(settings.InstructionText) ? AppSettings.DefaultInstruction : settings.InstructionText;
+        text = text.Replace("{duration}", task.Duration.ToString());
+        return task.Prompt.TrimEnd() + Environment.NewLine + Environment.NewLine + text.Trim();
+    }
+
     /// <summary>Gọi gateway tạo tác vụ; các lỗi HTTP có ý nghĩa rõ ràng được đổi thành GatewayTaskFailedException.</summary>
     private async Task<TaskApiResponse?> CreateOnGatewayAsync(VideoGenApiRequest req, string? apiKey, CancellationToken ct)
     {
@@ -669,6 +672,10 @@ public class TaskDispatcher : ITaskDispatcher, IDisposable
     /// <summary>
     /// Xử lý lỗi gateway theo failure_code. Trả về true nếu nên đổi sang tài khoản khác, false nếu nên dừng tác vụ.
     /// </summary>
+    private static string DescribeAskedBack(string question)
+        => $"Dola hỏi lại thay vì tạo video: \"{question}\" — sửa prompt cho rõ (thời lượng đúng bằng thời lượng đã chọn, có ảnh tham chiếu hoặc ghi 'tự tạo nhân vật') " +
+           "và giữ bật 'Chỉ dẫn tự động' trong Cài đặt.";
+
     private bool SkipFailedEnabled() => _databaseService.GetSettings().SkipFailedAccounts;
 
     private bool HandleGatewayFailure(RenderTask task, DolaSession session, GatewayTaskFailedException gx, HashSet<string> tried)
@@ -712,6 +719,11 @@ public class TaskDispatcher : ITaskDispatcher, IDisposable
                     : "Chat hỏi thăm không được Dola trả lời — tạm nghỉ.";
                 switchAccount = true;
                 break;
+
+            case "asked_back":
+                // Dola hỏi lại thay vì tạo video: chưa tốn lượt, và tài khoản khác cũng sẽ hỏi y như vậy
+                _quotaTracker.ReleaseQuota(session.Id);
+                return false;
 
             case "timeout":
                 // Video có thể vẫn ra sau đó và gateway không gửi lại prompt: không đổi tài khoản, không hoàn lượt

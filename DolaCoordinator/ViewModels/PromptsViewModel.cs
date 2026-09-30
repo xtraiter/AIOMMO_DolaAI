@@ -57,6 +57,12 @@ public partial class PromptsViewModel : ObservableObject
 
         foreach (var p in _db.GetAllPrompts())
         {
+            if (!PromptFileParser.Durations.Contains(p.Duration) || !PromptFileParser.Ratios.Contains(p.Ratio))
+            {
+                p.Duration = PromptFileParser.NormalizeDuration(p.Duration.ToString());
+                p.Ratio = PromptFileParser.NormalizeRatio(p.Ratio);
+                _db.UpsertPrompt(p);
+            }
             p.PropertyChanged += OnPromptPropertyChanged;
             Prompts.Add(p);
         }

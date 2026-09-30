@@ -30,7 +30,8 @@ from media import (
     copy_local_reference_images, download_reference_images, validate_local_image_paths, validate_reference_urls,
 )
 from video_worker_ui import (
-    AccountLimitedError, AccountUnhealthyError, CreditInsufficientError, LoginRequiredError, RiskControlError,
+    AccountLimitedError, AccountUnhealthyError, CreditInsufficientError, DolaAskedBackError, LoginRequiredError,
+    RiskControlError,
 )
 from store import PendingTaskLimitExceeded, TaskQuotaExceeded, TaskStore
 
@@ -52,7 +53,7 @@ SIZE_TO_RATIO = {
     "720x1280": "9:16", "1080x1920": "9:16",
     "1024x1024": "1:1", "1440x1080": "4:3", "1080x1440": "3:4",
 }
-SUPPORTED_DURATIONS = (10, 15, 30)
+SUPPORTED_DURATIONS = (5, 10, 15, 30)
 NAME_RE = re.compile(r"^[A-Za-z0-9_-]{1,32}$")
 
 
@@ -150,9 +151,9 @@ def _normalize_allowed_durations(values) -> list[int]:
     try:
         normalized = sorted({int(value) for value in values})
     except (TypeError, ValueError):
-        raise HTTPException(422, "allowed_durations must be an array of 10, 15, or 30")
+        raise HTTPException(422, "allowed_durations must be an array of 5, 10, 15, or 30")
     if not normalized or any(value not in SUPPORTED_DURATIONS for value in normalized):
-        raise HTTPException(422, "allowed_durations must contain at least one of 10, 15, 30")
+        raise HTTPException(422, "allowed_durations must contain at least one of 5, 10, 15, 30")
     return normalized
 
 
@@ -164,8 +165,8 @@ class VideoGenRequest(BaseModel):
     prompt: str = Field(..., min_length=1)
     size: str | None = None
     ratio: str | None = None
-    duration: int | None = Field(None, ge=10, le=30)
-    # Accepts durations: 10, 15, 30 seconds.
+    duration: int | None = Field(None, ge=5, le=30)
+    # Accepts durations: 5, 10, 15, 30 seconds (Dola's own dropdown offers 5s / 10s / 30s).
     reference_images: list[str] = Field(default_factory=list)
     # Absolute paths of image files on THIS machine (DolaCoordinator). Accepted from the loopback interface only.
     reference_local_paths: list[str] = Field(default_factory=list)
@@ -210,6 +211,8 @@ def _classify_failure(exc: Exception) -> str:
         return "login_required"
     if isinstance(exc, AccountUnhealthyError):
         return "unhealthy"
+    if isinstance(exc, DolaAskedBackError):
+        return "asked_back"
     if isinstance(exc, TimeoutError):
         return "timeout"
     if isinstance(exc, (AllAccountsLimitedError, AllAccountsQuotaBlockedError)):
@@ -355,7 +358,7 @@ async def create_video(req: VideoGenRequest, request: Request, authorization: st
     client = _auth(authorization)
     duration = req.duration or 10
     if duration not in SUPPORTED_DURATIONS:
-        raise HTTPException(422, "Currently supports durations of 10s, 15s, and 30s")
+        raise HTTPException(422, "Currently supports durations of 5s, 10s, 15s, and 30s")
     if duration not in client["allowed_durations"]:
         raise HTTPException(422, f"Current API Key is not allowed to generate {duration}s videos")
     model_key = req.model.lower().replace("-", "_")

@@ -15,7 +15,7 @@ from gap import find_gap_x
 import config
 from browser import cookie_value, launch_account_context
 from dola_client import CREDIT_FAIL_PATTERN, CreditError
-from dola_errors import AccountUnhealthyError, LoginRequiredError  # noqa: F401  (re-exported for browser_pool)
+from dola_errors import AccountUnhealthyError, DolaAskedBackError, LoginRequiredError  # noqa: F401  (re-exported for browser_pool)
 from video_worker import POLL_JS, RiskControlError, _download, extract_unwatermarked_url
 from warmup import open_new_chat, warmup_chat
 
@@ -25,6 +25,23 @@ DAILY_LIMIT_PATTERN = re.compile(
     r"daily.*(?:limit|quota)|(?:limit|quota).*per\s*day",
     re.IGNORECASE,
 )
+
+
+# Dola's chat agent sometimes replies with a question instead of making the video ("may I use 15s?", "do you have a face
+# image? A / B"). It stays that way forever, so notice it instead of waiting for the full video timeout.
+QUESTION_MARK = re.compile(r"[?\uFF1F]")
+ASKED_BACK_GRACE_SEC = 60
+
+
+def _is_dola_question(text: str, prompt: str) -> bool:
+    t = (text or "").strip()
+    if len(t) < 12 or not QUESTION_MARK.search(t):
+        return False
+    head = (prompt or "").strip()[:30]
+    # our own prompt echoed back in the conversation (it may contain question marks too) is not a question from Dola
+    if head and (t.startswith(head) or head.startswith(t[:30])):
+        return False
+    return True
 
 
 class AccountLimitedError(Exception):
@@ -306,12 +323,14 @@ async def _preflight_balance(page, ms_token: str, fp: str, required: int) -> dic
 
 
 async def poll_conversation(account: str, page, context, conversation_id: str,
-                            timeout: int, on_poll=None, on_balance=None) -> dict:
+                            timeout: int, on_poll=None, on_balance=None, prompt: str = "") -> dict:
     """Polls accepted conversation for video completion."""
     cookies = await context.cookies("https://www.dola.com")
     ms_token, fp = cookie_value(cookies, "msToken"), cookie_value(cookies, "s_v_web_id")
     start = time.time()
     last_callback = 0.0
+    question_since = None
+    question_text = ""
     while time.time() - start < timeout:
         await asyncio.sleep(5)
         try:
@@ -332,6 +351,14 @@ async def poll_conversation(account: str, page, context, conversation_id: str,
                 raise AccountLimitedError(f"Account daily limit reached: {text[:120]}")
             if CREDIT_FAIL_PATTERN.search(text):
                 raise CreditError(f"Insufficient quota: {text[:80]}")
+        questions = [t for t in poll.get("texts", []) if _is_dola_question(t, prompt)]
+        if questions and not poll.get("videos"):
+            if question_since is None:
+                question_since, question_text = now, questions[-1]
+            elif now - question_since >= ASKED_BACK_GRACE_SEC:
+                raise DolaAskedBackError(question_text.strip())
+        else:
+            question_since = None
         if poll.get("videos"):
             video_models = poll.get("videoModels", [])
             url = extract_unwatermarked_url(
@@ -585,7 +612,7 @@ async def generate_video(account: str, prompt: str, ratio: str = None,
             deadline = time.time() + timeout
             if on_conversation_id:
                 on_conversation_id(account, conv_id, deadline)
-            return await poll_conversation(account, page, context, conv_id, timeout, on_poll, on_balance)
+            return await poll_conversation(account, page, context, conv_id, timeout, on_poll, on_balance, prompt=prompt)
         finally:
             await context.close()
 

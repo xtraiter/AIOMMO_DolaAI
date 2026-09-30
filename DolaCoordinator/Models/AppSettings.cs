@@ -13,16 +13,6 @@ public enum AccountStrategy
     Sequential = 1,
 }
 
-/// <summary>Số luồng chạy cùng lúc.</summary>
-public enum ThreadMode
-{
-    /// <summary>Mỗi tài khoản đang dùng được một luồng: N tài khoản = N video chạy song song.</summary>
-    PerAccount = 0,
-
-    /// <summary>Số luồng cố định (ConcurrencyLimit) dù có bao nhiêu tài khoản.</summary>
-    Fixed = 1,
-}
-
 public class AppSettings
 {
     public int Id { get; set; } = 1;
@@ -53,18 +43,28 @@ public class AppSettings
     public string DownloadDirectory { get; set; } = Environment.GetFolderPath(Environment.SpecialFolder.MyVideos);
 
     /// <summary>
-    /// Số luồng xử lý render song song (Concurrency)
+    /// Số luồng tối đa: số video chạy cùng lúc. Chỉnh ở trang Vận hành.
     /// </summary>
     public int ConcurrencyLimit { get; set; } = 2;
 
     /// <summary>Cách chọn tài khoản cho từng video (mặc định chia đều theo lượt).</summary>
     public AccountStrategy AccountStrategy { get; set; } = AccountStrategy.RoundRobin;
 
-    /// <summary>Mặc định mỗi tài khoản một luồng; chọn Fixed để dùng ConcurrencyLimit.</summary>
-    public ThreadMode ThreadMode { get; set; } = ThreadMode.PerAccount;
-
     /// <summary>Tài khoản vừa lỗi được bỏ qua ở các video khác trong một lúc (thay vì lần nào cũng thử lại).</summary>
     public bool SkipFailedAccounts { get; set; } = true;
+
+    /// <summary>Câu chỉ dẫn mặc định thêm vào cuối mỗi prompt để Dola không hỏi lại. {duration} = thời lượng đã chọn.</summary>
+    public const string DefaultInstruction =
+        "Generate the video right now in a single step. Do not ask me any questions and do not offer options. " +
+        "Target length: {duration} seconds - if that is longer than what you support, automatically use the longest supported length " +
+        "and compress the storyboard to fit. If no reference face image is provided, create the character yourself " +
+        "and keep the same character in every scene.";
+
+    /// <summary>Tự thêm chỉ dẫn "tạo ngay, đừng hỏi lại" vào cuối mỗi prompt gửi cho Dola.</summary>
+    public bool AppendInstruction { get; set; } = true;
+
+    /// <summary>Nội dung chỉ dẫn (có thể sửa). Để trống = dùng mặc định.</summary>
+    public string InstructionText { get; set; } = DefaultInstruction;
 
     /// <summary>Ẩn cửa sổ Chromium khi chạy vận hành (cửa sổ nằm ngoài màn hình). Đăng nhập tài khoản luôn hiện.</summary>
     public bool HideRenderWindow { get; set; }

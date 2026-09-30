@@ -17,8 +17,11 @@ namespace DolaCoordinator.Helpers;
 /// </summary>
 public static class PromptFileParser
 {
-    public static readonly string[] Ratios = { "9:16", "16:9", "1:1" };
-    public static readonly int[] Durations = { 10, 15, 30 };
+    /// <summary>Đúng các lựa chọn trong ô "比率" (tỷ lệ) của Dola.</summary>
+    public static readonly string[] Ratios = { "1:1", "3:4", "4:3", "9:16", "16:9", "21:9" };
+
+    /// <summary>Đúng các lựa chọn trong ô "長さ" (thời lượng) của Dola: 5s, 10s, 30s.</summary>
+    public static readonly int[] Durations = { 5, 10, 30 };
 
     /// <summary>Model mà gateway hỗ trợ (giá trị gửi qua API /v1/videos/generations).</summary>
     public static readonly string[] Models = { "seedance-2.0", "seedance-2.5" };

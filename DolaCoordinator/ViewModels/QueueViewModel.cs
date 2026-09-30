@@ -67,23 +67,15 @@ public partial class QueueViewModel : ObservableObject
         "Hết từng tài khoản: dùng hết tài khoản này mới sang tài khoản kế",
     };
 
-    public string[] ThreadOptions { get; } =
-    {
-        "Mỗi tài khoản 1 luồng (chạy song song)",
-        "Cố định số luồng",
-    };
-
     [ObservableProperty] private int _strategyIndex;
-    [ObservableProperty] private int _threadModeIndex;
-    [ObservableProperty] private int _fixedThreads = 2;
+    [ObservableProperty] private int _maxThreads = 2;
     [ObservableProperty] private bool _hideWindow;
     [ObservableProperty] private bool _skipFailed = true;
 
     private bool _loadingRunOptions;
 
     partial void OnStrategyIndexChanged(int value) => SaveRunOptions();
-    partial void OnThreadModeIndexChanged(int value) => SaveRunOptions();
-    partial void OnFixedThreadsChanged(int value) => SaveRunOptions();
+    partial void OnMaxThreadsChanged(int value) => SaveRunOptions();
     partial void OnHideWindowChanged(bool value) => SaveRunOptions();
     partial void OnSkipFailedChanged(bool value) => SaveRunOptions();
 
@@ -92,8 +84,7 @@ public partial class QueueViewModel : ObservableObject
         _loadingRunOptions = true;
         var s = _databaseService.GetSettings();
         StrategyIndex = (int)s.AccountStrategy;
-        ThreadModeIndex = (int)s.ThreadMode;
-        FixedThreads = Math.Clamp(s.ConcurrencyLimit, 1, 30);
+        MaxThreads = Math.Clamp(s.ConcurrencyLimit, 1, 30);
         HideWindow = s.HideRenderWindow;
         SkipFailed = s.SkipFailedAccounts;
         _loadingRunOptions = false;
@@ -104,8 +95,7 @@ public partial class QueueViewModel : ObservableObject
         if (_loadingRunOptions) return;
         var s = _databaseService.GetSettings();
         s.AccountStrategy = (AccountStrategy)Math.Clamp(StrategyIndex, 0, 1);
-        s.ThreadMode = (ThreadMode)Math.Clamp(ThreadModeIndex, 0, 1);
-        s.ConcurrencyLimit = Math.Clamp(FixedThreads, 1, 30);
+        s.ConcurrencyLimit = Math.Clamp(MaxThreads, 1, 30);
         s.HideRenderWindow = HideWindow;
         s.SkipFailedAccounts = SkipFailed;
         _databaseService.SaveSettings(s);
