@@ -58,16 +58,6 @@
                            Foreground="{StaticResource TextMutedBrush}"
                            Text="Repo này không có mục nào nhắc tới prompt, thời lượng, model hay ảnh tham chiếu trong các tài liệu README.md / extensions/dola30/README.md / API.md."/>
                 <ItemsControl x:Name="RulesList" ItemTemplate="{StaticResource RuleTemplate}"/>
-
-                <TextBlock Text="CÁCH APP XỬ LÝ PROMPT" Style="{StaticResource FieldLabel}" Margin="0,12,0,6"/>
-                <ItemsControl x:Name="AppNotesList" ItemTemplate="{StaticResource RuleTemplate}"/>
-
-                <DockPanel Margin="0,14,0,6">
-                    <Button DockPanel.Dock="Right" Content="Chép mẫu" Click="CopyTemplate_Click" Margin="12,0,0,0"/>
-                    <TextBlock Text="MẪU PROMPT NHIỀU CẢNH (dán rồi sửa)" Style="{StaticResource FieldLabel}" VerticalAlignment="Center"/>
-                </DockPanel>
-                <TextBox x:Name="TemplateBox" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" FontFamily="Consolas" FontSize="12.5"
-                         Height="150" VerticalScrollBarVisibility="Auto" VerticalContentAlignment="Top"/>
             </StackPanel>
         </ScrollViewer>
 

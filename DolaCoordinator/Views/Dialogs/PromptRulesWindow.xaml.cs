@@ -26,8 +26,6 @@ public partial class PromptRulesWindow : Window
         var repo = RepoRulesService.CurrentRepo;
         foreach (var r in PromptRules.KnownRepos.Concat(new[] { repo }).Distinct()) RepoBox.Items.Add(r);
         RepoBox.Text = repo;
-        AppNotesList.ItemsSource = PromptRules.AppNotes;
-        TemplateBox.Text = PromptRules.Template;
         Closed += (_, _) => _cts.Cancel();
         Loaded += async (_, _) => await LoadAsync(repo);
     }
@@ -92,8 +90,6 @@ public partial class PromptRulesWindow : Window
 
     private void CopyAll_Click(object sender, RoutedEventArgs e) =>
         Copy(string.Join("\n\n", _rules.Select(r => r.AsText())), $"Đã chép {_rules.Count} mục.");
-
-    private void CopyTemplate_Click(object sender, RoutedEventArgs e) => Copy(PromptRules.Template, "Đã chép mẫu prompt.");
 
     private void Copy(string text, string done)
     {
