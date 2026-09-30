@@ -53,7 +53,7 @@ public partial class ProfilesViewModel : ObservableObject, IDisposable
     public ICollectionView View { get; }
 
     public string[] StatusFilters { get; } =
-        { "Mọi trạng thái", "Sẵn sàng", "Hết hạn ngạch / credit", "Chưa đăng nhập", "Phiên lỗi", "Đang mở" };
+        { "Mọi trạng thái", "Sẵn sàng", "Hết hạn ngạch / credit", "Chưa đăng nhập", "Hết phiên", "Đang mở" };
 
     [ObservableProperty] private string _searchText = string.Empty;
     [ObservableProperty] private int _statusFilterIndex;
@@ -345,7 +345,10 @@ public partial class ProfilesViewModel : ObservableObject, IDisposable
         var session = p.Session;
         if (session == null)
         {
-            Log($"'{p.Name}' chưa có phiên. Mở profile và đăng nhập Dola.");
+            p.LoginStatus = ProfileLoginStatus.LoggedOut; // chưa có phiên = chưa đăng nhập, dù trước đó từng thấy đăng nhập
+            _db.UpsertProfile(p);
+            p.RefreshState();
+            Log($"'{p.Name}' chưa có phiên. Chọn tài khoản rồi bấm 'Đăng nhập tự động' (hoặc Mở và đăng nhập tay).");
             return;
         }
 
@@ -359,8 +362,17 @@ public partial class ProfilesViewModel : ObservableObject, IDisposable
             {
                 SessionStatus.Active => $"✔ '{p.Name}': còn đăng nhập, sẵn sàng nhận tác vụ.",
                 SessionStatus.Exhausted => $"'{p.Name}': còn đăng nhập nhưng đã hết hạn ngạch hôm nay.",
-                _ => $"⚠ '{p.Name}': {session.LastErrorMessage}",
+                SessionStatus.Invalid => $"✖ '{p.Name}': HẾT PHIÊN — {session.LastErrorMessage} Tích tài khoản rồi bấm 'Đăng nhập tự động'.",
+                _ => $"⚠ '{p.Name}': chưa kết luận được — {session.LastErrorMessage}",
             });
+
+            // Ghi kết luận vào tài khoản để dòng đổi trạng thái ngay và không bị trạng thái cũ "Đã đăng nhập" đè lại
+            if (session.Status is SessionStatus.Active or SessionStatus.Exhausted)
+                p.LoginStatus = ProfileLoginStatus.LoggedIn;
+            else if (session.Status == SessionStatus.Invalid)
+                p.LoginStatus = ProfileLoginStatus.LoggedOut;
+            p.LastCheckedAt = DateTime.UtcNow;
+            _db.UpsertProfile(p);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -524,7 +536,7 @@ public partial class ProfilesViewModel : ObservableObject, IDisposable
         // Tài khoản đã đăng nhập Dola (phiên còn dùng được) thì không cần đăng nhập lại
         var alreadyIn = targets.Except(busy).Where(p => p.State is not (ProfileState.NotLoggedIn or ProfileState.Invalid or ProfileState.NeedsAction)).ToList();
         if (alreadyIn.Count > 0)
-            Log($"Đã đăng nhập sẵn, không cần làm gì: {string.Join(", ", alreadyIn.Select(p => p.Name))}. (Phiên hết hạn thì tài khoản sẽ chuyển sang 'Chưa đăng nhập' / 'Phiên lỗi' — lúc đó bấm lại nút này.)");
+            Log($"Đã đăng nhập sẵn, không cần làm gì: {string.Join(", ", alreadyIn.Select(p => p.Name))}. (Phiên hết hạn thì tài khoản sẽ chuyển sang 'Chưa đăng nhập' / 'Hết phiên' — lúc đó bấm lại nút này.)");
 
         foreach (var p in targets.Except(busy).Except(alreadyIn))
         {

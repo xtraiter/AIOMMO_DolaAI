@@ -152,7 +152,7 @@ public partial class AccountProfile : ObservableObject
         ProfileState.Paused => "Tắt lập lịch",
         ProfileState.Rendering => "Đang render",
         ProfileState.NeedsAction => "Cần bạn xử lý",
-        ProfileState.Invalid => "Phiên lỗi",
+        ProfileState.Invalid => "Hết phiên",
         ProfileState.Validating => "Đang kiểm tra",
         ProfileState.LoggedIn => "Đã đăng nhập",
         _ => "Chưa đăng nhập",
@@ -186,11 +186,13 @@ public partial class AccountProfile : ObservableObject
         var loggedIn = LoginStatus == ProfileLoginStatus.LoggedIn;
         // login_ok=false do gateway ghi khi verify/worker phát hiện phiên chết: đó là tín hiệu gốc của dự án
         var dead = g?.LoginOk == false;
+        // Từng có phiên (cookie) hoặc từng đăng nhập nhưng giờ kiểm tra thấy hết hạn → "Hết phiên"; chưa từng có gì → "Chưa đăng nhập"
+        var hadSession = loggedIn || !string.IsNullOrEmpty(s?.EncryptedToken) || !string.IsNullOrEmpty(s?.PlainToken);
 
         if (IsRunning && !string.IsNullOrEmpty(HumanNote)) State = ProfileState.NeedsAction;
         else if (s?.Status == SessionStatus.Validating) State = ProfileState.Validating;
         else if (g?.Busy == true) State = ProfileState.Rendering;
-        else if (dead) State = loggedIn ? ProfileState.Invalid : ProfileState.NotLoggedIn;
+        else if (dead) State = hadSession ? ProfileState.Invalid : ProfileState.NotLoggedIn;
         else if (g?.RateLimited == true) State = ProfileState.Exhausted;
         else if (g?.QuotaBlocked == true) State = ProfileState.NoCredit;
         else if (g?.Cooling == true) State = ProfileState.Cooldown;
@@ -201,7 +203,7 @@ public partial class AccountProfile : ObservableObject
             {
                 SessionStatus.Active => s.UsedToday >= s.DailyLimit ? ProfileState.Exhausted : ProfileState.Ready,
                 SessionStatus.Exhausted => ProfileState.Exhausted,
-                SessionStatus.Invalid => loggedIn ? ProfileState.Invalid : ProfileState.NotLoggedIn,
+                SessionStatus.Invalid => hadSession ? ProfileState.Invalid : ProfileState.NotLoggedIn,
                 _ => loggedIn ? ProfileState.LoggedIn : ProfileState.NotLoggedIn,
             };
         }
