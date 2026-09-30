@@ -26,6 +26,10 @@
         <StackPanel Grid.Row="0" Margin="0,0,0,18">
             <TextBlock x:Name="TitleText" FontSize="18" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}"/>
             <TextBlock x:Name="SubtitleText" FontSize="12" Foreground="{StaticResource TextMutedBrush}" Margin="0,4,0,0" TextWrapping="Wrap"/>
+            <Border x:Name="StatusNoteBox" Visibility="Collapsed" Margin="0,12,0,0" Padding="12,9" CornerRadius="8"
+                    Background="{StaticResource WarningSoftBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                <TextBlock x:Name="StatusNoteText" FontSize="12" TextWrapping="Wrap" Foreground="{StaticResource TextPrimaryBrush}"/>
+            </Border>
         </StackPanel>
 
         <!-- Tên + số lượng -->

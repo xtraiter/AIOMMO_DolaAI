@@ -9,13 +9,18 @@ public partial class AutoLoginWindow : Window
 {
     public LoginOptions Options { get; }
 
-    public AutoLoginWindow(string accountName, LoginOptions initial)
+    public AutoLoginWindow(string accountName, LoginOptions initial, string? note = null)
     {
         Options = initial;
 
         InitializeComponent();
         DarkTitleBar.Attach(this);
 
+        if (!string.IsNullOrWhiteSpace(note))
+        {
+            NoteText.Text = note;
+            NoteBox.Visibility = Visibility.Visible;
+        }
         Title = $"Đăng nhập tự động — {accountName}";
         TitleText.Text = $"Đăng nhập tự động — {accountName}";
         DataContext = this;

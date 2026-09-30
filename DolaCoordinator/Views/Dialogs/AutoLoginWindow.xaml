@@ -23,8 +23,12 @@
 
         <StackPanel Grid.Row="0" Margin="0,0,0,16">
             <TextBlock x:Name="TitleText" FontSize="18" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}"/>
-            <TextBlock FontSize="12" Foreground="{StaticResource TextMutedBrush}" Margin="0,4,0,0" TextWrapping="Wrap"
+            <TextBlock x:Name="SubtitleText" FontSize="12" Foreground="{StaticResource TextMutedBrush}" Margin="0,4,0,0" TextWrapping="Wrap"
                        Text="Mở profile này và đăng nhập Dola. Cửa sổ trình duyệt sẽ hiện ra; captcha/2FA bạn tự giải, app tự chạy tiếp."/>
+            <Border x:Name="NoteBox" Visibility="Collapsed" Margin="0,12,0,0" Padding="12,9" CornerRadius="8"
+                    Background="{StaticResource WarningSoftBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                <TextBlock x:Name="NoteText" FontSize="12" TextWrapping="Wrap" Foreground="{StaticResource TextPrimaryBrush}"/>
+            </Border>
         </StackPanel>
 
         <Border Grid.Row="1" Padding="14" CornerRadius="8"

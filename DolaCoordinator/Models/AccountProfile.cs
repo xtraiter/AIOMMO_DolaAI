@@ -76,24 +76,21 @@ public partial class AccountProfile : ObservableObject
     [BsonIgnore]
     public bool HasSavedLogin => SavedMethod != LoginMethod.Manual && !string.IsNullOrEmpty(SavedSecret);
 
+    /// <summary>Cách đăng nhập đã lưu, ví dụ "Google · email@..." hoặc "Chưa lưu đăng nhập".</summary>
+    [BsonIgnore]
+    public string LoginSummary => HasSavedLogin
+        ? SavedMethod switch
+        {
+            LoginMethod.Google => $"Google · {SavedEmail}",
+            LoginMethod.Facebook => $"Facebook · {SavedEmail}",
+            LoginMethod.FacebookCookie => "Cookie Facebook",
+            _ => "Thủ công",
+        }
+        : "Chưa lưu đăng nhập";
+
     /// <summary>Dòng phụ dưới tên tài khoản: cách đăng nhập đã lưu (+ ghi chú nếu có).</summary>
     [BsonIgnore]
-    public string SubText
-    {
-        get
-        {
-            var login = HasSavedLogin
-                ? SavedMethod switch
-                {
-                    LoginMethod.Google => $"Google · {SavedEmail}",
-                    LoginMethod.Facebook => $"Facebook · {SavedEmail}",
-                    LoginMethod.FacebookCookie => "Cookie Facebook",
-                    _ => "Thủ công",
-                }
-                : "Chưa lưu đăng nhập";
-            return string.IsNullOrWhiteSpace(Notes) ? login : $"{login}  ·  {Notes}";
-        }
-    }
+    public string SubText => string.IsNullOrWhiteSpace(Notes) ? LoginSummary : $"{LoginSummary}  ·  {Notes}";
 
     /// <summary>Báo giao diện cập nhật dòng phụ sau khi đổi thông tin đăng nhập đã lưu.</summary>
     public void NotifyLoginChanged() => OnPropertyChanged(nameof(SubText));

@@ -21,7 +21,7 @@ public partial class ProfileEditorWindow : Window
     public ProfileEditorWindow() : this(null) { }
 
     /// <summary>Sửa tài khoản có sẵn (chỉ đổi được ghi chú: tên là khóa của gateway).</summary>
-    public ProfileEditorWindow(AccountProfile? editing, LoginOptions? savedLogin = null)
+    public ProfileEditorWindow(AccountProfile? editing, LoginOptions? savedLogin = null, string? statusNote = null)
     {
         if (savedLogin != null) Login = savedLogin;
         IsEditMode = editing != null;
@@ -33,6 +33,11 @@ public partial class ProfileEditorWindow : Window
         {
             ProfileName = editing.Name;
             Notes = editing.Notes ?? string.Empty;
+            if (!string.IsNullOrWhiteSpace(statusNote))
+            {
+                StatusNoteText.Text = statusNote;
+                StatusNoteBox.Visibility = Visibility.Visible;
+            }
             Title = "Sửa tài khoản";
             TitleText.Text = "Sửa tài khoản";
             SubtitleText.Text = "Tên là tên thư mục accounts/… của gateway nên không đổi được. Sửa được cách đăng nhập, tài khoản/mật khẩu đã lưu và ghi chú.";

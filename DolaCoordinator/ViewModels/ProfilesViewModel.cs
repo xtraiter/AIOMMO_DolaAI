@@ -437,7 +437,12 @@ public partial class ProfilesViewModel : ObservableObject, IDisposable
         }
 
         var p = targets[0];
-        var dlg = new ProfileEditorWindow(p, _chrome.GetSavedLogin(p)) { Owner = Application.Current.MainWindow };
+        var note = p.HasSavedLogin
+            ? $"✔ Đã lưu đăng nhập của tài khoản này: {p.LoginSummary}. Mật khẩu / khóa 2FA / cookie đã lưu và hiện dạng ẩn ●●●; sửa rồi bấm Lưu để thay."
+            : p.Session != null || p.LoginStatus == ProfileLoginStatus.LoggedIn
+                ? "Tài khoản này ĐÃ đăng nhập Dola và phiên vẫn còn dùng được — bạn không cần nhập gì cả. Phần đăng nhập bên dưới chỉ để app TỰ đăng nhập lại khi phiên hết hạn (tùy chọn; tài khoản thêm từ bản cũ chưa có thông tin này vì trước đây app không lưu)."
+                : "Chưa lưu thông tin đăng nhập cho tài khoản này. Nhập một lần bên dưới (tùy chọn), lần sau chỉ cần bấm 'Đăng nhập tự động'.";
+        var dlg = new ProfileEditorWindow(p, _chrome.GetSavedLogin(p), note) { Owner = Application.Current.MainWindow };
         if (dlg.ShowDialog() != true) return;
 
         p.Notes = string.IsNullOrWhiteSpace(dlg.Notes) ? null : dlg.Notes.Trim();
@@ -516,7 +521,12 @@ public partial class ProfilesViewModel : ObservableObject, IDisposable
         if (busy.Count > 0)
             Log($"Bỏ qua {busy.Count} tài khoản đang mở/đang bận: {string.Join(", ", busy.Select(p => p.Name))} (đóng profile trước).");
 
-        foreach (var p in targets.Except(busy))
+        // Tài khoản đã đăng nhập Dola (phiên còn dùng được) thì không cần đăng nhập lại
+        var alreadyIn = targets.Except(busy).Where(p => p.State is not (ProfileState.NotLoggedIn or ProfileState.Invalid or ProfileState.NeedsAction)).ToList();
+        if (alreadyIn.Count > 0)
+            Log($"Đã đăng nhập sẵn, không cần làm gì: {string.Join(", ", alreadyIn.Select(p => p.Name))}. (Phiên hết hạn thì tài khoản sẽ chuyển sang 'Chưa đăng nhập' / 'Phiên lỗi' — lúc đó bấm lại nút này.)");
+
+        foreach (var p in targets.Except(busy).Except(alreadyIn))
         {
             if (p.HasSavedLogin)
                 await LaunchWithOptionsAsync(p, _chrome.GetSavedLogin(p));
@@ -541,7 +551,8 @@ public partial class ProfilesViewModel : ObservableObject, IDisposable
             }
         }
 
-        var dlg = new AutoLoginWindow(p.Name, initial) { Owner = Application.Current.MainWindow };
+        var note = "Chưa lưu thông tin đăng nhập cho tài khoản này (tài khoản thêm từ bản cũ, hoặc thêm bằng đăng nhập thủ công). Nhập một lần; để tích \"Ghi nhớ\" thì lần sau app tự dùng, không hỏi lại.";
+        var dlg = new AutoLoginWindow(p.Name, initial, note) { Owner = Application.Current.MainWindow };
         if (dlg.ShowDialog() != true) return false;
 
         if (dlg.Options.IsAutomatic && dlg.Options.Remember)
