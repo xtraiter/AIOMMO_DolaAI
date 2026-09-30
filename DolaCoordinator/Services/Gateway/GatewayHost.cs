@@ -76,9 +76,6 @@ public sealed class GatewayHost : IGatewayHost, IDisposable
         if (gatewayDir == null)
             return (false, "Không tìm thấy gateway (thư mục 'gateway' có dola-gateway.exe, hoặc dola-render-gateway có server.py). Chọn thư mục trong tab Cài đặt.");
 
-        var browser = await EnsureBrowserAsync(ct);
-        if (!browser.Ok) return browser;
-
         StopProcess(); // dọn tiến trình cũ đã chết/treo (nếu có)
 
         var (fileName, args) = GatewayLocator.BuildCommand(gatewayDir, pythonCommand, "serve",

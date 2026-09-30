@@ -398,6 +398,12 @@ public class TaskDispatcher : ITaskDispatcher, IDisposable
                     FailTask(task, $"Không bật được gateway: {host.Error}");
                     return;
                 }
+                var browser = await _gatewayHost.EnsureBrowserAsync(ct);
+                if (!browser.Ok)
+                {
+                    FailTask(task, $"Chưa có trình duyệt Chromium cho gateway: {browser.Error} (Cài đặt → Trình duyệt Chromium → Cài đặt trình duyệt)");
+                    return;
+                }
                 pick = await PickSessionAsync(tried, ct);
             }
             catch (OperationCanceledException)

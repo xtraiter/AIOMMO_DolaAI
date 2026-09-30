@@ -188,7 +188,6 @@ public partial class SettingsViewModel : ObservableObject
         try
         {
             var host = await _gatewayHost.EnsureRunningAsync(); // chưa chạy thì bật ngầm rồi mới kiểm tra
-            if (!host.Ok) ConnectionStatusText = $"Đang kiểm tra... ({host.Error})";
             var health = await _gatewayClient.CheckHealthAsync(GatewayUrl);
             if (health != null && health.Ok)
             {
@@ -198,7 +197,9 @@ public partial class SettingsViewModel : ObservableObject
             else
             {
                 IsConnectionOk = false;
-                ConnectionStatusText = "Không nhận được phản hồi hợp lệ từ Dola Render Gateway.";
+                ConnectionStatusText = host.Ok
+                    ? "Không nhận được phản hồi hợp lệ từ Dola Render Gateway."
+                    : $"Không bật được gateway: {host.Error}";
             }
         }
         catch (Exception ex)
