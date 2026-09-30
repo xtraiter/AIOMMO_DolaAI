@@ -154,6 +154,7 @@
                         </DataGridTemplateColumn>
 
                         <DataGridTextColumn Header="DÒNG" Binding="{Binding LineCount}" Width="60"/>
+                        <DataGridTextColumn Header="MODEL" Binding="{Binding ModelLabel}" Width="105"/>
                         <DataGridTextColumn Header="TỈ LỆ" Binding="{Binding Ratio}" Width="65"/>
                         <DataGridTextColumn Header="THỜI LƯỢNG" Binding="{Binding Duration, StringFormat='{}{0}s'}" Width="95"/>
                         <DataGridTextColumn Header="ẢNH" Binding="{Binding ReferenceSummary}" Width="65"/>

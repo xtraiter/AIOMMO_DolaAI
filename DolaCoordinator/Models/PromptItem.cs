@@ -24,6 +24,9 @@ public partial class PromptItem : ObservableObject
 
     public int Duration { get; set; } = 30;
 
+    /// <summary>Model Dola/Seedance: seedance-2.0 hoặc seedance-2.5.</summary>
+    public string Model { get; set; } = "seedance-2.0";
+
     /// <summary>Ảnh tham chiếu mặc định (đường dẫn trên máy này).</summary>
     public List<string> ReferenceLocalPaths { get; set; } = new();
 
@@ -56,6 +59,9 @@ public partial class PromptItem : ObservableObject
 
     [BsonIgnore]
     public int LineCount => string.IsNullOrEmpty(Text) ? 0 : Text.Split('\n').Length;
+
+    [BsonIgnore]
+    public string ModelLabel => DolaCoordinator.Helpers.PromptFileParser.ModelLabel(Model);
 
     [BsonIgnore]
     public string ReferenceSummary => ReferenceLocalPaths.Count == 0 ? "—" : $"{ReferenceLocalPaths.Count} ảnh";

@@ -18,11 +18,16 @@ public partial class PromptEditorWindow : Window
     public string PromptText { get; set; } = string.Empty;
     public string Ratio { get; set; } = "9:16";
     public int Duration { get; set; } = 30;
+    public string ModelLabel { get; set; } = PromptFileParser.ModelLabel("seedance-2.0");
+
+    /// <summary>Giá trị API của model đã chọn (seedance-2.0 / seedance-2.5).</summary>
+    public string Model => PromptFileParser.NormalizeModel(ModelLabel);
     public string Notes { get; set; } = string.Empty;
     public ObservableCollection<string> RefImages { get; } = new();
 
     public string[] RatioOptions => PromptFileParser.Ratios;
     public int[] DurationOptions => PromptFileParser.Durations;
+    public string[] ModelOptions => PromptFileParser.ModelLabels;
 
     public PromptEditorWindow(PromptItem? editing = null)
     {
@@ -32,6 +37,7 @@ public partial class PromptEditorWindow : Window
             PromptText = editing.Text;
             Ratio = editing.Ratio;
             Duration = editing.Duration;
+            ModelLabel = PromptFileParser.ModelLabel(editing.Model);
             Notes = editing.Notes ?? string.Empty;
             foreach (var p in editing.ReferenceLocalPaths) RefImages.Add(p);
         }

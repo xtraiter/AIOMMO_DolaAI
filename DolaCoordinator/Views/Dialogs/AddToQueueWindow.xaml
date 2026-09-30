@@ -29,12 +29,17 @@
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
-            <StackPanel Margin="0,0,8,0">
+            <StackPanel Margin="0,0,6,0">
+                <TextBlock Text="MODEL" Style="{StaticResource FieldLabel}"/>
+                <ComboBox x:Name="ModelBox" SelectedIndex="0"/>
+            </StackPanel>
+            <StackPanel Grid.Column="1" Margin="6,0,6,0">
                 <TextBlock Text="TỶ LỆ VIDEO" Style="{StaticResource FieldLabel}"/>
                 <ComboBox x:Name="RatioBox" SelectedIndex="0"/>
             </StackPanel>
-            <StackPanel Grid.Column="1" Margin="8,0,0,0">
+            <StackPanel Grid.Column="2" Margin="6,0,0,0">
                 <TextBlock Text="THỜI LƯỢNG (giây)" Style="{StaticResource FieldLabel}"/>
                 <ComboBox x:Name="DurationBox" SelectedIndex="0"/>
             </StackPanel>

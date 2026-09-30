@@ -360,6 +360,29 @@ async def resume_video(account: str, conversation_id: str, timeout: int,
             await context.close()
 
 
+async def type_prompt(page, prompt: str) -> None:
+    """Type a prompt into Dola's chat box WITHOUT sending it.
+
+    In the chat box Enter submits the message, so a multi-line prompt must use Shift+Enter for every line break
+    (typing "\n" would press Enter and send the first line on its own). Tabs are turned into spaces because a Tab key
+    press moves the focus out of the box. Short single-line prompts keep the original slow, human-like typing;
+    long / multi-line ones are inserted line by line (typing 2,000 characters at 100 ms each would take minutes).
+    """
+    text = prompt.replace("\r\n", "\n").replace("\r", "\n").replace("\t", "    ")
+    lines = text.split("\n")
+    slow = len(lines) == 1 and len(text) <= 300
+    for i, line in enumerate(lines):
+        if i > 0:
+            await page.keyboard.press("Shift+Enter")
+        if not line:
+            continue
+        if slow:
+            await page.keyboard.type(line, delay=100)
+        else:
+            await page.keyboard.insert_text(line)
+            await page.wait_for_timeout(60)
+
+
 async def generate_video(account: str, prompt: str, ratio: str = None,
                          duration: int = None, timeout: int = None,
                          model: str = "seedance_v2.0", use_extension: bool = True,
@@ -531,7 +554,7 @@ async def generate_video(account: str, prompt: str, ratio: str = None,
                 await box.click(force=True, timeout=5000)
             except Exception:
                 await box.focus()
-            await page.keyboard.type(prompt, delay=100)
+            await type_prompt(page, prompt)
             await page.wait_for_timeout(600)
             if config.DRY_RUN:
                 # Test mode: settings are applied and the prompt is typed; nothing is sent, so no credit is spent

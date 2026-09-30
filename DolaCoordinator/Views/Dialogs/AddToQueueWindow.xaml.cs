@@ -15,6 +15,9 @@ public partial class AddToQueueWindow : Window
     /// <summary>null = dùng thời lượng mặc định của từng prompt.</summary>
     public int? DurationOverride { get; private set; }
 
+    /// <summary>null = dùng model mặc định của từng prompt.</summary>
+    public string? ModelOverride { get; private set; }
+
     public int Copies { get; private set; } = 1;
 
     /// <summary>0 thường, 1 cao, 2 khẩn.</summary>
@@ -30,6 +33,8 @@ public partial class AddToQueueWindow : Window
         SummaryText.Text = $"{promptCount} prompt đã chọn. Mỗi prompt được gửi nguyên văn (giữ xuống dòng) cho Dola.";
         RatioBox.ItemsSource = new[] { PerPrompt }.Concat(PromptFileParser.Ratios).ToList();
         DurationBox.ItemsSource = new[] { PerPrompt }.Concat(PromptFileParser.Durations.Select(d => d.ToString())).ToList();
+        ModelBox.ItemsSource = new[] { PerPrompt }.Concat(PromptFileParser.ModelLabels).ToList();
+        ModelBox.SelectedIndex = 0;
         RatioBox.SelectedIndex = 0;
         DurationBox.SelectedIndex = 0;
     }
@@ -44,6 +49,7 @@ public partial class AddToQueueWindow : Window
         }
 
         Copies = copies;
+        ModelOverride = ModelBox.SelectedItem is string m && m != PerPrompt ? PromptFileParser.NormalizeModel(m) : null;
         RatioOverride = RatioBox.SelectedItem is string r && r != PerPrompt ? r : null;
         DurationOverride = DurationBox.SelectedItem is string d && int.TryParse(d, out var seconds) ? seconds : null;
         Priority = PriorityBox.SelectedIndex;

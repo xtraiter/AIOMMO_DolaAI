@@ -107,6 +107,7 @@ public partial class PromptsViewModel : ObservableObject
             Text = dlg.PromptText.Trim('\r', '\n'),
             Ratio = dlg.Ratio,
             Duration = dlg.Duration,
+            Model = dlg.Model,
             Notes = string.IsNullOrWhiteSpace(dlg.Notes) ? null : dlg.Notes.Trim(),
             ReferenceLocalPaths = dlg.RefImages.ToList(),
         };
@@ -139,6 +140,7 @@ public partial class PromptsViewModel : ObservableObject
         p.Text = dlg.PromptText.Trim('\r', '\n');
         p.Ratio = dlg.Ratio;
         p.Duration = dlg.Duration;
+        p.Model = dlg.Model;
         p.Notes = string.IsNullOrWhiteSpace(dlg.Notes) ? null : dlg.Notes.Trim();
         p.ReferenceLocalPaths = dlg.RefImages.ToList();
         p.UpdatedAt = DateTime.UtcNow;
@@ -161,6 +163,7 @@ public partial class PromptsViewModel : ObservableObject
                 Text = src.Text,
                 Ratio = src.Ratio,
                 Duration = src.Duration,
+                Model = src.Model,
                 Notes = src.Notes,
                 ReferenceLocalPaths = src.ReferenceLocalPaths.ToList(),
             });
@@ -287,6 +290,7 @@ public partial class PromptsViewModel : ObservableObject
                 {
                     Prompt = p.Text,
                     PromptTitle = p.Title,
+                    Model = dlg.ModelOverride ?? p.Model,
                     Ratio = dlg.RatioOverride ?? p.Ratio,
                     Duration = dlg.DurationOverride ?? p.Duration,
                     ReferenceLocalPaths = p.ReferenceLocalPaths.ToList(),

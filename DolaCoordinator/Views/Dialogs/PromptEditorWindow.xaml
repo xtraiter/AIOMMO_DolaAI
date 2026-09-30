@@ -46,19 +46,24 @@
 
         <Grid Grid.Row="3" Margin="0,0,0,12">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="160"/>
-                <ColumnDefinition Width="160"/>
+                <ColumnDefinition Width="150"/>
+                <ColumnDefinition Width="120"/>
+                <ColumnDefinition Width="120"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
             <StackPanel Margin="0,0,12,0">
-                <TextBlock Text="TỶ LỆ MẶC ĐỊNH" Style="{StaticResource FieldLabel}"/>
-                <ComboBox ItemsSource="{Binding RatioOptions}" SelectedItem="{Binding Ratio}"/>
+                <TextBlock Text="MODEL" Style="{StaticResource FieldLabel}"/>
+                <ComboBox ItemsSource="{Binding ModelOptions}" SelectedItem="{Binding ModelLabel}" ToolTip="Model Seedance dùng để tạo video"/>
             </StackPanel>
             <StackPanel Grid.Column="1" Margin="0,0,12,0">
+                <TextBlock Text="TỶ LỆ" Style="{StaticResource FieldLabel}"/>
+                <ComboBox ItemsSource="{Binding RatioOptions}" SelectedItem="{Binding Ratio}"/>
+            </StackPanel>
+            <StackPanel Grid.Column="2" Margin="0,0,12,0">
                 <TextBlock Text="THỜI LƯỢNG (giây)" Style="{StaticResource FieldLabel}"/>
                 <ComboBox ItemsSource="{Binding DurationOptions}" SelectedItem="{Binding Duration}"/>
             </StackPanel>
-            <StackPanel Grid.Column="2">
+            <StackPanel Grid.Column="3">
                 <TextBlock Text="ẢNH THAM CHIẾU MẶC ĐỊNH (tùy chọn)" Style="{StaticResource FieldLabel}"/>
                 <StackPanel Orientation="Horizontal">
                     <Button Content="Chọn ảnh…" Click="AddImages_Click" Margin="0,0,8,0"/>

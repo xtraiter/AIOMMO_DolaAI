@@ -83,6 +83,9 @@ public partial class RenderTask : ObservableObject
     }
 
     [BsonIgnore]
+    public string ModelLabel => DolaCoordinator.Helpers.PromptFileParser.ModelLabel(Model);
+
+    [BsonIgnore]
     public string PriorityText => Priority switch
     {
         >= 2 => "Khẩn",

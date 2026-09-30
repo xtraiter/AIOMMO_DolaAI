@@ -39,7 +39,7 @@
             <DockPanel LastChildFill="True">
                 <!-- Brand -->
                 <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="20,22,16,10">
-                    <Image Source="Assets/logo64.ico" Width="34" Height="34" RenderOptions.BitmapScalingMode="HighQuality"/>
+                    <Image Source="Assets/logo.png" Width="40" Height="40" RenderOptions.BitmapScalingMode="HighQuality" RenderOptions.EdgeMode="Aliased" SnapsToDevicePixels="True" UseLayoutRounding="True"/>
                     <StackPanel Margin="12,0,0,0" VerticalAlignment="Center">
                         <TextBlock Text="ALL IN ONE MMO" FontSize="14.5" FontWeight="ExtraBold" Foreground="{StaticResource PrimaryAccentBrush}"/>
                         <TextBlock Text="Dola Coordinator" FontSize="11.5" Foreground="{StaticResource TextMutedBrush}"/>
@@ -90,14 +90,16 @@
 
                 <!-- Nav -->
                 <StackPanel>
-                    <TextBlock Text="ĐIỀU PHỐI" Style="{StaticResource NavSection}"/>
+                    <TextBlock Text="HỆ THỐNG" Style="{StaticResource NavSection}"/>
                     <RadioButton GroupName="Nav" Style="{StaticResource SidebarItem}"
-                                 IsChecked="{Binding SelectedTabIndex, Converter={StaticResource IntToBoolConverter}, ConverterParameter=0}">
+                                 IsChecked="{Binding SelectedTabIndex, Converter={StaticResource IntToBoolConverter}, ConverterParameter=2}">
                         <StackPanel Orientation="Horizontal">
-                            <Image Source="Assets/Icons/dashboard.png" Style="{StaticResource NavIcon}"/>
-                            <TextBlock Text="Vận hành"/>
+                            <Image Source="Assets/Icons/settings.png" Style="{StaticResource NavIcon}"/>
+                            <TextBlock Text="Cài đặt"/>
                         </StackPanel>
                     </RadioButton>
+
+                    <TextBlock Text="ĐIỀU PHỐI" Style="{StaticResource NavSection}"/>
                     <RadioButton GroupName="Nav" Style="{StaticResource SidebarItem}"
                                  IsChecked="{Binding SelectedTabIndex, Converter={StaticResource IntToBoolConverter}, ConverterParameter=1}">
                         <StackPanel Orientation="Horizontal">
@@ -124,12 +126,11 @@
                         </StackPanel>
                     </RadioButton>
 
-                    <TextBlock Text="HỆ THỐNG" Style="{StaticResource NavSection}"/>
                     <RadioButton GroupName="Nav" Style="{StaticResource SidebarItem}"
-                                 IsChecked="{Binding SelectedTabIndex, Converter={StaticResource IntToBoolConverter}, ConverterParameter=2}">
+                                 IsChecked="{Binding SelectedTabIndex, Converter={StaticResource IntToBoolConverter}, ConverterParameter=0}">
                         <StackPanel Orientation="Horizontal">
-                            <Image Source="Assets/Icons/settings.png" Style="{StaticResource NavIcon}"/>
-                            <TextBlock Text="Cài đặt"/>
+                            <Image Source="Assets/Icons/dashboard.png" Style="{StaticResource NavIcon}"/>
+                            <TextBlock Text="Vận hành"/>
                         </StackPanel>
                     </RadioButton>
                 </StackPanel>

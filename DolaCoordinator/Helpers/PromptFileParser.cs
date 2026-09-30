@@ -20,6 +20,21 @@ public static class PromptFileParser
     public static readonly string[] Ratios = { "9:16", "16:9", "1:1" };
     public static readonly int[] Durations = { 10, 15, 30 };
 
+    /// <summary>Model mà gateway hỗ trợ (giá trị gửi qua API /v1/videos/generations).</summary>
+    public static readonly string[] Models = { "seedance-2.0", "seedance-2.5" };
+
+    /// <summary>Tên hiển thị: seedance-2.5 → "Seedance 2.5".</summary>
+    public static string ModelLabel(string? model) => "Seedance " + NormalizeModel(model).Replace("seedance-", string.Empty);
+
+    public static readonly string[] ModelLabels = Models.Select(ModelLabel).ToArray();
+
+    /// <summary>Nhận "2.5", "Seedance 2.5", "seedance-2.5", "seedance_v2.5"… → giá trị API; không nhận ra thì seedance-2.0.</summary>
+    public static string NormalizeModel(string? value)
+    {
+        var v = (value ?? string.Empty).ToLowerInvariant();
+        return v.Contains("2.5") || v.Contains("25") ? "seedance-2.5" : "seedance-2.0";
+    }
+
     private static readonly Regex BlockSeparator = new(@"^[ \t]*(?:-{3,}|={3,})[ \t]*$", RegexOptions.Multiline | RegexOptions.Compiled);
 
     public static List<PromptItem> Parse(string path)
@@ -71,13 +86,14 @@ public static class PromptFileParser
         var iText = Col("prompt", "noidung", "content", "text", "kichban", "script");
         var hasHeader = iText >= 0;
 
-        int iTitle, iRatio, iDuration, iNotes;
+        int iTitle, iRatio, iDuration, iNotes, iModel = -1;
         if (hasHeader)
         {
             iTitle = Col("title", "ten", "name", "tenprompt", "tieude");
             iRatio = Col("ratio", "tyle", "tile");
             iDuration = Col("duration", "thoiluong", "giay", "seconds");
             iNotes = Col("notes", "note", "ghichu");
+            iModel = Col("model", "mohinh", "seedance");
         }
         else
         {
@@ -99,6 +115,7 @@ public static class PromptFileParser
                 Text = body,
                 Ratio = NormalizeRatio(Get(iRatio)),
                 Duration = NormalizeDuration(Get(iDuration)),
+                Model = NormalizeModel(Get(iModel)),
                 Notes = Get(iNotes) is { Length: > 0 } n ? n : null,
             });
         }
@@ -151,9 +168,9 @@ public static class PromptFileParser
     {
         static string Q(string? s) => "\"" + (s ?? string.Empty).Replace("\"", "\"\"") + "\"";
         var sb = new StringBuilder();
-        sb.Append("Title,Prompt,Ratio,Duration,Notes\r\n");
+        sb.Append("Title,Prompt,Ratio,Duration,Model,Notes\r\n");
         foreach (var p in prompts)
-            sb.Append(string.Join(",", Q(p.Title), Q(p.Text), Q(p.Ratio), Q(p.Duration.ToString(CultureInfo.InvariantCulture)), Q(p.Notes))).Append("\r\n");
+            sb.Append(string.Join(",", Q(p.Title), Q(p.Text), Q(p.Ratio), Q(p.Duration.ToString(CultureInfo.InvariantCulture)), Q(p.Model), Q(p.Notes))).Append("\r\n");
         return sb.ToString();
     }
 
