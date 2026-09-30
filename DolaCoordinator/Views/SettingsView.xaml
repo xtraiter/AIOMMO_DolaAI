@@ -204,16 +204,16 @@
                 </StackPanel>
             </Border>
 
-            <!-- Chỉ dẫn tự động thêm vào mỗi prompt -->
+            <!-- Khi Dola hỏi lại -->
             <Border Style="{StaticResource ModernCard}" Margin="0,0,0,20">
                 <StackPanel>
-                    <TextBlock Text="Chỉ dẫn tự động thêm vào mỗi prompt" FontSize="14" FontWeight="Bold" Foreground="{StaticResource AccentBrush}" Margin="0,0,0,12" />
-                    <CheckBox IsChecked="{Binding AppendInstruction}" Content="Thêm câu chỉ dẫn 'tạo video ngay, đừng hỏi lại' vào cuối mỗi prompt gửi cho Dola" Margin="0,0,0,10" />
-                    <TextBlock Text="Nội dung chỉ dẫn ({duration} được thay bằng thời lượng đã chọn cho video):" Foreground="{StaticResource TextSecondaryBrush}" FontSize="12" Margin="0,0,0,4" />
-                    <TextBox Text="{Binding InstructionText, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" TextWrapping="Wrap"
-                             Height="96" VerticalScrollBarVisibility="Auto" VerticalContentAlignment="Top" Style="{StaticResource ModernTextBox}" />
-                    <Button Content="Đặt lại nội dung mặc định" Command="{Binding ResetInstructionCommand}" Style="{StaticResource ModernSecondaryButton}" HorizontalAlignment="Left" Margin="0,10,0,6" />
-                    <TextBlock Text="* Dola hay hỏi lại (ví dụ 'dùng 15 giây được không?', 'bạn có ảnh khuôn mặt không?') thay vì tạo video, khiến tác vụ đứng chờ. Câu này bảo Dola tự quyết định. Nếu Dola vẫn hỏi lại, app phát hiện sau khoảng 1 phút, ghi câu hỏi của Dola vào tác vụ lỗi và không đổi sang tài khoản khác." Foreground="{StaticResource TextMutedBrush}" FontSize="11" TextWrapping="Wrap" />
+                    <TextBlock Text="Khi Dola hỏi lại thay vì tạo video" FontSize="14" FontWeight="Bold" Foreground="{StaticResource AccentBrush}" Margin="0,0,0,12" />
+                    <CheckBox IsChecked="{Binding AutoAnswerAskBack}" Content="Tự trả lời Dola để nó tạo video luôn (tối đa 3 lần mỗi video)" Margin="0,0,0,10" />
+                    <TextBlock Text="Câu app gõ vào khung chat khi Dola hỏi (ví dụ 'dùng 15 giây được không?', 'bạn có ảnh khuôn mặt không, A hay B?'):" Foreground="{StaticResource TextSecondaryBrush}" FontSize="12" Margin="0,0,0,4" />
+                    <TextBox Text="{Binding AskBackReply, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" TextWrapping="Wrap"
+                             Height="80" VerticalScrollBarVisibility="Auto" VerticalContentAlignment="Top" Style="{StaticResource ModernTextBox}" />
+                    <Button Content="Đặt lại nội dung mặc định" Command="{Binding ResetAskBackReplyCommand}" Style="{StaticResource ModernSecondaryButton}" HorizontalAlignment="Left" Margin="0,10,0,6" />
+                    <TextBlock Text="* Prompt của bạn được gửi nguyên văn, app không chèn thêm gì. Dola hay hỏi lại khi kịch bản dài hơn mức nó hỗ trợ (hiện 4–15 giây) hoặc thiếu ảnh khuôn mặt; app phát hiện câu hỏi (khoảng 12 giây sau khi Dola viết xong), gõ câu trả lời trên và Dola sẽ tạo video. Nếu sau 3 lần vẫn hỏi, tác vụ báo lỗi kèm câu hỏi của Dola. Nhật ký và cột 'Thực tế' cho biết Dola cuối cùng tạo dài bao nhiêu giây." Foreground="{StaticResource TextMutedBrush}" FontSize="11" TextWrapping="Wrap" />
                 </StackPanel>
             </Border>
 

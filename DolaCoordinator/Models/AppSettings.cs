@@ -56,18 +56,20 @@ public class AppSettings
     /// <summary>Tài khoản vừa lỗi được bỏ qua ở các video khác trong một lúc (thay vì lần nào cũng thử lại).</summary>
     public bool SkipFailedAccounts { get; set; } = true;
 
-    /// <summary>Câu chỉ dẫn mặc định thêm vào cuối mỗi prompt để Dola không hỏi lại. {duration} = thời lượng đã chọn.</summary>
-    public const string DefaultInstruction =
-        "Generate the video right now in a single step. Do not ask me any questions and do not offer options. " +
-        "Target length: {duration} seconds - if that is longer than what you support, automatically use the longest supported length " +
-        "and compress the storyboard to fit. If no reference face image is provided, create the character yourself " +
-        "and keep the same character in every scene.";
+    /// <summary>
+    /// Câu app tự gõ vào khung chat khi Dola hỏi lại thay vì tạo video ("dùng 15 giây được không?", "bạn có ảnh khuôn mặt không, A hay B?").
+    /// Không chứa dấu hỏi để không bị nhận nhầm là một câu hỏi nữa.
+    /// </summary>
+    public const string DefaultAskBackReply =
+        "Có, tiếp tục ngay với phương án bạn đề xuất: dùng thời lượng gần nhất được hỗ trợ và nén kịch bản cho vừa. " +
+        "Nếu bạn hỏi về ảnh khuôn mặt thì chọn B, tự tạo nhân vật và giữ nhân vật đó ở mọi cảnh. " +
+        "Không cần hỏi lại, hãy tạo video ngay. (Yes, go ahead now with your suggestion, do not ask again.)";
 
-    /// <summary>Tự thêm chỉ dẫn "tạo ngay, đừng hỏi lại" vào cuối mỗi prompt gửi cho Dola.</summary>
-    public bool AppendInstruction { get; set; } = true;
+    /// <summary>Khi Dola hỏi lại, tự trả lời để nó tạo video (tối đa 3 lần mỗi video).</summary>
+    public bool AutoAnswerAskBack { get; set; } = true;
 
-    /// <summary>Nội dung chỉ dẫn (có thể sửa). Để trống = dùng mặc định.</summary>
-    public string InstructionText { get; set; } = DefaultInstruction;
+    /// <summary>Nội dung tự trả lời (có thể sửa). Để trống = dùng mặc định.</summary>
+    public string AskBackReply { get; set; } = DefaultAskBackReply;
 
     /// <summary>Ẩn cửa sổ Chromium khi chạy vận hành (cửa sổ nằm ngoài màn hình). Đăng nhập tài khoản luôn hiện.</summary>
     public bool HideRenderWindow { get; set; }

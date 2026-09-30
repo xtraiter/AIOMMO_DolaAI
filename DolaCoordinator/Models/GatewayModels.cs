@@ -33,6 +33,10 @@ public class VideoGenApiRequest
     /// <summary>Chạy với cửa sổ Chromium nằm ngoài màn hình (ẩn).</summary>
     [JsonPropertyName("hide_window")]
     public bool HideWindow { get; set; }
+
+    /// <summary>Câu gateway tự gõ vào chat khi Dola hỏi lại; null = không tự trả lời.</summary>
+    [JsonPropertyName("auto_reply")]
+    public string? AutoReply { get; set; }
 }
 
 public class TaskApiResponse

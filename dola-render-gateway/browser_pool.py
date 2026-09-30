@@ -335,7 +335,7 @@ class BrowserPool:
                              on_poll=None, on_balance=None,
                              reference_image_paths: list[str] | None = None,
                              preferred_account: str | None = None,
-                             on_stage=None, hide_window: bool = False) -> dict:
+                             on_stage=None, hide_window: bool = False, auto_reply: str | None = None) -> dict:
         """Picks an idle schedulable account; automatically rotates on quota/risk limits."""
         async with self.semaphore:
             last_err = None
@@ -388,7 +388,7 @@ class BrowserPool:
                             account, prompt, ratio, duration, model=model,
                             on_conversation_id=on_conversation_id, on_poll=on_poll,
                             on_balance=on_balance, reference_image_paths=reference_image_paths,
-                            on_stage=on_stage, hide_window=hide_window,
+                            on_stage=on_stage, hide_window=hide_window, auto_reply=auto_reply,
                             warmup=self.warmup_due(account),
                             on_warmup_done=lambda acc=account: self.mark_warmup_done(acc))
                         self._claim(account)

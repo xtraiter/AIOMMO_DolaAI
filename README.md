@@ -42,7 +42,7 @@ gateway\accounts\            (tự tạo) phiên đăng nhập của từng tài
    - Cột **Dùng để chạy** ở trang Quản lý tài khoản (mặc định đã tích) quyết định tài khoản nào tham gia vận hành; có nút *Đưa vào / Loại khỏi vận hành* cho các dòng đã tích.
    - Sau mỗi video, nhật ký ghi **thời lượng thực tế** đọc từ file (`[Thời lượng] …`) và lời Dola viết kèm (`[Dola nói] …`). Bảng Vận hành có cột **Yêu cầu** và **Thực tế**: khi Dola tạo ngắn/dài hơn thời lượng đã chọn (ví dụ chọn 15s ra 10s) dòng đó đổi màu cam và ghi rõ "do Dola, không phải lỗi của app".
    - Thanh **Tiến độ tổng** ở đáy cửa sổ (hiện ở mọi trang): trung bình tiến độ của cả đợt đang chạy, đạt 100% khi xong toàn bộ.
-4. **Tab Cài đặt**: hạn ngạch/ngày, thư mục lưu video, trình duyệt Chromium, và **chỉ dẫn tự động thêm vào mỗi prompt** (mặc định bật): một câu bảo Dola *tạo video ngay, đừng hỏi lại* (tự dùng thời lượng tối đa nếu kịch bản dài hơn, tự tạo nhân vật nếu không có ảnh). Nếu Dola vẫn hỏi lại, app phát hiện sau khoảng 1 phút, ghi câu hỏi của Dola vào tác vụ lỗi và không đổi sang tài khoản khác (vì tài khoản nào cũng sẽ hỏi như vậy).
+4. **Tab Cài đặt**: hạn ngạch/ngày, thư mục lưu video, trình duyệt Chromium, và **Khi Dola hỏi lại** (mặc định bật). Prompt của bạn được gửi nguyên văn, app không chèn thêm gì. Dola hay hỏi lại thay vì tạo video (ví dụ "kịch bản 30 giây nhưng tôi chỉ hỗ trợ 4–15 giây, dùng 15 giây được không?" hoặc "bạn có ảnh khuôn mặt không, A hay B?"). App phát hiện câu hỏi đó, tự gõ câu trả lời "có, tiếp tục ngay, chọn B, tự tạo nhân vật" (sửa được trong Cài đặt) để Dola tạo video luôn, tối đa 3 lần mỗi video; nhật ký ghi lại ở dòng `[Dola nói]`. Nếu sau 3 lần Dola vẫn hỏi, tác vụ báo lỗi kèm câu hỏi của Dola.
 
 ### Cách điều phối chạy
 

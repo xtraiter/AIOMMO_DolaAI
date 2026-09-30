@@ -512,14 +512,17 @@ public class TaskDispatcher : ITaskDispatcher, IDisposable
                 var req = new VideoGenApiRequest
                 {
                     Model = task.Model,
-                    Prompt = BuildPrompt(task, settings),
+                    Prompt = task.Prompt, // gửi NGUYÊN VĂN prompt của bạn, không chèn thêm gì
                     Ratio = task.Ratio,
                     Duration = task.Duration,
                     ReferenceImages = task.ReferenceImages,
                     ReferenceLocalPaths = task.ReferenceLocalPaths,
                     Account = session.Name,
                     Cookie = sessionToken,
-                    HideWindow = settings.HideRenderWindow
+                    HideWindow = settings.HideRenderWindow,
+                    AutoReply = settings.AutoAnswerAskBack
+                        ? (string.IsNullOrWhiteSpace(settings.AskBackReply) ? AppSettings.DefaultAskBackReply : settings.AskBackReply.Trim())
+                        : null,
                 };
 
                 var createResp = await CreateOnGatewayAsync(req, settings.ClientApiKey, ct);
@@ -641,18 +644,6 @@ public class TaskDispatcher : ITaskDispatcher, IDisposable
         TaskUpdated?.Invoke(task);
     }
 
-    /// <summary>
-    /// Nội dung thật gửi cho Dola = prompt của bạn + (nếu bật) câu chỉ dẫn "tạo ngay, đừng hỏi lại". Dola hay hỏi lại khi
-    /// thời lượng trong kịch bản vượt giới hạn hoặc thiếu ảnh tham chiếu; câu chỉ dẫn giúp nó tự quyết định.
-    /// </summary>
-    private static string BuildPrompt(RenderTask task, AppSettings settings)
-    {
-        if (!settings.AppendInstruction) return task.Prompt;
-        var text = string.IsNullOrWhiteSpace(settings.InstructionText) ? AppSettings.DefaultInstruction : settings.InstructionText;
-        text = text.Replace("{duration}", task.Duration.ToString());
-        return task.Prompt.TrimEnd() + Environment.NewLine + Environment.NewLine + text.Trim();
-    }
-
     /// <summary>Gọi gateway tạo tác vụ; các lỗi HTTP có ý nghĩa rõ ràng được đổi thành GatewayTaskFailedException.</summary>
     private async Task<TaskApiResponse?> CreateOnGatewayAsync(VideoGenApiRequest req, string? apiKey, CancellationToken ct)
     {
@@ -701,8 +692,8 @@ public class TaskDispatcher : ITaskDispatcher, IDisposable
     }
 
     private static string DescribeAskedBack(string question)
-        => $"Dola hỏi lại thay vì tạo video: \"{question}\" — sửa prompt cho rõ (thời lượng đúng bằng thời lượng đã chọn, có ảnh tham chiếu hoặc ghi 'tự tạo nhân vật') " +
-           "và giữ bật 'Chỉ dẫn tự động' trong Cài đặt.";
+        => $"Dola hỏi lại thay vì tạo video: \"{question}\" — app đã thử tự trả lời nhưng Dola vẫn hỏi (hoặc tính năng tự trả lời đang tắt trong Cài đặt). " +
+           "Hãy sửa prompt cho rõ (thời lượng Dola hỗ trợ là 4–15 giây, có ảnh tham chiếu hoặc ghi 'tự tạo nhân vật').";
 
     private bool SkipFailedEnabled() => _databaseService.GetSettings().SkipFailedAccounts;
 

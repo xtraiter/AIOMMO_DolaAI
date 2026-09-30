@@ -57,13 +57,13 @@ public partial class SettingsViewModel : ObservableObject
     private string? _adminKey;
 
     [ObservableProperty]
-    private bool _appendInstruction = true;
+    private bool _autoAnswerAskBack = true;
 
     [ObservableProperty]
-    private string _instructionText = AppSettings.DefaultInstruction;
+    private string _askBackReply = AppSettings.DefaultAskBackReply;
 
     [RelayCommand]
-    private void ResetInstruction() => InstructionText = AppSettings.DefaultInstruction;
+    private void ResetAskBackReply() => AskBackReply = AppSettings.DefaultAskBackReply;
 
     [ObservableProperty]
     private string _gatewayDirDetectedText = string.Empty;
@@ -130,8 +130,8 @@ public partial class SettingsViewModel : ObservableObject
         GatewayDir = s.GatewayDir ?? string.Empty;
         PythonCommand = string.IsNullOrWhiteSpace(s.PythonCommand) ? "py -3" : s.PythonCommand;
         AdminKey = s.AdminKey;
-        AppendInstruction = s.AppendInstruction;
-        InstructionText = string.IsNullOrWhiteSpace(s.InstructionText) ? AppSettings.DefaultInstruction : s.InstructionText;
+        AutoAnswerAskBack = s.AutoAnswerAskBack;
+        AskBackReply = string.IsNullOrWhiteSpace(s.AskBackReply) ? AppSettings.DefaultAskBackReply : s.AskBackReply;
         UpdateCheckUrl = s.UpdateCheckUrl;
         RefreshGatewayDirDetected();
         RefreshBrowserStatus();
@@ -304,8 +304,8 @@ public partial class SettingsViewModel : ObservableObject
             s.GatewayDir = string.IsNullOrWhiteSpace(GatewayDir) ? null : GatewayDir.Trim();
             s.PythonCommand = string.IsNullOrWhiteSpace(PythonCommand) ? "py -3" : PythonCommand.Trim();
             s.AdminKey = string.IsNullOrWhiteSpace(AdminKey) ? null : AdminKey.Trim();
-            s.AppendInstruction = AppendInstruction;
-            s.InstructionText = string.IsNullOrWhiteSpace(InstructionText) ? AppSettings.DefaultInstruction : InstructionText.Trim();
+            s.AutoAnswerAskBack = AutoAnswerAskBack;
+            s.AskBackReply = string.IsNullOrWhiteSpace(AskBackReply) ? AppSettings.DefaultAskBackReply : AskBackReply.Trim();
             s.UpdateCheckUrl = UpdateCheckUrl?.Trim() ?? string.Empty;
 
             _databaseService.SaveSettings(s);

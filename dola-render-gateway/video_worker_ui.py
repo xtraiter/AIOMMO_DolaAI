@@ -30,7 +30,9 @@ DAILY_LIMIT_PATTERN = re.compile(
 # Dola's chat agent sometimes replies with a question instead of making the video ("may I use 15s?", "do you have a face
 # image? A / B"). It stays that way forever, so notice it instead of waiting for the full video timeout.
 QUESTION_MARK = re.compile(r"[?\uFF1F]")
-ASKED_BACK_GRACE_SEC = 60
+ASKED_BACK_GRACE_SEC = 60        # report the question as an error after this long (no auto reply configured)
+AUTO_REPLY_GRACE_SEC = 12        # answer Dola's question this soon once it has stopped writing
+MAX_AUTO_REPLIES = 3
 
 
 def _is_dola_question(text: str, prompt: str) -> bool:
@@ -57,6 +59,20 @@ def _dola_note(texts, prompt: str) -> str:
         seen.add(t)
         out.append(t)
     return " | ".join(out)[:600]
+
+
+async def send_chat_message(page, text: str) -> None:
+    """Answer Dola in the open conversation: insert the text (one line) into the chat box and press Enter."""
+    box = await page.query_selector("textarea") or await page.query_selector('[contenteditable="true"]')
+    if not box:
+        raise RuntimeError("Could not find the chat box to answer Dola")
+    try:
+        await box.click(force=True, timeout=5000)
+    except Exception:
+        await box.focus()
+    await page.keyboard.insert_text(" ".join(text.split()))
+    await page.wait_for_timeout(500)
+    await page.keyboard.press("Enter")
 
 
 class AccountLimitedError(Exception):
@@ -338,7 +354,8 @@ async def _preflight_balance(page, ms_token: str, fp: str, required: int) -> dic
 
 
 async def poll_conversation(account: str, page, context, conversation_id: str,
-                            timeout: int, on_poll=None, on_balance=None, prompt: str = "") -> dict:
+                            timeout: int, on_poll=None, on_balance=None, prompt: str = "",
+                            auto_reply: str | None = None) -> dict:
     """Polls accepted conversation for video completion."""
     cookies = await context.cookies("https://www.dola.com")
     ms_token, fp = cookie_value(cookies, "msToken"), cookie_value(cookies, "s_v_web_id")
@@ -346,6 +363,9 @@ async def poll_conversation(account: str, page, context, conversation_id: str,
     last_callback = 0.0
     question_since = None
     question_text = ""
+    answered: set = set()   # questions we already answered (they stay in the conversation history)
+    replies = 0
+    grace = AUTO_REPLY_GRACE_SEC if auto_reply else ASKED_BACK_GRACE_SEC
     while time.time() - start < timeout:
         await asyncio.sleep(5)
         try:
@@ -366,11 +386,19 @@ async def poll_conversation(account: str, page, context, conversation_id: str,
                 raise AccountLimitedError(f"Account daily limit reached: {text[:120]}")
             if CREDIT_FAIL_PATTERN.search(text):
                 raise CreditError(f"Insufficient quota: {text[:80]}")
-        questions = [t for t in poll.get("texts", []) if _is_dola_question(t, prompt)]
+        questions = [t for t in poll.get("texts", []) if _is_dola_question(t, prompt) and t not in answered]
         if questions and not poll.get("videos"):
             if question_since is None:
                 question_since, question_text = now, questions[-1]
-            elif now - question_since >= ASKED_BACK_GRACE_SEC:
+            elif now - question_since >= grace:
+                if auto_reply and replies < MAX_AUTO_REPLIES:
+                    # Dola wants a confirmation ("use 15s instead?", "do you have a face image?"): give it, once per question
+                    print(f"[{account}] Dola asked: {question_text[:150]!r} -> auto reply #{replies + 1}", flush=True)
+                    answered.update(questions)
+                    await send_chat_message(page, auto_reply)
+                    replies += 1
+                    question_since = None
+                    continue
                 raise DolaAskedBackError(question_text.strip())
         else:
             question_since = None
@@ -383,7 +411,7 @@ async def poll_conversation(account: str, page, context, conversation_id: str,
             print(f"[{account}] Downloaded {local} ({local.stat().st_size / 1e6:.1f} MB)", flush=True)
             return {"video_url": url, "local_path": str(local),
                     "conversation_id": conversation_id, "account": account,
-                    "note": _dola_note(poll.get("texts", []), prompt)}
+                    "note": ((f"[App tự trả lời Dola {replies} lần] " if replies else "") + _dola_note(poll.get("texts", []), prompt))[:700]}
         print(f"  ...Generating ({int(time.time() - start)}s)", flush=True)
     raise TimeoutError(f"No video generated within {timeout}s (conversation_id={conversation_id})")
 
@@ -432,7 +460,7 @@ async def generate_video(account: str, prompt: str, ratio: str = None,
                          on_conversation_id=None, on_poll=None, on_balance=None,
                          reference_image_paths: list[str] | None = None,
                          on_stage=None, warmup: bool | None = None, on_warmup_done=None,
-                         hide_window: bool = False) -> dict:
+                         hide_window: bool = False, auto_reply: str | None = None) -> dict:
     """Full generation flow via UI automation.
 
     Stages reported through on_stage: warmup -> new_chat -> submitting -> generating (-> done by the caller).
@@ -628,7 +656,8 @@ async def generate_video(account: str, prompt: str, ratio: str = None,
             deadline = time.time() + timeout
             if on_conversation_id:
                 on_conversation_id(account, conv_id, deadline)
-            return await poll_conversation(account, page, context, conv_id, timeout, on_poll, on_balance, prompt=prompt)
+            return await poll_conversation(account, page, context, conv_id, timeout, on_poll, on_balance, prompt=prompt,
+                                           auto_reply=auto_reply)
         finally:
             await context.close()
 
