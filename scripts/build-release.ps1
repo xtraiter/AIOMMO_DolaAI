@@ -20,6 +20,15 @@ $distDir = if ($ToRelease) { Join-Path $root "release\AIOMMO_DolaAI" } else { Jo
 $zipPath = Join-Path $root "$OutputDir\AIOMMO_DolaAI_v${Version}_Portable.zip"
 $temp = Join-Path $env:TEMP ("DolaCoord_" + [Guid]::NewGuid().ToString("N"))
 
+# Dung neu app / gateway dang chay tu chinh thu muc dich: xoa do dang se lam hong ban dang chay (file bi khoa, xoa duoc mot phan)
+$running = Get-Process -ErrorAction SilentlyContinue | Where-Object {
+    $_.Path -and $_.Path.StartsWith($distDir, [StringComparison]::OrdinalIgnoreCase)
+}
+if ($running) {
+    $names = ($running | ForEach-Object { "$($_.ProcessName) (PID $($_.Id))" }) -join ", "
+    throw "Dang co chuong trinh chay tu '$distDir': $names. Hay dong AIOMMO DolaAI (va gateway) roi build lai - build luc nay se xoa do thu muc release."
+}
+
 Write-Host "[1/3] Bien dich v$Version (self-contained, win-x64)..." -ForegroundColor Cyan
 dotnet publish $project -c Release -r win-x64 --self-contained true `
     -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true `
