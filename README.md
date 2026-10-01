@@ -21,15 +21,13 @@ Tạo bộ cài (máy build cần Inno Setup 6: `winget install JRSoftware.InnoS
 .\scripts\build-installer.ps1 -Version 1.0.0     # build app + gateway + ffmpeg rồi đóng thành 1 file .exe (không đụng thư mục release)
 ```
 
-## Chạy ngay (clone về là dùng được)
+## Tải về
 
-```powershell
-git clone https://github.com/xtraiter/AIOMMO_DolaAI.git
-cd AIOMMO_DolaAI\release\AIOMMO_DolaAI
-& ".\AIOMMO DolaAI.exe"
-```
+Tải **một file duy nhất** `AIOMMO_DolaAI_Setup_<phiên bản>.exe` ở mục **[Releases](https://github.com/xtraiter/AIOMMO_DolaAI/releases/latest)** của repo này rồi chạy để cài (xem phần trên). Repo chỉ chứa mã nguồn; file cài đặt không nằm trong git (nặng ~170 MB, vượt giới hạn 100 MB của GitHub), và mục Releases chỉ giữ bản mới nhất.
 
-Bản đóng gói sẵn nằm trong [`release/AIOMMO_DolaAI/`](release/AIOMMO_DolaAI). **Không cần cài Python hay .NET, không có file .bat nào phải chạy.** Yêu cầu: Windows 10/11 x64, có mạng ở lần chạy đầu tiên (tải Chromium). Thư mục `release` nặng khoảng 370 MB nên clone lần đầu hơi lâu. Clone vào đường dẫn ngắn (ví dụ `D:\App\`): Windows giới hạn đường dẫn 260 ký tự và bản đóng gói có vài file nằm sâu; nếu Git báo `Filename too long` thì chạy `git config --global core.longpaths true` rồi clone lại.
+**Không cần cài Python hay .NET, không có file .bat nào phải chạy.** Yêu cầu: Windows 10/11 x64, có mạng ở lần chạy đầu tiên (tải Chromium).
+
+Muốn tự build từ mã nguồn thì chạy `scripts\build-installer.ps1` (xem phần Đóng gói bên dưới).
 
 ```
 AIOMMO DolaAI.exe            Ứng dụng
@@ -103,7 +101,7 @@ DolaAI.sln
 ## Đóng gói (máy build cần .NET 8 SDK + Python 3.10+)
 
 ```powershell
-.\scripts\build-release.ps1 -Version 1.0.0 -ToRelease   # cập nhật release\AIOMMO_DolaAI\ (app + gateway, ~370 MB), rồi commit để ai clone cũng chạy được
+.\scripts\build-release.ps1 -Version 1.0.0 -ToRelease   # bản chạy thử trong release\AIOMMO_DolaAI\ (KHÔNG commit; giữ nguyên dữ liệu tài khoản trong gateway\accounts)
 .\scripts\build-release.ps1 -Version 1.0.0              # xuất ra dist\ (không commit); thêm -Zip nếu cần file zip để gửi
 .\scripts\build-gateway.ps1                   # chỉ đóng gói gateway -> dist\gateway\dola-gateway.exe
 .\scripts\pack-update.ps1 -Version 1.0.1 -DownloadBaseUrl https://<host-cua-ban>/dola   # gói cập nhật (chỉ exe app) + version.json
@@ -118,6 +116,6 @@ có SHA-256 khớp, và không chứa đường dẫn thoát thư mục.
 - `gateway\accounts\` (bản đóng gói) hoặc `dola-render-gateway/accounts/` (bản mã nguồn) — **phiên đăng nhập thật**
 - `*.db` cạnh gateway — lịch sử tác vụ, khóa API, hạn ngạch
 - `%LOCALAPPDATA%\DolaCoordinator` (LiteDB `coordinator.db`, token mã hóa DPAPI, `gateway.log`)
-- `downloads/`, `dist/` (còn `release/` thì được commit, trừ dữ liệu chạy sinh ra trong `release/AIOMMO_DolaAI/gateway/`)
+- `downloads/`, `dist/`, `release/` (bản build; chỉ phát hành file cài đặt qua mục Releases của GitHub)
 
 `.gitignore` đã loại các mục trên; `scripts\export-handover.ps1` cũng bỏ chúng khi tạo gói bàn giao.
