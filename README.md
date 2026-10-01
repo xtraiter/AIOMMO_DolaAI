@@ -9,6 +9,18 @@
 
 Tài liệu: [Kiến trúc](docs/ARCHITECTURE.md)
 
+## Cài đặt bằng bộ cài (cách dành cho người dùng)
+
+Chạy **`AIOMMO_DolaAI_Setup_<phiên bản>.exe`** (tạo bằng `scripts\build-installer.ps1`, nằm trong `dist\installer\`): đọc và đồng ý **Điều khoản sử dụng**, chọn thư mục cài (mặc định **`C:\Program Files\AIOMMO DolaAI`**, cần quyền Admin; không có quyền Admin thì chọn *chỉ cho tôi* để cài vào `%LOCALAPPDATA%\Programs`), tích tạo biểu tượng ngoài màn hình nền, và để tích *Tải trình duyệt Chromium ngay* để cài đủ môi trường. Bộ cài đặt sẵn app, gateway, ffmpeg, tạo shortcut ở Start Menu / màn hình nền và mục gỡ cài đặt trong Settings → Apps.
+
+**Dữ liệu của bạn nằm riêng ở `%APPDATA%\AIOMMO DolaAI`** (cơ sở dữ liệu và cài đặt `coordinator.db`, nhật ký `gateway.log`, và `gateway\accounts\<tên>` là hồ sơ trình duyệt, cookie, proxy của từng tài khoản), không nằm trong thư mục chương trình (chỉ đọc). Nhờ vậy cài đè bản mới hay gỡ cài đặt không làm mất tài khoản, proxy, prompt; gỡ cài đặt hỏi có xóa dữ liệu không (mặc định giữ). Video tạo ra lưu ở thư mục bạn chọn trong app (mặc định `Videos`). Điều khoản ở `installer\Terms_vi.txt`, thành phần bên thứ ba ở `installer\THIRD_PARTY_NOTICES.txt`.
+
+Tạo bộ cài (máy build cần Inno Setup 6: `winget install JRSoftware.InnoSetup --scope user`):
+
+```powershell
+.\scripts\build-installer.ps1 -Version 1.0.0     # build app + gateway + ffmpeg rồi đóng thành 1 file .exe (không đụng thư mục release)
+```
+
 ## Chạy ngay (clone về là dùng được)
 
 ```powershell

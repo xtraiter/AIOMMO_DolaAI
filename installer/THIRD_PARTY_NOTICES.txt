@@ -1,0 +1,16 @@
+THIRD-PARTY COMPONENTS USED BY AIOMMO DolaAI
+=============================================
+
+This list is informational. Each component remains under its own license.
+
+* Chromium (downloaded on first use / by the installer) - BSD-style license and others, https://www.chromium.org/
+* patchright / Playwright (browser automation) - Apache-2.0, https://github.com/Kaliiiiiiiiii-Vinyl/patchright , https://playwright.dev/
+* FFmpeg (bundled as tools\ffmpeg.exe, build from the imageio-ffmpeg package, includes libx264) - GNU GPL, https://ffmpeg.org/ ;
+  source code and license text are available from the FFmpeg project and from https://github.com/imageio/imageio-ffmpeg
+* Python 3 runtime and libraries bundled in gateway\_internal (FastAPI, Starlette, uvicorn, aiohttp, pydantic, Pillow, OpenCV, NumPy, ...)
+  - PSF license / MIT / BSD / Apache-2.0 / HPND (each package keeps its own license inside gateway\_internal)
+* .NET 8 runtime and libraries (WPF, CommunityToolkit.Mvvm, LiteDB, ClosedXML, Microsoft.Extensions.*) - MIT and others
+* Dola30 browser extension (gateway\extensions\dola30) - third-party extension, license not specified by its author
+* Parts of the gateway are derived from third-party source code (github.com/coll3879xx-cyber/dola-render-gateway) that does not state a license
+
+AIOMMO DolaAI is not affiliated with, endorsed by or sponsored by Dola, ByteDance, Google, Meta or any proxy provider.

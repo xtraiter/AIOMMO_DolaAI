@@ -1,0 +1,31 @@
+﻿ĐIỀU KHOẢN SỬ DỤNG - AIOMMO DolaAI
+
+Vui lòng đọc kỹ trước khi cài đặt. Bằng việc chọn "Tôi đồng ý" và cài đặt, bạn xác nhận đã đọc và chấp nhận các điều khoản dưới đây.
+
+1. PHẦN MỀM LÀM GÌ
+AIOMMO DolaAI là công cụ trên máy tính của bạn giúp điều phối việc tạo video bằng nhiều tài khoản Dola AI (Seedance): quản lý tài khoản, proxy, prompt, kịch bản, hàng đợi và tải video về máy. Phần mềm điều khiển một trình duyệt Chromium để thao tác trên trang web Dola thay bạn.
+
+2. TRÁCH NHIỆM CỦA BẠN
+- Bạn chỉ dùng các tài khoản, cookie, proxy và nội dung mà bạn có quyền sử dụng.
+- Bạn tự chịu trách nhiệm tuân thủ điều khoản dịch vụ và chính sách của Dola, của Google, của Facebook và của nhà cung cấp proxy. Việc tự động hóa có thể bị các dịch vụ đó hạn chế hoặc không cho phép; tài khoản có thể bị giới hạn, khóa hoặc mất credit. Phần mềm không đảm bảo điều ngược lại.
+- Bạn tự chịu trách nhiệm về nội dung prompt, hình ảnh tham chiếu và video được tạo ra, kể cả bản quyền, quyền hình ảnh và pháp luật nơi bạn sinh sống.
+- Không dùng phần mềm vào mục đích vi phạm pháp luật, xâm phạm quyền của người khác hoặc gây hại cho dịch vụ của bên thứ ba.
+
+3. DỮ LIỆU CỦA BẠN
+- Mọi dữ liệu (tài khoản, phiên đăng nhập, cookie, proxy, prompt) được lưu trên máy bạn, trong thư mục %APPDATA%\AIOMMO DolaAI (cơ sở dữ liệu, cài đặt, nhật ký và hồ sơ trình duyệt của từng tài khoản ở mục gateway\accounts). Video tạo ra được lưu vào thư mục bạn chọn trong ứng dụng (mặc định là thư mục Videos). Gỡ cài đặt sẽ hỏi bạn có giữ dữ liệu hay không.
+- Mật khẩu, khóa 2FA và cookie bạn chọn "Ghi nhớ" được mã hóa bằng Windows DPAPI (chỉ giải mã được bởi tài khoản Windows này). Mật khẩu proxy cũng mã hóa trong cơ sở dữ liệu của ứng dụng; riêng tệp proxy.txt và cookie.txt của từng tài khoản (trong %APPDATA%\AIOMMO DolaAI\gateway\accounts\<tên>) cần để trình duyệt hoạt động và ở dạng chữ thường: hãy bảo vệ thư mục này và không chia sẻ nó.
+- Phần mềm không gửi dữ liệu của bạn cho tác giả. Nó kết nối Internet tới: trang Dola (để tạo video), máy chủ tải trình duyệt Chromium (Google / Playwright), dịch vụ ipinfo.io khi bạn bấm "Kiểm tra" proxy, và proxy bạn chọn. Tính năng tự cập nhật mặc định tắt.
+
+4. THÀNH PHẦN CỦA BÊN THỨ BA
+Phần mềm đi kèm hoặc tải về các thành phần của bên thứ ba, mỗi thành phần theo giấy phép riêng của nó (xem tệp THIRD_PARTY_NOTICES.txt trong thư mục cài đặt), gồm: Chromium / Playwright (patchright), FFmpeg (bản dựng theo giấy phép GPL), các thư viện .NET và Python, và một tiện ích mở rộng trình duyệt của bên thứ ba dùng để mở tùy chọn thời lượng 30 giây. Một số thành phần của gateway có nguồn gốc từ mã nguồn của bên thứ ba không công bố giấy phép rõ ràng. Tác giả không cam kết quyền sử dụng hay phân phối lại các thành phần đó.
+
+5. KHÔNG BẢO ĐẢM
+Phần mềm được cung cấp "NGUYÊN TRẠNG", không có bất kỳ bảo đảm nào, kể cả về việc luôn hoạt động, tương thích với thay đổi của Dola, hay kết quả video. Giao diện và cơ chế của Dola có thể thay đổi bất cứ lúc nào làm phần mềm ngừng hoạt động.
+
+6. GIỚI HẠN TRÁCH NHIỆM
+Trong phạm vi pháp luật cho phép, tác giả không chịu trách nhiệm cho thiệt hại phát sinh từ việc sử dụng hoặc không thể sử dụng phần mềm, bao gồm mất tài khoản, mất credit, mất dữ liệu, bị chặn IP hoặc tranh chấp với bên thứ ba.
+
+7. THAY ĐỔI
+Điều khoản có thể được cập nhật trong các phiên bản sau. Tiếp tục sử dụng phiên bản mới nghĩa là bạn chấp nhận điều khoản của phiên bản đó.
+
+Nếu bạn không đồng ý, hãy chọn "Tôi không đồng ý" và dừng cài đặt.

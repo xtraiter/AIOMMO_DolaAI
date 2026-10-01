@@ -249,7 +249,7 @@ public class AccountProfileService : IAccountProfileService
         var python = fileName;
         var psi = new ProcessStartInfo(fileName)
         {
-            WorkingDirectory = gatewayDir, // các script gateway dùng đường dẫn tương đối "accounts/<tên>"
+            WorkingDirectory = GatewayLocator.RuntimeDir(gatewayDir), // các script gateway dùng đường dẫn tương đối "accounts/<tên>"
             UseShellExecute = false,
             CreateNoWindow = true,
             RedirectStandardOutput = true,
@@ -259,6 +259,7 @@ public class AccountProfileService : IAccountProfileService
             StandardErrorEncoding = Encoding.UTF8,
         };
         foreach (var a in launchArgs) psi.ArgumentList.Add(a);
+        GatewayLocator.ApplyEnvironment(psi, gatewayDir);
         if (options?.IsAutomatic == true)
         {
             psi.ArgumentList.Add("--login");

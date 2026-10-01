@@ -83,7 +83,7 @@ public sealed class GatewayHost : IGatewayHost, IDisposable
             new[] { "--host", "127.0.0.1", "--port", port.ToString() });
         var psi = new ProcessStartInfo(fileName)
         {
-            WorkingDirectory = gatewayDir,
+            WorkingDirectory = GatewayLocator.RuntimeDir(gatewayDir),
             UseShellExecute = false,
             CreateNoWindow = true, // chạy ngầm: không có cửa sổ console
             RedirectStandardOutput = true,
@@ -95,6 +95,7 @@ public sealed class GatewayHost : IGatewayHost, IDisposable
         psi.Environment["PYTHONUNBUFFERED"] = "1";
         psi.Environment["PYTHONIOENCODING"] = "utf-8";
         psi.Environment["DOLA_MAX_CONCURRENCY"] = GatewayCapacity().ToString(); // đủ chỗ cho mọi tài khoản chạy song song
+        GatewayLocator.ApplyEnvironment(psi, gatewayDir);
 
         try
         {
@@ -179,7 +180,7 @@ public sealed class GatewayHost : IGatewayHost, IDisposable
             var (fileName, args) = GatewayLocator.BuildCommand(gatewayDir, settings.PythonCommand, "install-browser", Array.Empty<string>());
             var psi = new ProcessStartInfo(fileName)
             {
-                WorkingDirectory = gatewayDir,
+                WorkingDirectory = GatewayLocator.RuntimeDir(gatewayDir),
                 UseShellExecute = false,
                 CreateNoWindow = true,
                 RedirectStandardOutput = true,

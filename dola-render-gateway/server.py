@@ -11,6 +11,7 @@ import asyncio
 import hashlib
 import ipaddress
 import json
+import os
 import re
 import shutil
 import time
@@ -36,7 +37,8 @@ from video_worker_ui import (
 from store import PendingTaskLimitExceeded, TaskQuotaExceeded, TaskStore
 
 Path(config.DOWNLOAD_DIR).mkdir(parents=True, exist_ok=True)
-Path("web").mkdir(parents=True, exist_ok=True)
+WEB_DIR = os.getenv("DOLA_WEB_DIR", "web")  # installed build: the dashboard files stay in the (read-only) program folder
+Path(WEB_DIR).mkdir(parents=True, exist_ok=True)
 
 app = FastAPI(title="dola-pool", version="0.4.0")
 
@@ -776,5 +778,5 @@ async def admin_key_delete(key: str, x_admin_key: str | None = Header(default=No
 
 
 # Dashboard single-file frontend
-app.mount("/", StaticFiles(directory="web", html=True), name="web")
+app.mount("/", StaticFiles(directory=WEB_DIR, html=True), name="web")
 

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 
 namespace DolaCoordinator.Helpers;
@@ -64,7 +65,26 @@ public static class GatewayLocator
         => !string.IsNullOrWhiteSpace(dir)
            && (File.Exists(Path.Combine(dir, "server.py")) || File.Exists(Path.Combine(dir, ExeName)));
 
-    public static string AccountsDir(string gatewayDir) => Path.Combine(gatewayDir, "accounts");
+    /// <summary>
+    /// Thư mục chạy của gateway = nơi gateway giữ DỮ LIỆU (accounts/, tasks.db, pool_usage.db, downloads/, refs/...).
+    /// Bản đã cài bằng bộ cài: %APPDATA%\AIOMMO DolaAI\gateway (thư mục chương trình ở Program Files chỉ đọc).
+    /// Bản chạy thẳng từ thư mục hoặc chạy bằng Python từ mã nguồn: chính thư mục gateway như trước.
+    /// </summary>
+    public static string RuntimeDir(string gatewayDir)
+        => AppPaths.IsInstalled && IsPackaged(gatewayDir) ? AppPaths.InstalledGatewayDataDir : gatewayDir;
+
+    public static string AccountsDir(string gatewayDir) => Path.Combine(RuntimeDir(gatewayDir), "accounts");
+
+    /// <summary>
+    /// Khi dữ liệu tách khỏi thư mục chương trình, báo cho gateway biết extension Dola30 và trang web nằm ở đâu
+    /// (chúng vẫn nằm trong thư mục cài đặt, chỉ đọc).
+    /// </summary>
+    public static void ApplyEnvironment(ProcessStartInfo psi, string gatewayDir)
+    {
+        if (string.Equals(RuntimeDir(gatewayDir), gatewayDir, StringComparison.OrdinalIgnoreCase)) return;
+        psi.Environment["DOLA_EXTENSION_DIR"] = Path.Combine(gatewayDir, "extensions", "dola30");
+        psi.Environment["DOLA_WEB_DIR"] = Path.Combine(gatewayDir, "web");
+    }
 
     /// <summary>Tên tài khoản hợp lệ theo gateway (NAME_RE trong server.py): A-Z a-z 0-9 _ - tối đa 32 ký tự.</summary>
     public static bool IsValidAccountName(string? name)
