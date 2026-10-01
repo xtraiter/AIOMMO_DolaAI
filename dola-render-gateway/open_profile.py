@@ -571,10 +571,10 @@ async def main():
     st.shot_path = profile_dir / "need_human.png"
 
     async with async_playwright() as p:
-        # Tiện ích Dola30 mở khóa thời lượng 15s / 30s trên trang Dola: nạp vào cửa sổ này để ô chọn thời lượng hiện đủ
-        # 10s / 15s / 30s (không có nó trang chỉ cho 5s / 10s). Không có tiện ích thì mở bình thường, không báo lỗi.
+        # Cửa sổ đăng nhập / mở tay KHÔNG nạp tiện ích Dola30 theo mặc định: tiện ích chèn khung "Master HD Media" che nút gửi
+        # và đổi dữ liệu giao diện của Dola. Nó chỉ cần cho cửa sổ app tự tạo video. Muốn thử thì đặt DOLA_PROFILE_EXTENSION=1.
         ext_dir = Path(config.EXTENSION_DIR)
-        want_ext = bool(config.EXTENSION_ENABLED) and ext_dir.is_dir() and os.environ.get("DOLA_PROFILE_EXTENSION", "1") != "0"
+        want_ext = bool(config.EXTENSION_ENABLED) and ext_dir.is_dir() and os.environ.get("DOLA_PROFILE_EXTENSION", "0") == "1"
         context = await launch_account_context(p, account, headless=False, use_extension=want_ext)
         closed = asyncio.Event()
         context.on("close", lambda *_: closed.set())
