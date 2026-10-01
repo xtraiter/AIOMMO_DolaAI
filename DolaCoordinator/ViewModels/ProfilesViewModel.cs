@@ -137,16 +137,22 @@ public partial class ProfilesViewModel : ObservableObject, IDisposable
     // ------------------------------------------------------------------ proxy
 
     /// <summary>Cột Proxy: tên proxy (+ quốc gia IP thoát nếu đã kiểm tra).</summary>
+    public const string NoProxyText = "Chưa gán proxy";
+
     private void RefreshProxyTexts()
     {
         var all = _proxies.GetAll().ToDictionary(p => p.Id);
-        foreach (var a in Profiles)
-        {
-            if (string.IsNullOrEmpty(a.ProxyId)) { a.ProxyText = "—"; continue; }
-            if (!all.TryGetValue(a.ProxyId, out var px)) { a.ProxyText = "(proxy đã xóa)"; continue; }
-            a.ProxyText = px.DisplayName + (px.LastOk == true && !string.IsNullOrEmpty(px.LastCountry) ? $" · {px.LastCountry}" : string.Empty)
-                          + (px.LastOk == false ? " · lỗi" : string.Empty);
-        }
+        foreach (var a in Profiles) a.ProxyText = ProxyTextOf(a.ProxyId, all);
+    }
+
+    private string ProxyTextFor(string? proxyId) => ProxyTextOf(proxyId, _proxies.GetAll().ToDictionary(p => p.Id));
+
+    private static string ProxyTextOf(string? proxyId, Dictionary<string, ProxyItem> all)
+    {
+        if (string.IsNullOrEmpty(proxyId)) return NoProxyText;
+        if (!all.TryGetValue(proxyId, out var px)) return "Proxy đã xóa (chưa gán proxy)";
+        return px.DisplayName + (px.LastOk == true && !string.IsNullOrEmpty(px.LastCountry) ? $" · {px.LastCountry}" : string.Empty)
+               + (px.LastOk == false ? " · lỗi" : string.Empty);
     }
 
     /// <summary>Proxy được sửa / xóa / kiểm tra ở trang khác: đọc lại việc gán từ DB rồi làm mới cột.</summary>
@@ -457,7 +463,7 @@ public partial class ProfilesViewModel : ObservableObject, IDisposable
     {
         if (!EnsureEnvironment()) return;
 
-        var dlg = new ProfileEditorWindow { Owner = Application.Current.MainWindow };
+        var dlg = new ProfileEditorWindow(null, null, null, _proxies.GetAll()) { Owner = Application.Current.MainWindow };
         if (dlg.ShowDialog() != true) return;
 
         var options = dlg.Login;
@@ -475,6 +481,8 @@ public partial class ProfilesViewModel : ObservableObject, IDisposable
         }
 
         var profile = _chrome.CreateProfile(name, dlg.Notes);
+        if (dlg.SelectedProxyId != null) _proxies.Assign(profile, dlg.SelectedProxyId); // ghi proxy.txt TRƯỚC khi mở / đăng nhập
+        profile.ProxyText = ProxyTextFor(profile.ProxyId);
         if (options.IsAutomatic && options.Remember)
             _chrome.SaveLogin(profile, options); // phải lưu TRƯỚC khi mở: sau khi đưa cho script, mật khẩu bị xóa khỏi bộ nhớ
         Profiles.Add(profile);
@@ -483,6 +491,13 @@ public partial class ProfilesViewModel : ObservableObject, IDisposable
         ReloadSessions();
         if (created.Count == 0) return;
         Log($"Đã tạo {created.Count} tài khoản (thư mục accounts/… của gateway).");
+
+        if (!dlg.OpenAfterCreate)
+        {
+            Log($"'{name}' đã tạo, chưa đăng nhập" + (profile.ProxyId == null ? " và chưa gán proxy" : string.Empty) +
+                ". Gán proxy (nút 'Gán proxy') rồi bấm 'Đăng nhập tự động' hoặc 'Mở' để đăng nhập.");
+            return;
+        }
 
         // Đăng nhập tự động (Google / Facebook / cookie Facebook): mở profile và để script làm
         if (created.Count == 1 && options.IsAutomatic)
@@ -517,9 +532,17 @@ public partial class ProfilesViewModel : ObservableObject, IDisposable
             : p.Session != null || p.LoginStatus == ProfileLoginStatus.LoggedIn
                 ? "Tài khoản này ĐÃ đăng nhập Dola và phiên vẫn còn dùng được — bạn không cần nhập gì cả. Phần đăng nhập bên dưới chỉ để app TỰ đăng nhập lại khi phiên hết hạn (tùy chọn; tài khoản thêm từ bản cũ chưa có thông tin này vì trước đây app không lưu)."
                 : "Chưa lưu thông tin đăng nhập cho tài khoản này. Nhập một lần bên dưới (tùy chọn), lần sau chỉ cần bấm 'Đăng nhập tự động'.";
-        var dlg = new ProfileEditorWindow(p, _chrome.GetSavedLogin(p), note) { Owner = Application.Current.MainWindow };
+        var dlg = new ProfileEditorWindow(p, _chrome.GetSavedLogin(p), note, _proxies.GetAll()) { Owner = Application.Current.MainWindow };
         if (dlg.ShowDialog() != true) return;
 
+        if (dlg.SelectedProxyId != p.ProxyId)
+        {
+            _proxies.Assign(p, dlg.SelectedProxyId);
+            p.ProxyText = ProxyTextFor(p.ProxyId);
+            Log(p.ProxyId == null ? $"Đã bỏ proxy của '{p.Name}'." : $"Đã gán proxy cho '{p.Name}': {p.ProxyText}.");
+            if (p.IsRunning) Log($"'{p.Name}' đang mở Chromium: đóng rồi mở lại để dùng proxy mới.");
+            WeakReferenceMessenger.Default.Send(new ProxiesChangedMessage());
+        }
         p.Notes = string.IsNullOrWhiteSpace(dlg.Notes) ? null : dlg.Notes.Trim();
         if (dlg.Login.IsAutomatic && !dlg.Login.Remember)
             dlg.Login.Method = LoginMethod.Manual; // bỏ tích "Ghi nhớ" = xóa thông tin đã lưu

@@ -1,12 +1,25 @@
+using System.Collections.Generic;
+using System.Linq;
 using System.Windows;
+using System.Windows.Controls;
 using DolaCoordinator.Helpers;
 using DolaCoordinator.Models;
 
 namespace DolaCoordinator.Views.Dialogs;
 
+/// <summary>Một lựa chọn trong ô Proxy: Id = null nghĩa là chưa gán proxy.</summary>
+public sealed record ProxyChoice(string? Id, string Label);
+
 public partial class ProfileEditorWindow : Window
 {
+    public const string NoProxyLabel = "Chưa gán proxy (đi thẳng bằng IP nhà bạn)";
+
+    private readonly bool _hasProxies;
+
     public bool IsEditMode { get; }
+
+    /// <summary>Proxy đã chọn (ProxyItem.Id); null = chưa gán proxy.</summary>
+    public string? SelectedProxyId => (ProxyBox.SelectedItem as ProxyChoice)?.Id;
 
     public string ProfileName { get; set; } = string.Empty;
 
@@ -20,13 +33,26 @@ public partial class ProfileEditorWindow : Window
     public ProfileEditorWindow() : this(null) { }
 
     /// <summary>Sửa tài khoản có sẵn (chỉ đổi được ghi chú: tên là khóa của gateway).</summary>
-    public ProfileEditorWindow(AccountProfile? editing, LoginOptions? savedLogin = null, string? statusNote = null)
+    public ProfileEditorWindow(AccountProfile? editing, LoginOptions? savedLogin = null, string? statusNote = null,
+                               IReadOnlyList<ProxyItem>? proxies = null)
     {
         if (savedLogin != null) Login = savedLogin;
         IsEditMode = editing != null;
 
         InitializeComponent();
         DarkTitleBar.Attach(this);
+
+        // ô Proxy: "Chưa gán proxy" + danh sách proxy (kèm quốc gia IP thoát nếu đã kiểm tra)
+        var choices = new List<ProxyChoice> { new(null, NoProxyLabel) };
+        foreach (var px in proxies ?? new List<ProxyItem>())
+        {
+            var where = px.LastOk == true && !string.IsNullOrEmpty(px.LastCountry) ? $" · {px.LastCountry}" : string.Empty;
+            choices.Add(new ProxyChoice(px.Id, $"{px.DisplayName} · {px.Address}{where}"));
+        }
+        _hasProxies = choices.Count > 1;
+        ProxyBox.ItemsSource = choices;
+        ProxyBox.SelectedItem = choices.FirstOrDefault(c => c.Id == editing?.ProxyId) ?? choices[0];
+        UpdateProxyHint();
 
         if (editing != null)
         {
@@ -78,6 +104,19 @@ public partial class ProfileEditorWindow : Window
         }
 
         DialogResult = true;
+    }
+
+    private void ProxyBox_SelectionChanged(object sender, SelectionChangedEventArgs e) => UpdateProxyHint();
+
+    private void UpdateProxyHint()
+    {
+        if (ProxyHint == null) return;
+        if (!_hasProxies)
+            ProxyHint.Text = "Chưa có proxy nào. Có thể tạo tài khoản trước (bỏ tích đăng nhập ngay), thêm proxy ở mục Quản lý proxy rồi bấm 'Gán proxy' và đăng nhập sau.";
+        else if (SelectedProxyId == null)
+            ProxyHint.Text = "Chưa gán proxy: tài khoản sẽ đăng nhập và chạy bằng IP nhà bạn. Gán proxy ở đây (hoặc bỏ tích 'đăng nhập ngay' bên dưới, gán sau) nếu muốn dùng IP riêng.";
+        else
+            ProxyHint.Text = "Chromium của tài khoản này sẽ đi qua proxy đã chọn ngay từ lần đăng nhập đầu tiên.";
     }
 
     private void ShowError(string message)

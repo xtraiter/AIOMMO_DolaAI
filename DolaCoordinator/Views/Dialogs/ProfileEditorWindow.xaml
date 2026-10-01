@@ -41,6 +41,13 @@
             </StackPanel>
         </Grid>
 
+        <!-- Proxy: gán TRƯỚC khi đăng nhập để tài khoản đăng nhập bằng IP của proxy -->
+        <StackPanel Grid.Row="2" Margin="0,0,0,14">
+            <TextBlock Text="PROXY (gán trước khi đăng nhập để tài khoản đăng nhập bằng IP của proxy)" Style="{StaticResource FieldLabel}"/>
+            <ComboBox x:Name="ProxyBox" DisplayMemberPath="Label" SelectionChanged="ProxyBox_SelectionChanged"/>
+            <TextBlock x:Name="ProxyHint" FontSize="11.5" Margin="0,6,0,0" TextWrapping="Wrap" Foreground="{StaticResource TextMutedBrush}"/>
+        </StackPanel>
+
         <!-- Đăng nhập tự động (Google / Facebook / cookie Facebook) -->
         <Border x:Name="LoginBox" Grid.Row="3" Margin="0,0,0,14" Padding="14" CornerRadius="8"
                 Background="{StaticResource WindowBackgroundBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
@@ -51,8 +58,10 @@
             <TextBlock Text="GHI CHÚ" Style="{StaticResource FieldLabel}"/>
             <TextBox Text="{Binding Notes, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" TextWrapping="Wrap"
                      Height="56" VerticalScrollBarVisibility="Auto" VerticalContentAlignment="Top"/>
-            <CheckBox x:Name="OpenAfterBox" IsChecked="{Binding OpenAfterCreate}" Margin="0,14,0,0"
-                      Content="Mở trình duyệt ngay sau khi tạo (khi đăng nhập thủ công; đăng nhập tự động luôn mở)"/>
+            <CheckBox x:Name="OpenAfterBox" IsChecked="{Binding OpenAfterCreate}" Margin="0,14,0,0">
+                <TextBlock TextWrapping="Wrap"
+                           Text="Đăng nhập / mở trình duyệt ngay sau khi tạo (bỏ tích nếu muốn gán proxy trước, rồi bấm 'Đăng nhập tự động' hoặc 'Mở' sau)"/>
+            </CheckBox>
             <TextBlock x:Name="ErrorText" Foreground="{StaticResource DangerBrush}" FontSize="12" TextWrapping="Wrap"
                        Margin="0,12,0,0" Visibility="Collapsed"/>
         </StackPanel>

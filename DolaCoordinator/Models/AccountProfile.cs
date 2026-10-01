@@ -53,7 +53,7 @@ public partial class AccountProfile : ObservableObject
     /// <summary>Tên proxy + quốc gia IP thoát để hiện trong bảng (do trang tính khi nạp / đổi).</summary>
     [ObservableProperty]
     [property: BsonIgnore]
-    private string _proxyText = "—";
+    private string _proxyText = "Chưa gán proxy";
 
     public DateTime? LastLaunchAt { get; set; }
 

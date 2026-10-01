@@ -292,11 +292,22 @@
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
 
-                        <DataGridTemplateColumn Header="PROXY" Width="150">
+                        <DataGridTemplateColumn Header="PROXY" Width="170">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <TextBlock Text="{Binding ProxyText}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="4,0"
-                                               Foreground="{StaticResource TextSecondaryBrush}" ToolTip="{Binding ProxyText}"/>
+                                               ToolTip="{Binding ProxyText}">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding ProxyId}" Value="{x:Null}">
+                                                        <Setter Property="Foreground" Value="{StaticResource WarningBrush}"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
