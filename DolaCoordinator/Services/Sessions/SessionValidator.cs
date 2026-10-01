@@ -61,6 +61,15 @@ public class SessionValidator : ISessionValidator
             session.EncryptedToken = _securityService.Encrypt(plainToken);
         }
 
+        // Cookie Dola dán/nhập từ ngoài: gateway gốc chỉ dùng phiên nằm trong profile (không đọc cookie.txt) nên nạp vào profile trước.
+        // Lệnh bỏ qua ngay nếu cookie này đã nằm trong profile (do chính profile đăng nhập ra, hoặc đã nạp rồi).
+        if (plainToken.Contains("sessionid=", StringComparison.OrdinalIgnoreCase))
+        {
+            var injected = await _gatewayClient.ImportCookieWithResultAsync(session.Name, plainToken, ct);
+            if (!injected.Success)
+                return Finish(session, SessionStatus.Unknown, injected.ErrorMessage ?? "Không nạp được cookie Dola vào profile.");
+        }
+
         // Kiểm tra thật bằng gateway. Không kết luận được (gateway tắt, tài khoản đang render...) thì để Unknown,
         // không đánh dấu Invalid oan.
         var (ok, loginOk, error) = await _gatewayClient.VerifyAccountAsync(session.Name, ct);

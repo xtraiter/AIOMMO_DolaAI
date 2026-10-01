@@ -292,6 +292,36 @@ public class TaskDispatcher : ITaskDispatcher, IDisposable
         }
     }
 
+    /// <summary>
+    /// Gateway gốc không nhận tên tài khoản trong yêu cầu mà tự chọn trong số tài khoản có lập lịch bật. Nên trước khi giao việc,
+    /// app chỉ bật lập lịch cho các tài khoản đang được giao việc (kể cả tài khoản vừa chọn): tài khoản chưa đăng nhập,
+    /// bị tắt "dùng để chạy" hay không được chọn sẽ không bao giờ bị gateway dùng.
+    /// </summary>
+    private async Task SyncGatewaySchedulingAsync(CancellationToken ct)
+    {
+        try
+        {
+            var accounts = await _gatewayClient.GetAccountsAsync(ct);
+            if (accounts == null) return;
+            HashSet<string> active;
+            lock (_sessionLock)
+            {
+                var ids = _activeSessionIds.ToHashSet();
+                active = _databaseService.GetAllSessions().Where(s => ids.Contains(s.Id)).Select(s => s.Name)
+                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            }
+            foreach (var a in accounts)
+            {
+                var want = active.Contains(a.Name);
+                if (a.Scheduling != want) await _gatewayClient.SetAccountSchedulingAsync(a.Name, want, ct);
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            Log($"[Gateway] Không đồng bộ được lập lịch tài khoản: {ex.Message}");
+        }
+    }
+
     private static GatewayAccountDto? MetaOf(DolaSession s, Dictionary<string, GatewayAccountDto>? gateway)
         => gateway != null && gateway.TryGetValue(s.Name, out var meta) ? meta : null;
 
@@ -301,7 +331,7 @@ public class TaskDispatcher : ITaskDispatcher, IDisposable
         if (gateway == null) return false;
         var meta = MetaOf(s, gateway);
         if (meta == null) return true; // thư mục accounts/<tên> không còn trong gateway
-        return !meta.Scheduling || meta.RateLimited || meta.QuotaBlocked || meta.LoginOk == false;
+        return meta.RateLimited || meta.QuotaBlocked || meta.LoginOk == false; // cờ scheduling do app tự bật/tắt cho từng tác vụ: không tính là chặn
     }
 
     /// <summary>Chặn tạm thời: đang render việc khác hoặc đang cooldown.</summary>
@@ -329,7 +359,6 @@ public class TaskDispatcher : ITaskDispatcher, IDisposable
             else if (meta is { LoginOk: false }) Count("gateway báo mất đăng nhập");
             else if (meta is { RateLimited: true }) Count("gateway báo hết lượt trong ngày");
             else if (meta is { QuotaBlocked: true }) Count("hết credit");
-            else if (meta is { Scheduling: false }) Count("tắt lập lịch");
             else if (tried.Contains(s.Id)) Count("đã thử nhưng lỗi");
         }
 
@@ -508,6 +537,10 @@ public class TaskDispatcher : ITaskDispatcher, IDisposable
                 Log($"[{session.Name}] Bắt đầu điều phối: \"{task.DisplayPrompt}\" ({task.Duration}s, {task.Ratio}" +
                     (task.ReferenceLocalPaths.Count > 0 ? $", {task.ReferenceLocalPaths.Count} ảnh tham chiếu" : "") + ")");
 
+                if (task.ReferenceLocalPaths.Count > 0)
+                    Log($"[{session.Name}] ⚠ Gateway gốc chỉ nhận ảnh tham chiếu dạng đường dẫn web (URL), không nhận file trên máy: {task.ReferenceLocalPaths.Count} ảnh sẽ KHÔNG được gửi, video làm không có ảnh.");
+                await SyncGatewaySchedulingAsync(ct);
+
                 // 30 giây chỉ có ở Seedance 2.5 (2.0 chỉ 5/10/15 giây): tự chuyển sang 2.5 thay vì để Dola hỏi lại "chỉ hỗ trợ 4–15 giây".
                 var model = task.Model;
                 if (task.Duration >= 30 && !model.Contains("2.5", StringComparison.Ordinal))
@@ -548,7 +581,7 @@ public class TaskDispatcher : ITaskDispatcher, IDisposable
 
                 var completed = await PollUntilCompleteAsync(task, session, settings.PollingIntervalSeconds, ct);
                 if (completed == null || string.IsNullOrWhiteSpace(completed.VideoUrl))
-                    throw new GatewayTaskFailedException(FriendlyGatewayError(completed?.FailureCode, completed?.Error ?? "Render thất bại trên gateway"), completed?.FailureCode);
+                    throw new GatewayTaskFailedException(FriendlyGatewayError(CodeOf(completed), completed?.Error ?? "Render thất bại trên gateway"), CodeOf(completed));
 
                 task.VideoUrl = completed.VideoUrl;
                 task.ProgressPercent = 85;
@@ -727,6 +760,28 @@ public class TaskDispatcher : ITaskDispatcher, IDisposable
     /// Gateway (dola-pool) báo lỗi bằng tiếng Trung/Anh: hiện câu tiếng Việt theo mã lỗi, kèm nguyên văn của gateway
     /// để người dùng vẫn xem được chi tiết.
     /// </summary>
+    /// <summary>
+    /// Mã lỗi của tác vụ: dùng failure_code nếu gateway có (bản đã sửa), không thì suy ra từ câu lỗi của gateway gốc
+    /// (chỉ có chữ tiếng Anh, không có mã) để app vẫn biết nên đổi tài khoản, khóa tài khoản hay báo mất đăng nhập.
+    /// </summary>
+    private static string? CodeOf(TaskApiResponse? r)
+    {
+        if (r == null) return null;
+        if (!string.IsNullOrWhiteSpace(r.FailureCode)) return r.FailureCode;
+        var e = r.Error;
+        if (string.IsNullOrWhiteSpace(e)) return null;
+        bool Has(params string[] parts) => parts.Any(p => e.Contains(p, StringComparison.OrdinalIgnoreCase));
+
+        if (Has("session expired", "re-login", "no sessionid", "not logged in", "Failed to set model", "Model option not found")) return "login_required";
+        if (Has("daily generation limit", "daily limit", "Rate limited")) return "account_limited";
+        if (Has("Insufficient", "quota", "credit")) return "credit";
+        if (Has("Captcha", "risk control", "Submission failed")) return "risk_control";
+        if (Has("No video generated within", "not acquired within")) return "timeout";
+        if (Has("No available accounts", "no account in pool")) return "no_account";
+        if (Has("cancel")) return "cancelled";
+        return null;
+    }
+
     private static string FriendlyGatewayError(string? code, string? raw)
     {
         var detail = string.IsNullOrWhiteSpace(raw) ? null : raw.Trim();
@@ -906,7 +961,7 @@ public class TaskDispatcher : ITaskDispatcher, IDisposable
             if (statusResp.Status.Equals("failed", StringComparison.OrdinalIgnoreCase))
             {
                 throw new GatewayTaskFailedException(
-                    FriendlyGatewayError(statusResp.FailureCode, statusResp.Error), statusResp.FailureCode ?? "error");
+                    FriendlyGatewayError(CodeOf(statusResp), statusResp.Error), CodeOf(statusResp) ?? "error");
             }
 
             // Hiển thị giai đoạn hiện tại mà gateway báo (hỏi thăm → chat mới → gửi → tạo video)

@@ -45,7 +45,7 @@ public partial class RenderTask : ObservableObject
 
     public string Ratio { get; set; } = "9:16"; // 9:16 (dọc), 16:9 (ngang), 1:1
 
-    public int Duration { get; set; } = 30; // 5, 10, 30s theo ô "長さ" của Dola (mặc định 30s)
+    public int Duration { get; set; } = 30; // 10, 15, 30s; ô "長さ" của Dola (mặc định 30s)
 
     public string Model { get; set; } = "seedance-2.0";
 

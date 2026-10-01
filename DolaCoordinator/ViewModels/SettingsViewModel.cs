@@ -24,6 +24,10 @@ public partial class SettingsViewModel : ObservableObject
     private readonly IGatewayHost _gatewayHost;
     private readonly IUpdateService _updateService;
     private readonly IQuotaTracker _quotaTracker;
+    private readonly ProfilesViewModel _profilesVm;
+    private readonly ProxiesViewModel _proxiesVm;
+    private readonly PromptsViewModel _promptsVm;
+    private readonly ScriptsViewModel _scriptsVm;
 
     [ObservableProperty]
     private string _gatewayUrl = "http://127.0.0.1:8000";
@@ -104,13 +108,21 @@ public partial class SettingsViewModel : ObservableObject
         IDolaGatewayClient gatewayClient,
         IUpdateService updateService,
         IQuotaTracker quotaTracker,
-        IGatewayHost gatewayHost)
+        IGatewayHost gatewayHost,
+        ProfilesViewModel profilesVm,
+        ProxiesViewModel proxiesVm,
+        PromptsViewModel promptsVm,
+        ScriptsViewModel scriptsVm)
     {
         _databaseService = databaseService;
         _gatewayClient = gatewayClient;
         _gatewayHost = gatewayHost;
         _updateService = updateService;
         _quotaTracker = quotaTracker;
+        _profilesVm = profilesVm;
+        _proxiesVm = proxiesVm;
+        _promptsVm = promptsVm;
+        _scriptsVm = scriptsVm;
 
         CurrentVersion = $"v{_updateService.CurrentVersionString}";
         WeakReferenceMessenger.Default.Register<SettingsViewModel, BrowserStateChangedMessage>(this, static (vm, _) => vm.RefreshBrowserStatus());
@@ -143,6 +155,10 @@ public partial class SettingsViewModel : ObservableObject
 
     [ObservableProperty]
     private string _browserProgressText = string.Empty;
+
+    /// <summary>Thông báo sau khi sao lưu / khôi phục toàn bộ.</summary>
+    [ObservableProperty]
+    private string _backupStatusText = string.Empty;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(InstallBrowserCommand))]
@@ -183,6 +199,69 @@ public partial class SettingsViewModel : ObservableObject
     }
 
     partial void OnGatewayDirChanged(string value) => RefreshGatewayDirDetected();
+
+    // ------------------------------------------------------------------ sao lưu / khôi phục toàn bộ
+
+    [RelayCommand]
+    private void BackupAll()
+    {
+        if (MessageBox.Show(
+                "File sao lưu chứa TẤT CẢ dữ liệu kể cả mật khẩu, cookie, phiên đăng nhập và mật khẩu proxy ở dạng văn bản thường.\n" +
+                "Ai có file này dùng được mọi tài khoản của bạn. Chỉ lưu ở nơi an toàn và xóa khi không cần. Tiếp tục?",
+                "Sao lưu toàn bộ", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) != MessageBoxResult.Yes)
+            return;
+
+        var dialog = new SaveFileDialog
+        {
+            Filter = "Excel (*.xlsx)|*.xlsx",
+            FileName = $"Dola_SaoLuu_{DateTime.Now:yyyyMMdd_HHmm}.xlsx",
+            Title = "Sao lưu toàn bộ (tài khoản + proxy + prompt + kịch bản)",
+        };
+        if (dialog.ShowDialog() != true) return;
+
+        try
+        {
+            BackupIO.WriteAll(dialog.FileName,
+                _profilesVm.ExportAllRows(), _proxiesVm.ExportAllRows(),
+                _promptsVm.ExportAllItems(), _scriptsVm.ExportAllRows());
+            BackupStatusText = $"Đã sao lưu toàn bộ ra {dialog.FileName}. GIỮ FILE Ở NƠI AN TOÀN.";
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            MessageBox.Show($"Không ghi được file (đang mở trong Excel?): {ex.Message}", "Sao lưu toàn bộ", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    [RelayCommand]
+    private void RestoreAll()
+    {
+        var dialog = new OpenFileDialog
+        {
+            Filter = "Excel (*.xlsx)|*.xlsx|Tất cả (*.*)|*.*",
+            Title = "Khôi phục toàn bộ từ file sao lưu",
+        };
+        if (dialog.ShowDialog() != true) return;
+
+        if (MessageBox.Show(
+                "Khôi phục sẽ THÊM dữ liệu từ file vào dữ liệu hiện có (không xóa cái đang có). Tài khoản/kịch bản trùng tên sẽ được bỏ qua hoặc đổi tên. Tiếp tục?",
+                "Khôi phục toàn bộ", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
+            return;
+
+        try
+        {
+            var parts = new List<string>();
+            if (BackupIO.ReadSheetRows(dialog.FileName, BackupIO.SheetProxies) is { } px) parts.Add($"{_proxiesVm.RestoreFromRows(px)} proxy");
+            if (BackupIO.ReadSheetRows(dialog.FileName, BackupIO.SheetAccounts) is { } ac) parts.Add($"{_profilesVm.RestoreFromRows(ac)} tài khoản");
+            if (BackupIO.ReadSheetRows(dialog.FileName, BackupIO.SheetPrompts) is { } pr) parts.Add($"{_promptsVm.RestoreFromRows(pr)} prompt");
+            if (BackupIO.ReadSheetRows(dialog.FileName, BackupIO.SheetScripts) is { } sc) parts.Add($"{_scriptsVm.RestoreFromRows(sc)} kịch bản");
+            BackupStatusText = parts.Count > 0 ? "Đã khôi phục: " + string.Join(", ", parts) + "." : "Không tìm thấy sheet dữ liệu nào trong file.";
+            MessageBox.Show(BackupStatusText, "Khôi phục toàn bộ", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException)
+        {
+            MessageBox.Show($"Không đọc được file: {ex.Message}", "Khôi phục toàn bộ", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
 
     [RelayCommand]
     private void BrowseGatewayDir()
@@ -295,6 +374,7 @@ public partial class SettingsViewModel : ObservableObject
         try
         {
             var s = _databaseService.GetSettings(); // giữ nguyên các trường không có trên form (vd. AdminKey)
+            var oldQuota = s.DefaultDailyQuota;
             s.GatewayUrl = GatewayUrl?.Trim().TrimEnd('/') ?? "http://127.0.0.1:8000";
             s.ClientApiKey = ClientApiKey?.Trim();
             s.DefaultDailyQuota = Math.Clamp(DefaultDailyQuota, 1, 1000);
@@ -315,7 +395,10 @@ public partial class SettingsViewModel : ObservableObject
             _quotaTracker.ApplyDailyLimit(s.DefaultDailyQuota);
             DefaultDailyQuota = s.DefaultDailyQuota;
             WeakReferenceMessenger.Default.Send(new SessionsChangedMessage());
-            MessageBox.Show("Đã lưu cấu hình hệ thống thành công!", "Thông báo", MessageBoxButton.OK, MessageBoxImage.Information);
+            var note = oldQuota != s.DefaultDailyQuota
+                ? $"{Environment.NewLine}{Environment.NewLine}Hạn ngạch {s.DefaultDailyQuota} video/ngày/tài khoản sẽ áp dụng cho gateway sau khi bạn tắt rồi mở lại app (gateway nhận mức này lúc khởi động)."
+                : string.Empty;
+            MessageBox.Show("Đã lưu cấu hình hệ thống thành công!" + note, "Thông báo", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex)
         {

@@ -37,12 +37,7 @@ dola-render-gateway/
 ├── dola_client.py         # API client communication module
 ├── media.py               # Reference media processor
 ├── config.py              # Configuration & environment variables
-├── add_account.py         # Automated account profile setup (Google login helpers, TOTP)
-├── add_account_cookie.py  # Import a Dola cookie into accounts/<name>
-├── fb_to_dola.py          # Facebook cookie -> Dola session
-├── open_profile.py        # Interactive login / open profile (status via .profile_status.json)
-├── warmup.py              # Daily greeting chat
-├── dola_errors.py         # Typed errors (login required, unhealthy account)
+├── add_account.py         # Automated account profile setup
 ├── web/
 │   └── index.html         # Single-page admin management dashboard
 └── extensions/
@@ -86,35 +81,6 @@ export DOLA_MAX_CONCURRENCY=3
 uvicorn server:app --host 0.0.0.0 --port 8000
 ```
 Open **http://127.0.0.1:8000/web** to access the Admin Dashboard.
-
-### 5. Video flow, pre-flight greeting chat and API additions
-
-For every video the UI worker (`video_worker_ui.py`) does, in order: open the account profile → check login →
-read the credit balance → **greeting chat** (one random question, waits for Dola's answer; captcha is solved if it
-appears) → **open a new chat** → open "Create video" → attach reference images → set model / ratio / duration →
-type the prompt → solve captcha → poll the conversation → download the video.
-
-If the greeting chat gets no answer the account is put on a 10-minute cooldown and the task fails with
-`failure_code=unhealthy` (no video credit is spent).
-
-| Variable | Default | Meaning |
-|---|---|---|
-| `DOLA_WARMUP` | `1` | Greeting chat runs once per account per day (`accounts_meta.warmup_day`); set `0` to disable it |
-| `DOLA_WARMUP_TIMEOUT` | `90` | Seconds to wait for Dola's answer |
-| `DOLA_WARMUP_QUESTIONS` | `warmup_questions.txt` | Optional file, one question per line (built-in list is used otherwise) |
-| `DOLA_DRY_RUN` | `0` | Testing only: do everything except sending the video prompt |
-
-`POST /v1/videos/generations` additions:
-* `reference_local_paths`: absolute paths of image files on the gateway machine. **Accepted from loopback only**
-  (403 otherwise). Images are validated (JPEG/PNG/WEBP, size limit) and copied to a temp folder during the run.
-* `GET /v1/videos/<id>` now also returns `failure_code`, `account` and `stage`.
-  `failure_code` is one of `account_limited`, `credit`, `risk_control`, `login_required`, `unhealthy`, `timeout`,
-  `429`, `no_account`, `error`; `stage` is `warmup` → `new_chat` → `submitting` → `generating` → `done`.
-
-**Per-account proxy**: if `accounts/<name>/proxy.txt` exists (one line `scheme://user:pass@host:port`, written by DolaCoordinator's "Gán proxy"), every Chromium the gateway opens for that account (login, session check, render, cookie import) goes through it; otherwise `DOLA_PROXY` is used if set, otherwise no proxy. See `browser.proxy_for_account`.
-
-`open_profile.py <account> [--login google|facebook|facebook-cookie] [--after keep|close]` opens an account profile in a
-visible Chromium window (used by DolaCoordinator); credentials are read from one JSON line on stdin.
 
 
 ### 🌐 SonicVoice (For Voice Clone)

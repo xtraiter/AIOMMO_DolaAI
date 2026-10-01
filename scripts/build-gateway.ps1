@@ -39,7 +39,7 @@ try {
     & $vpy -m PyInstaller gateway_main.py --name dola-gateway --onedir --noconfirm --clean --console `
         --distpath $dist --workpath (Join-Path $work "build") --specpath (Join-Path $work "spec") `
         --paths . --collect-all patchright --collect-submodules uvicorn `
-        --hidden-import open_profile --hidden-import add_account_cookie --hidden-import fb_to_dola `
+        --hidden-import open_profile --hidden-import add_account_cookie --hidden-import fb_to_dola --hidden-import aiommo_compat `
         --exclude-module tkinter
     if ($LASTEXITCODE -ne 0) { throw "PyInstaller that bai." }
 } finally { Pop-Location }

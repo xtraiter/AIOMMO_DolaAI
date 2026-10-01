@@ -226,6 +226,24 @@ public partial class PromptsViewModel : ObservableObject
         Prompts.Add(p);
     }
 
+    /// <summary>Toàn bộ prompt (cho "Sao lưu toàn bộ").</summary>
+    internal IEnumerable<PromptItem> ExportAllItems() => _db.GetAllPrompts();
+
+    /// <summary>Khôi phục prompt từ các dòng (gồm tiêu đề). Trả số đã thêm.</summary>
+    internal int RestoreFromRows(List<string[]> rows)
+    {
+        var added = 0;
+        foreach (var p in PromptFileParser.FromRows(rows))
+        {
+            _db.UpsertPrompt(p);
+            Add(p);
+            added++;
+        }
+        UpdateCounters();
+        View.Refresh();
+        return added;
+    }
+
     // ------------------------------------------------------------------ thêm / sửa / nhân bản / xóa
 
     [RelayCommand]

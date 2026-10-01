@@ -1,7 +1,6 @@
 """Public reference media download and security validation (SSRF protected)."""
 import asyncio
 import ipaddress
-import shutil
 import socket
 import tempfile
 from io import BytesIO
@@ -143,55 +142,6 @@ async def download_one_image(session: aiohttp.ClientSession, url: str, dest: Pat
                 last_error = exc
                 break
     raise ValueError(str(last_error) if last_error else "Failed to download reference image")
-
-
-def validate_local_image_paths(paths: list[str]) -> list[str]:
-    """Local reference images picked by DolaCoordinator (same machine). Must be absolute paths to real images.
-
-    Only ever called for requests from the loopback interface (see server.create_video).
-    """
-    if len(paths) > config.REFERENCE_IMAGE_MAX_COUNT:
-        raise ValueError(f"Maximum of {config.REFERENCE_IMAGE_MAX_COUNT} reference images allowed")
-    result, seen = [], set()
-    for raw in paths:
-        path = Path(raw)
-        if not path.is_absolute() or not path.is_file():
-            raise ValueError(f"Reference image not found: {raw}")
-        if path.stat().st_size > config.REFERENCE_IMAGE_MAX_BYTES:
-            raise ValueError(f"Reference image exceeds single file size limit: {path.name}")
-        try:
-            with Image.open(path) as image:
-                image.verify()
-                fmt = image.format
-        except Exception as exc:
-            raise ValueError(f"Reference file is not a valid image: {path.name}") from exc
-        if fmt not in _ALLOWED_IMAGE_FORMATS:
-            raise ValueError(f"Reference image only supports JPEG, PNG, WEBP: {path.name}")
-        key = str(path.resolve())
-        if key not in seen:
-            result.append(key)
-            seen.add(key)
-    return result
-
-
-def copy_local_reference_images(paths: list[str], task_id: str) -> tuple[Path | None, list[str]]:
-    """Copies validated local images into a temp folder (sanitised names). Caller must remove the folder."""
-    validated = validate_local_image_paths(paths)
-    if not validated:
-        return None, []
-    root = Path(tempfile.mkdtemp(prefix=f"dola_local_{task_id}_"))
-    out = []
-    try:
-        for index, src in enumerate(validated):
-            with Image.open(src) as image:
-                suffix = _ALLOWED_IMAGE_FORMATS[image.format]
-            dest = root / f"local_{index}{suffix}"
-            shutil.copyfile(src, dest)
-            out.append(str(dest))
-        return root, out
-    except Exception:
-        shutil.rmtree(root, ignore_errors=True)
-        raise
 
 
 async def download_reference_images(urls: list[str], task_id: str) -> tuple[Path | None, list[str]]:

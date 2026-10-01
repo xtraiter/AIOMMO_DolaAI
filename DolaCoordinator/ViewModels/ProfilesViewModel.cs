@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -64,6 +64,8 @@ public partial class ProfilesViewModel : ObservableObject, IDisposable
     [ObservableProperty] private int _readyCount;
     [ObservableProperty] private int _exhaustedCount;
     [ObservableProperty] private int _needLoginCount;
+    /// <summary>Badge ở thanh bên: tài khoản cần bạn xử lý (chưa đăng nhập, hết phiên, đang chờ giải captcha/2FA).</summary>
+    [ObservableProperty] private int _attentionCount;
     [ObservableProperty] private int _runningCount;
 
     [ObservableProperty] private bool _isAllSelected;
@@ -258,6 +260,7 @@ public partial class ProfilesViewModel : ObservableObject, IDisposable
         ExhaustedCount = Profiles.Count(p => p.State is ProfileState.Exhausted or ProfileState.NoCredit);
         NeedLoginCount = Profiles.Count(p => p.State is ProfileState.NotLoggedIn or ProfileState.Invalid);
         RunningCount = Profiles.Count(p => p.IsRunning);
+        AttentionCount = Profiles.Count(p => p.State is ProfileState.NotLoggedIn or ProfileState.Invalid or ProfileState.NeedsAction);
     }
 
     private List<AccountProfile> Selected() => Profiles.Where(p => p.IsSelected).ToList();
@@ -463,7 +466,8 @@ public partial class ProfilesViewModel : ObservableObject, IDisposable
     {
         if (!EnsureEnvironment()) return;
 
-        var dlg = new ProfileEditorWindow(null, null, null, _proxies.GetAll()) { Owner = Application.Current.MainWindow };
+        var dlg = new ProfileEditorWindow(null, null, null, _proxies.GetAll(), Profiles.Select(p => p.Name))
+            { Owner = Application.Current.MainWindow };
         if (dlg.ShowDialog() != true) return;
 
         var options = dlg.Login;
@@ -662,6 +666,69 @@ public partial class ProfilesViewModel : ObservableObject, IDisposable
     private bool NameExists(string name, AccountProfile? except)
         => Profiles.Any(x => x != except && x.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
 
+    /// <summary>Tạo một tài khoản từ một dòng đã kiểm tra: lưu đăng nhập, gán proxy, đính phiên Dola (nếu có). Thêm vào danh sách.</summary>
+    private AccountProfile CreateProfileFromRow(AccountRow r)
+    {
+        var p = _chrome.CreateProfile(r.Name, r.Notes);
+        if (r.IsAutomatic)
+        {
+            _chrome.SaveLogin(p, new LoginOptions
+            {
+                Method = r.LoginMethod, Email = r.Email, Password = r.Password, Totp = r.Totp, Cookie = r.Cookie,
+                After = r.After, Remember = true,
+            });
+        }
+        else if (r.Kind == AccountKind.DolaCookie)
+        {
+            _chrome.AttachCookie(p, r.Cookie);
+        }
+
+        // Proxy đã gán (cột Proxy): tạo proxy nếu chưa có rồi gán cho tài khoản.
+        if (!string.IsNullOrWhiteSpace(r.ProxyUrl))
+            try { _proxies.Assign(p, EnsureProxyId(r.ProxyUrl)); } catch { /* proxy lỗi định dạng: bỏ qua */ }
+
+        // Phiên Dola đã đăng nhập (cột Phiên Dola): đính vào để dùng ngay, không cần đăng nhập lại.
+        if (!string.IsNullOrWhiteSpace(r.DolaSession) && r.DolaSession.Contains("sessionid", StringComparison.OrdinalIgnoreCase))
+            try { _chrome.AttachCookie(p, r.DolaSession); } catch { /* bỏ qua phiên lỗi */ }
+
+        Profiles.Add(p);
+        return p;
+    }
+
+    /// <summary>Toàn bộ tài khoản ở dạng dòng xuất (cho nút "Sao lưu toàn bộ").</summary>
+    internal IEnumerable<AccountExportRow> ExportAllRows() => Profiles.Select(BuildAccountExportRow).ToList();
+
+    /// <summary>Khôi phục tài khoản từ các dòng (gồm tiêu đề). Bỏ qua dòng lỗi và tên đã tồn tại. Trả số đã tạo.</summary>
+    internal int RestoreFromRows(List<string[]> rows)
+    {
+        if (!EnsureEnvironment()) return 0;
+        var parsed = AccountFileParser.FromRows(rows).Where(r => r.Error == null).ToList();
+        var created = 0;
+        foreach (var r in parsed)
+        {
+            if (NameExists(r.Name, null) || Directory.Exists(Path.Combine(_chrome.AccountsDir!, r.Name))) continue;
+            var p = CreateProfileFromRow(r);
+            if (!r.Use && p.Session != null) { p.UseForRender = false; _db.UpsertSession(p.Session); }
+            created++;
+        }
+        ReloadSessions();
+        UpdateCounters();
+        return created;
+    }
+
+    /// <summary>Tìm proxy trùng (scheme/host/port/user) trong danh sách; chưa có thì tạo mới. Trả Id, hoặc null nếu url sai.</summary>
+    private string? EnsureProxyId(string proxyUrl)
+    {
+        if (!ProxyParser.TryParse(proxyUrl, out var pp, out _) || pp == null) return null;
+        string Key(string scheme, string host, int port, string? user) => $"{scheme}://{host}:{port}|{user}";
+        var existing = _proxies.GetAll().FirstOrDefault(x =>
+            Key(x.Scheme, x.Host, x.Port, x.Username).Equals(Key(pp.Scheme, pp.Host, pp.Port, pp.Username), StringComparison.OrdinalIgnoreCase));
+        if (existing != null) return existing.Id;
+        var item = new ProxyItem { Name = $"{pp.Host}:{pp.Port}", Scheme = pp.Scheme, Host = pp.Host, Port = pp.Port, Username = pp.Username };
+        _proxies.Save(item, pp.Password ?? string.Empty);
+        return item.Id;
+    }
+
     [RelayCommand]
     private async Task ToggleProfileAsync(AccountProfile? p)
     {
@@ -857,20 +924,7 @@ public partial class ProfilesViewModel : ObservableObject, IDisposable
         var created = new List<(AccountProfile Profile, AccountRow Row)>();
         foreach (var r in toCreate)
         {
-            var p = _chrome.CreateProfile(r.Name, r.Notes);
-            if (r.IsAutomatic)
-            {
-                _chrome.SaveLogin(p, new LoginOptions
-                {
-                    Method = r.LoginMethod, Email = r.Email, Password = r.Password, Totp = r.Totp, Cookie = r.Cookie,
-                    After = r.After, Remember = true,
-                });
-            }
-            else if (r.Kind == AccountKind.DolaCookie)
-            {
-                _chrome.AttachCookie(p, r.Cookie);
-            }
-            Profiles.Add(p);
+            var p = CreateProfileFromRow(r);
             created.Add((p, r));
         }
 
@@ -944,37 +998,56 @@ public partial class ProfilesViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private void ExportToFile()
     {
-        var targets = SelectedOrVisible().Where(p => p.Session != null).ToList();
+        var targets = SelectedOrVisible().ToList();
         if (targets.Count == 0) { Log("Không có tài khoản nào để xuất."); return; }
 
         if (MessageBox.Show(
-                "File xuất chứa cookie đăng nhập ở dạng văn bản thường — ai có file này dùng được tài khoản.\nChỉ lưu ở nơi an toàn. Tiếp tục?",
+                "File xuất chứa mật khẩu, cookie và phiên đăng nhập ở dạng văn bản thường — ai có file này dùng được tài khoản.\n" +
+                "Chỉ lưu ở nơi an toàn và xóa khi không cần. Tiếp tục?",
                 "Cảnh báo bảo mật", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) != MessageBoxResult.Yes)
             return;
 
         var dialog = new SaveFileDialog
         {
-            Filter = "Text (*.txt)|*.txt",
-            FileName = $"Dola_Accounts_{DateTime.Now:yyyyMMdd_HHmm}.txt",
-            Title = "Xuất danh sách tài khoản"
+            Filter = "Excel (*.xlsx)|*.xlsx",
+            FileName = $"Dola_TaiKhoan_{DateTime.Now:yyyyMMdd_HHmm}.xlsx",
+            Title = "Xuất tài khoản (đầy đủ)",
         };
         if (dialog.ShowDialog() != true) return;
 
         try
         {
-            var sb = new StringBuilder("# Tên|Cookie\n");
-            foreach (var p in targets)
-            {
-                var s = p.Session!;
-                sb.AppendLine($"{p.Name}|{s.PlainToken ?? _security.Decrypt(s.EncryptedToken)}");
-            }
-            File.WriteAllText(dialog.FileName, sb.ToString(), Encoding.UTF8);
-            Log($"Đã xuất {targets.Count} tài khoản ra {dialog.FileName}.");
+            BackupIO.WriteAccounts(dialog.FileName, targets.Select(BuildAccountExportRow));
+            Log($"Đã xuất {targets.Count} tài khoản (kèm mật khẩu/cookie/proxy/phiên) ra {dialog.FileName}.");
         }
-        catch (IOException ex)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            MessageBox.Show($"Không xuất được file: {ex.Message}", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show($"Không xuất được file (đang mở trong Excel?): {ex.Message}", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
         }
+    }
+
+    /// <summary>Gom toàn bộ thông tin một tài khoản (đã giải mã) thành một dòng xuất Excel.</summary>
+    internal AccountExportRow BuildAccountExportRow(AccountProfile p)
+    {
+        var login = _chrome.GetSavedLogin(p);
+        var kind = login.Method switch
+        {
+            LoginMethod.Google => "Google (Gmail)",
+            LoginMethod.Facebook => "Facebook (email/SĐT + mật khẩu)",
+            LoginMethod.FacebookCookie => "Facebook cookie",
+            _ => "Thủ công",
+        };
+        var proxyUrl = _proxies.Get(p.ProxyId) is { } px ? _proxies.BuildUrl(px) : string.Empty;
+        var session = string.Empty;
+        if (p.Session is { } s)
+        {
+            try { session = s.PlainToken ?? _security.Decrypt(s.EncryptedToken); }
+            catch { session = string.Empty; }
+        }
+        return new AccountExportRow(
+            p.Name, kind, login.Email, login.Password, login.Totp, login.Cookie,
+            p.Notes ?? string.Empty, p.UseForRender, login.After == AfterLogin.Keep ? "Giữ" : "Đóng",
+            proxyUrl, session);
     }
 
     // ------------------------------------------------------------------ folders / delete / misc

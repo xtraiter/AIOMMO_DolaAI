@@ -59,12 +59,10 @@ class TaskStore:
             # Legacy migration: add missing columns for task recovery, client usage, and timing stats.
             for column, definition in (
                 ("account", "TEXT"),
-                ("stage", "TEXT"),
                 ("conversation_id", "TEXT"),
                 ("deadline_at", "REAL"),
                 ("last_poll_at", "REAL"),
                 ("failure_code", "TEXT"),
-                ("note", "TEXT"),
                 ("reference_images", "TEXT"),
                 ("api_key_hash", "TEXT"),
                 ("api_key_name", "TEXT"),

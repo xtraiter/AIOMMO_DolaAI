@@ -44,8 +44,8 @@ if sys.platform == "win32":
 from patchright.async_api import async_playwright
 
 from add_account import totp
-from fb_to_dola import parse_fb_cookie
-from browser import USER_LAUNCH_SUFFIX, cookie_value, launch_account_context, parse_user_launch
+from fb_to_dola import parse_fb_cookie, OAUTH_CONFIRM_JS
+from aiommo_compat import USER_LAUNCH_SUFFIX, cookie_value, launch_account_context, parse_user_launch
 
 NAME_RE = re.compile(r"^[A-Za-z0-9_-]{1,32}$")
 CHAT_URL = "https://www.dola.com/chat"
@@ -69,9 +69,20 @@ FACEBOOK_BUTTONS = (
     '[data-testid="login_third_facebook"]', 'div[data-testid*="facebook"]', 'button:has-text("Facebook")',
     '[aria-label*="Facebook" i]',
 )
+# Nút xác nhận OAuth ("Tiếp tục dưới tên …"). Facebook có thể ra bất kỳ ngôn ngữ nào theo cookie/tài khoản,
+# nhưng vẫn giữ nhiều ngôn ngữ (Pháp/Anh/Nhật/Trung/TBN) phòng khi Facebook theo ngôn ngữ của tài khoản.
 OAUTH_CONFIRM_SELECTORS = (
-    'button[name="__CONFIRM__"]', 'button:has-text("Tiếp tục dưới tên")', 'button:has-text("Continue as")',
-    'div[role="button"]:has-text("Continue as")', 'div[role="button"]:has-text("Tiếp tục dưới tên")',
+    'button[name="__CONFIRM__"]',
+    'button:has-text("Tiếp tục dưới tên")', 'div[role="button"]:has-text("Tiếp tục dưới tên")',
+    'button:has-text("Continue as")', 'div[role="button"]:has-text("Continue as")',
+    'button:has-text("Continuer en tant que")', 'div[role="button"]:has-text("Continuer en tant que")',
+    'a[role="button"]:has-text("Continuer en tant que")',
+    'button:has-text("Continuer")', 'div[role="button"]:has-text("Continuer")',
+    'button:has-text("Continuar como")', 'div[role="button"]:has-text("Continuar como")',
+    'button:has-text("Tiếp tục")', 'div[role="button"]:has-text("Tiếp tục")',
+    'button:has-text("Continue")', 'div[role="button"]:has-text("Continue")',
+    'button:has-text("続行")', 'button:has-text("次へ")', 'div[role="button"]:has-text("続行")',
+    'button:has-text("继续")', 'button:has-text("繼續")',
 )
 GOOGLE_CONSENT_SELECTORS = (
     "#submit_button", "[role='button']:has-text('続行')", "button:has-text('続行')",
@@ -156,6 +167,18 @@ async def click_first(page, selectors, timeout=3000) -> bool:
 async def js_click(page, selector):
     """DOM click: Google's next buttons ignore synthetic pointer clicks in automation."""
     await page.locator(selector).first.evaluate("e => e.click()")
+
+
+async def click_oauth_confirm_js(page) -> bool:
+    """Bấm nút chính của màn OAuth theo DOM (không theo chữ). CHỈ gọi khi đang ở màn consent/oauth."""
+    try:
+        txt = await page.evaluate(OAUTH_CONFIRM_JS)
+    except Exception:
+        txt = None
+    if txt:
+        print(f"Xác nhận OAuth Facebook (nút '{txt}', nhận diện theo nút chính).", flush=True)
+        return True
+    return False
 
 
 async def has_captcha(page) -> bool:
@@ -301,8 +324,12 @@ async def handle_facebook(pg, creds, filled, st: State) -> bool:
         ask_human(st, "Facebook yêu cầu captcha — hãy giải trong cửa sổ trình duyệt.")
         return False
 
-    # OAuth confirmation ("Continue as ...") comes after a successful FB login
+    # OAuth confirm theo chữ (an toàn trên mọi trang FB).
     if await click_first(pg, OAUTH_CONFIRM_SELECTORS):
+        st.need_human = None
+        return True
+    # Dự phòng độc lập ngôn ngữ: CHỈ ở màn consent/oauth (tránh bấm nhầm nút Đăng nhập của form login).
+    if ("/privacy/consent" in url or "/dialog/oauth" in url) and await click_oauth_confirm_js(pg):
         st.need_human = None
         return True
 
@@ -614,6 +641,12 @@ async def main():
                 if logged_in and header and header != last_header:
                     # Persist exactly like add_account_cookie.py, so the gateway reuses this session
                     (profile_dir / "cookie.txt").write_text(header, encoding="utf-8")
+                    try:  # đánh dấu cho gateway_main.py import-cookie: cookie này do chính profile tạo ra, không nạp đè lên nó
+                        import hashlib
+                        (profile_dir / ".cookie_injected").write_text(
+                            hashlib.sha256(header.strip().encode("utf-8")).hexdigest(), encoding="utf-8")
+                    except OSError:
+                        pass
                     last_header = header
                     print("LOGIN_OK", flush=True)
 

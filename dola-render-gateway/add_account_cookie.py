@@ -21,7 +21,7 @@ if sys.platform == "win32":
 from patchright.async_api import async_playwright
 
 import config
-from browser import LAUNCH_ARGS, cookie_value, proxy_for_account
+from aiommo_compat import LAUNCH_ARGS, cookie_value, proxy_for_account
 
 
 def parse_cookie_string(raw: str) -> list[dict]:

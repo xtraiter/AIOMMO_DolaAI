@@ -222,6 +222,58 @@ def _install_browser() -> int:
     return 1
 
 
+def _import_cookie(argv: list[str]) -> int:
+    """dola-gateway.exe import-cookie <account>   (cookie đọc từ stdin, một dòng)
+
+    Gateway gốc không có đường nạp cookie, nên app gọi lệnh này:
+      - cookie Dola (có sessionid=...)  -> nạp vào profile accounts/<account> để gateway dùng được ngay;
+      - cookie Facebook (c_user/xs)     -> đăng nhập Dola bằng Facebook rồi lưu phiên vào profile.
+    Kết quả in ra một dòng "RESULT:{json}" ({"ok": bool, "cookie": "...", "error": "..."}).
+    """
+    import asyncio
+    import hashlib
+    import json
+
+    if not argv:
+        print("RESULT:" + json.dumps({"ok": False, "error": "thiếu tên tài khoản"}), flush=True)
+        return 2
+    account = argv[0]
+    cookie = (sys.stdin.readline() or "").strip()
+    if not cookie:
+        print("RESULT:" + json.dumps({"ok": False, "error": "không nhận được cookie"}), flush=True)
+        return 2
+
+    from pathlib import Path
+
+    marker = Path("accounts") / account / ".cookie_injected"
+    digest = hashlib.sha256(cookie.encode("utf-8")).hexdigest()
+    is_dola = "sessionid=" in cookie.lower()
+
+    async def run() -> dict:
+        if is_dola:
+            if marker.is_file() and marker.read_text(encoding="utf-8").strip() == digest:
+                return {"ok": True, "cookie": cookie, "skipped": True}  # đã nạp đúng cookie này rồi
+            from add_account_cookie import import_single_account
+
+            ok = await import_single_account(account, cookie)
+            if ok:
+                marker.write_text(digest, encoding="utf-8")
+            return {"ok": bool(ok), "cookie": cookie, **({} if ok else {"error": "không nạp được cookie Dola"})}
+        from fb_to_dola import convert_fb_to_dola_session
+
+        res = await convert_fb_to_dola_session(account, cookie, headless=True)
+        if res.get("ok") and res.get("cookie"):  # cookie Dola vừa tạo đã nằm trong profile: lần sau không nạp lại
+            marker.write_text(hashlib.sha256(str(res["cookie"]).strip().encode("utf-8")).hexdigest(), encoding="utf-8")
+        return res
+
+    try:
+        result = asyncio.run(run())
+    except Exception as ex:  # noqa: BLE001
+        result = {"ok": False, "error": f"{type(ex).__name__}: {ex}"}
+    print("RESULT:" + json.dumps(result, ensure_ascii=False), flush=True)
+    return 0 if result.get("ok") else 1
+
+
 def _use_shared_browser_cache() -> None:
     # patchright defaults to a browser folder INSIDE the frozen app (PLAYWRIGHT_BROWSERS_PATH=0). Use the normal
     # per-user cache instead so Chromium is downloaded once per machine and shared with a `pip`-based install.
@@ -251,8 +303,10 @@ def main() -> int:
         return 0
     if cmd == "install-browser":
         return _install_browser()
+    if cmd == "import-cookie":
+        return _import_cookie(rest)
 
-    print(f"Unknown command '{cmd}'. Use: serve | open-profile | install-browser", file=sys.stderr)
+    print(f"Unknown command '{cmd}'. Use: serve | open-profile | install-browser | import-cookie", file=sys.stderr)
     return 2
 
 

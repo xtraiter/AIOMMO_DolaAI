@@ -74,6 +74,10 @@
             <WrapPanel>
                 <Button Content="Nhập nhiều proxy" Command="{Binding ImportProxiesCommand}" Margin="0,0,8,6"
                         ToolTip="Dán nhiều dòng: host:port, host:port:user:pass, user:pass@host:port, scheme://..."/>
+                <Button Content="Nhập từ file" Command="{Binding ImportProxiesFromFileCommand}" Margin="0,0,8,6"
+                        ToolTip="Nhập proxy từ file Excel/CSV đã xuất trước đó"/>
+                <Button Content="Xuất" Command="{Binding ExportProxiesCommand}" Margin="0,0,20,6"
+                        ToolTip="Xuất toàn bộ proxy ra Excel (kèm mật khẩu — giữ an toàn)"/>
                 <Button Content="Sửa" Command="{Binding EditProxyCommand}" Margin="0,0,20,6" ToolTip="Sửa proxy đã tích (hoặc bấm đúp vào dòng)"/>
                 <Button Content="Kiểm tra đã chọn" Command="{Binding TestSelectedCommand}" Style="{StaticResource ModernPrimaryButton}" Margin="0,0,8,6"
                         ToolTip="Đi qua proxy tới dịch vụ hỏi IP: cho biết IP thoát, quốc gia và độ trễ"/>
@@ -132,8 +136,6 @@
                                                 </Style>
                                             </TextBlock.Style>
                                         </TextBlock>
-                                        <TextBlock Text="IP thoát ngoài Nhật/Hàn: Dola thường cần IP Nhật hoặc Hàn." FontSize="11" Foreground="{StaticResource WarningBrush}"
-                                                   Visibility="{Binding CountryWarning, Converter={StaticResource BoolToVisibilityConverter}}"/>
                                     </StackPanel>
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>

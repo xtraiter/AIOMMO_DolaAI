@@ -122,7 +122,7 @@
             <MenuItem Header="Đồng bộ lại từ gateway (accounts/)" Command="{Binding SyncFromGatewayCommand}"/>
             <MenuItem Header="Mở thư mục accounts của gateway" Command="{Binding OpenProfilesRootCommand}"/>
             <Separator/>
-            <MenuItem Header="Xuất danh sách (đã chọn hoặc đang hiển thị)…" Command="{Binding ExportToFileCommand}"/>
+            <MenuItem Header="Xuất tài khoản ra Excel (đầy đủ: đăng nhập, cookie, phiên, proxy)…" Command="{Binding ExportToFileCommand}"/>
         </ContextMenu>
         </ResourceDictionary>
     </UserControl.Resources>

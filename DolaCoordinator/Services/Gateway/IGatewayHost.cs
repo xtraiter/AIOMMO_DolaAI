@@ -31,6 +31,13 @@ public interface IGatewayHost
     /// </summary>
     Task<(bool Ok, string? Error)> InstallBrowserAsync(IProgress<string>? progress = null, CancellationToken ct = default);
 
+    /// <summary>
+    /// Chạy một lệnh của gateway (vd. "import-cookie") rồi đợi nó xong. stdinLine (nếu có) được ghi vào stdin — dùng cho cookie/mật khẩu
+    /// để chúng không xuất hiện trên dòng lệnh. Trả toàn bộ output (stdout + stderr).
+    /// </summary>
+    Task<(bool Started, int ExitCode, string Output, string? Error)> RunCommandAsync(
+        string verb, System.Collections.Generic.IEnumerable<string> args, string? stdinLine, TimeSpan timeout, CancellationToken ct = default);
+
     /// <summary>Đường dẫn log của gateway do app bật (ghi đè mỗi lần bật).</summary>
     string LogPath { get; }
 

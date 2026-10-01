@@ -109,7 +109,7 @@ public class ScriptProject : ObservableObject
 
     public string Ratio { get; set; } = "16:9";
 
-    /// <summary>Thời lượng MỖI phần (5, 10 hoặc 30 giây).</summary>
+    /// <summary>Thời lượng MỖI phần (10, 15 hoặc 30 giây).</summary>
     public int Duration { get; set; } = 10;
 
     public List<PromptCharacter> Characters { get; set; } = new();

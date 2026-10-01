@@ -220,7 +220,6 @@ public partial class AccountProfile : ObservableObject
         else if (g?.RateLimited == true) State = ProfileState.Exhausted;
         else if (g?.QuotaBlocked == true) State = ProfileState.NoCredit;
         else if (g?.Cooling == true) State = ProfileState.Cooldown;
-        else if (g?.Scheduling == false) State = ProfileState.Paused;
         else
         {
             State = s?.Status switch

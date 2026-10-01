@@ -182,11 +182,17 @@ public class DolaGatewayClient : IDolaGatewayClient
             if (response.IsSuccessStatusCode)
             {
                 using var doc = JsonDocument.Parse(string.IsNullOrWhiteSpace(body) ? "null" : body);
-                bool? loginOk = doc.RootElement.ValueKind == JsonValueKind.Object
-                                && doc.RootElement.TryGetProperty("login_ok", out var p)
-                                && p.ValueKind is JsonValueKind.True or JsonValueKind.False
-                    ? p.GetBoolean()
-                    : null;
+                // Gateway đã sửa trả "login_ok"; gateway gốc trả "ok" (cùng nghĩa: phiên Dola còn đăng nhập hay không).
+                bool? loginOk = null;
+                if (doc.RootElement.ValueKind == JsonValueKind.Object)
+                {
+                    foreach (var key in new[] { "login_ok", "ok" })
+                        if (doc.RootElement.TryGetProperty(key, out var p) && p.ValueKind is JsonValueKind.True or JsonValueKind.False)
+                        {
+                            loginOk = p.GetBoolean();
+                            break;
+                        }
+                }
                 return (true, loginOk, null);
             }
 
@@ -201,6 +207,24 @@ public class DolaGatewayClient : IDolaGatewayClient
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
         {
             return (false, null, "Gateway chưa chạy hoặc không phản hồi (kiểm tra tab Cài đặt).");
+        }
+    }
+
+    public async Task<bool> SetAccountSchedulingAsync(string name, bool on, CancellationToken ct = default)
+    {
+        try
+        {
+            using var req = new HttpRequestMessage(HttpMethod.Patch, $"{GetGatewayBaseUrl()}/api/admin/accounts/{Uri.EscapeDataString(name)}")
+            {
+                Content = new StringContent(JsonSerializer.Serialize(new { scheduling = on }, JsonOptions), Encoding.UTF8, "application/json"),
+            };
+            ApplyAdminHeader(req);
+            using var response = await _httpClient.SendAsync(req, ct);
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        {
+            return false;
         }
     }
 
@@ -232,35 +256,33 @@ public class DolaGatewayClient : IDolaGatewayClient
     public async Task<(bool Success, string? ConvertedCookie, string? ErrorMessage)> ImportCookieWithResultAsync(
         string name, string cookieToken, CancellationToken ct = default)
     {
-        var host = await _gatewayHost.EnsureRunningAsync(ct);
-        if (!host.Ok) return (false, null, $"Không bật được gateway: {host.Error}");
+        // Gateway gốc không có đường nạp cookie: chạy lệnh "import-cookie" của gateway (cookie qua stdin, không lộ trên dòng lệnh).
+        // Cookie Dola được nạp vào profile accounts/<tên>; cookie Facebook được đổi thành phiên Dola.
         try
         {
-            var baseUrl = GetGatewayBaseUrl();
-            using var req = new HttpRequestMessage(HttpMethod.Post, $"{baseUrl}/api/admin/accounts/import_cookie");
-            ApplyAdminHeader(req);
+            var run = await _gatewayHost.RunCommandAsync("import-cookie", new[] { name }, cookieToken.Trim(), TimeSpan.FromMinutes(3), ct);
+            if (!run.Started) return (false, null, run.Error);
 
-            var payload = JsonSerializer.Serialize(new { name, cookie = cookieToken }, JsonOptions);
-            req.Content = new StringContent(payload, Encoding.UTF8, "application/json");
-
-            var response = await _httpClient.SendAsync(req, ct);
-            var json = await response.Content.ReadAsStringAsync(ct);
-
-            if (!response.IsSuccessStatusCode)
+            var lines = run.Output.Split('\n').Select(l => l.Trim()).ToList();
+            var line = lines.LastOrDefault(l => l.StartsWith("RESULT:", StringComparison.Ordinal));
+            if (line == null)
             {
-                return (false, null, $"Gateway phản hồi ({response.StatusCode}): {json}");
+                var tail = string.Join(" | ", lines.Where(l => l.Length > 0).TakeLast(3));
+                return (false, null, $"Nạp cookie thất bại (mã {run.ExitCode}): {tail}");
             }
 
-            using var doc = JsonDocument.Parse(json);
-            string? converted = null;
-            if (doc.RootElement.TryGetProperty("cookie", out var cookieProp) && cookieProp.ValueKind == JsonValueKind.String)
+            using var doc = JsonDocument.Parse(line["RESULT:".Length..]);
+            var root = doc.RootElement;
+            var ok = root.TryGetProperty("ok", out var okProp) && okProp.ValueKind == JsonValueKind.True;
+            if (!ok)
             {
-                converted = cookieProp.GetString();
+                var err = root.TryGetProperty("error", out var e) && e.ValueKind == JsonValueKind.String ? e.GetString() : "Nạp cookie thất bại.";
+                return (false, null, err);
             }
-
+            var converted = root.TryGetProperty("cookie", out var c) && c.ValueKind == JsonValueKind.String ? c.GetString() : null;
             return (true, converted, null);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return (false, null, ex.Message);
         }

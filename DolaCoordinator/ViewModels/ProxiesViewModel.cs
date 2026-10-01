@@ -96,8 +96,100 @@ public partial class ProxiesViewModel : ObservableObject
     {
         var dlg = new ProxyEditorWindow { Owner = Application.Current.MainWindow };
         if (dlg.ShowDialog() != true) return;
-        _proxies.Save(dlg.Result, dlg.PlainPassword);
-        StatusText = $"Đã thêm proxy {dlg.Result.DisplayName}. Bấm 'Kiểm tra' để xem IP thoát.";
+        var r = dlg.Result;
+        string Key(ProxyItem p) => $"{p.Scheme}://{p.Host}:{p.Port}|{p.Username}";
+        if (_proxies.GetAll().Any(p => Key(p).Equals(Key(r), StringComparison.OrdinalIgnoreCase)))
+        {
+            StatusText = $"Proxy {r.DisplayName} đã có trong danh sách — không thêm trùng.";
+            return;
+        }
+        _proxies.Save(r, dlg.PlainPassword);
+        StatusText = $"Đã thêm proxy {r.DisplayName}. Bấm 'Kiểm tra' để xem IP thoát.";
+    }
+
+    [RelayCommand]
+    private void ImportProxiesFromFile()
+    {
+        var dialog = new Microsoft.Win32.OpenFileDialog
+        {
+            Filter = "Excel / CSV (*.xlsx;*.csv;*.tsv)|*.xlsx;*.csv;*.tsv|Tất cả (*.*)|*.*",
+            Title = "Nhập proxy từ file Excel/CSV",
+        };
+        if (dialog.ShowDialog() != true) return;
+        try
+        {
+            var rows = TableFile.ReadRows(dialog.FileName);
+            var (added, dup) = AddProxies(BackupIO.ProxiesFromRows(rows));
+            StatusText = $"Đã nhập {added} proxy từ file" + (dup > 0 ? $", bỏ qua {dup} trùng." : ".");
+        }
+        catch (Exception ex) when (ex is System.IO.IOException or System.IO.InvalidDataException or UnauthorizedAccessException)
+        {
+            MessageBox.Show($"Không đọc được file: {ex.Message}", "Nhập proxy", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    /// <summary>Lưu danh sách proxy, bỏ qua trùng (scheme/host/port/user). Trả (đã thêm, bỏ qua).</summary>
+    internal (int Added, int Duplicates) AddProxies(IEnumerable<(ProxyItem Item, string Password)> items)
+    {
+        string Key(ProxyItem p) => $"{p.Scheme}://{p.Host}:{p.Port}|{p.Username}";
+        var existing = _proxies.GetAll().Select(Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        int added = 0, dup = 0;
+        foreach (var (item, pass) in items)
+        {
+            if (!existing.Add(Key(item))) { dup++; continue; }
+            _proxies.Save(item, pass);
+            added++;
+        }
+        return (added, dup);
+    }
+
+    [RelayCommand]
+    private void ExportProxies()
+    {
+        var list = _proxies.GetAll();
+        if (list.Count == 0) { StatusText = "Chưa có proxy nào để xuất."; return; }
+
+        if (MessageBox.Show(
+                "File xuất chứa mật khẩu proxy ở dạng văn bản thường. Chỉ lưu ở nơi an toàn. Tiếp tục?",
+                "Cảnh báo bảo mật", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) != MessageBoxResult.Yes)
+            return;
+
+        var dialog = new Microsoft.Win32.SaveFileDialog
+        {
+            Filter = "Excel (*.xlsx)|*.xlsx",
+            FileName = $"Dola_Proxy_{DateTime.Now:yyyyMMdd_HHmm}.xlsx",
+            Title = "Xuất danh sách proxy",
+        };
+        if (dialog.ShowDialog() != true) return;
+
+        try
+        {
+            BackupIO.WriteProxies(dialog.FileName, list.Select(BuildProxyExportRow));
+            StatusText = $"Đã xuất {list.Count} proxy ra {dialog.FileName}.";
+        }
+        catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException)
+        {
+            MessageBox.Show($"Không xuất được file (đang mở trong Excel?): {ex.Message}", "Xuất proxy", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    /// <summary>Toàn bộ proxy ở dạng dòng xuất (cho "Sao lưu toàn bộ").</summary>
+    internal IEnumerable<ProxyExportRow> ExportAllRows() => _proxies.GetAll().Select(BuildProxyExportRow).ToList();
+
+    /// <summary>Khôi phục proxy từ các dòng (gồm tiêu đề). Trả số đã thêm.</summary>
+    internal int RestoreFromRows(List<string[]> rows)
+    {
+        var (added, _) = AddProxies(BackupIO.ProxiesFromRows(rows));
+        if (added > 0) WeakReferenceMessenger.Default.Send(new ProxiesChangedMessage());
+        return added;
+    }
+
+    /// <summary>Gom một proxy (kèm mật khẩu đã giải mã qua BuildUrl) thành dòng xuất.</summary>
+    internal ProxyExportRow BuildProxyExportRow(ProxyItem p)
+    {
+        var pass = ProxyParser.TryParse(_proxies.BuildUrl(p), out var pp, out _) && pp != null ? pp.Password ?? string.Empty : string.Empty;
+        var country = p.LastOk == true ? p.LastCountry ?? string.Empty : string.Empty;
+        return new ProxyExportRow(p.DisplayName, p.Scheme, p.Host, p.Port, p.Username ?? string.Empty, pass, country);
     }
 
     [RelayCommand]
@@ -197,9 +289,7 @@ public partial class ProxiesViewModel : ObservableObject
             UpdateCounters();
         }
         var ok = list.Count(p => p.LastOk == true);
-        var wrongCountry = list.Count(p => p.CountryWarning);
-        StatusText = $"Kiểm tra xong: {ok}/{list.Count} proxy chạy được" +
-                     (wrongCountry > 0 ? $"; {wrongCountry} proxy có IP thoát ngoài Nhật/Hàn (Dola thường cần IP Nhật hoặc Hàn)." : ".");
+        StatusText = $"Kiểm tra xong: {ok}/{list.Count} proxy chạy được.";
         WeakReferenceMessenger.Default.Send(new ProxiesChangedMessage()); // trang tài khoản đọc lại quốc gia
     }
 }

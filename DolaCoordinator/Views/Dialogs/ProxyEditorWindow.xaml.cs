@@ -42,7 +42,7 @@ public partial class ProxyEditorWindow : Window
         {
             SchemeBox.SelectedIndex = 0;
             PortBox.Text = "8080";
-            HintText.Text = "Chromium không hỗ trợ socks5 có tài khoản/mật khẩu: dùng http/https nếu proxy cần đăng nhập. Dola thường cần IP thoát ở Nhật hoặc Hàn.";
+            HintText.Text = "Chromium không hỗ trợ socks5 có tài khoản/mật khẩu: dùng http/https nếu proxy cần đăng nhập.";
         }
         Loaded += (_, _) => HostBox.Focus();
     }

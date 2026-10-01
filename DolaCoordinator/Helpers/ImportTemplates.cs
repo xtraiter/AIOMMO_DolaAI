@@ -80,7 +80,7 @@ public static class ImportTemplates
             ("Tên prompt", "Tên gợi nhớ. Bỏ trống thì lấy dòng đầu của nội dung."),
             ("Nội dung (nhiều dòng)", "BẮT BUỘC. Dòng không có nội dung bị bỏ qua."),
             ("Tỷ lệ", "1:1, 3:4, 4:3, 9:16, 16:9, 21:9 (giống ô chọn của Dola). Bỏ trống = 9:16."),
-            ("Thời lượng (giây)", "5, 10 hoặc 30 (giống ô chọn của Dola). Số khác được đổi về giá trị gần nhất. Bỏ trống = 30. 30 giây chỉ có ở Seedance 2.5. ĐỪNG ghi thời lượng trong nội dung (30s, 0-3s, 00:00-00:03...): Dola sẽ hỏi lại thay vì tạo video — app tự bỏ các chỗ đó khi gửi."),
+            ("Thời lượng (giây)", "10, 15 hoặc 30. Số khác được đổi về giá trị gần nhất. Bỏ trống = 30. 30 giây chỉ có ở Seedance 2.5. ĐỪNG ghi thời lượng trong nội dung (30s, 0-3s, 00:00-00:03...): Dola sẽ hỏi lại thay vì tạo video — app tự bỏ các chỗ đó khi gửi."),
             ("Model", "seedance-2.0 hoặc seedance-2.5. Bỏ trống = seedance-2.0 (tự đổi sang 2.5 nếu chọn 30 giây)."),
             ("Ghi chú", "Tùy chọn."),
             ("Ảnh tham chiếu", "Tùy chọn: đường dẫn ảnh trên máy này, nhiều ảnh cách nhau bằng dấu ; (ví dụ C:\\anh\\a.png;C:\\anh\\b.jpg)."),

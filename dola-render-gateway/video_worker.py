@@ -10,7 +10,7 @@ import aiohttp
 from patchright.async_api import async_playwright
 
 import config
-from browser import cookie_value, http_proxy_url_for_account, launch_account_context
+from browser import cookie_value, launch_account_context
 from dola_client import CREDIT_FAIL_PATTERN, CreditError
 from video_probe import SUBMIT_JS
 
@@ -70,7 +70,7 @@ async ({conversationId, msToken, fp}) => {
     if (!Array.isArray(content)) continue;
     for (const block of content) {
       const text = (((block.content || {}).text_block) || {}).text || "";
-      if (text) texts.push(text.slice(0, 500));
+      if (text) texts.push(text.slice(0, 120));
       if (block.block_type !== 2074) continue;
       const creations = (((block.content || {}).creation_block) || {}).creations || [];
       for (const cre of creations) {
@@ -147,7 +147,7 @@ async def _download(url: str, account: str) -> Path:
     fname = dl_dir / f"{account}_{time.strftime('%Y%m%d_%H%M%S')}.mp4"
     timeout = aiohttp.ClientTimeout(total=300)
     async with aiohttp.ClientSession(timeout=timeout) as session:
-        # the finished video comes from Dola's CDN: fetch it through the same proxy as the account's browser
+        from aiommo_compat import http_proxy_url_for_account  # AIOMMO: tải qua đúng proxy của tài khoản
         async with session.get(url, proxy=http_proxy_url_for_account(account)) as resp:
             resp.raise_for_status()
             with open(fname, "wb") as f:

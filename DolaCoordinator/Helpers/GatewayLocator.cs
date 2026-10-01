@@ -35,9 +35,9 @@ public static class GatewayLocator
         var (python, pythonArgs) = ParsePython(pythonCommand);
         list.AddRange(pythonArgs);
         if (verb == "serve") list.AddRange(new[] { "-m", "uvicorn", "server:app" });
-        else if (verb == "install-browser") list.Add("gateway_main.py");
+        else if (verb is "install-browser" or "import-cookie") list.Add("gateway_main.py");
         else list.Add("open_profile.py");
-        if (verb == "install-browser") list.Add(verb);
+        if (verb is "install-browser" or "import-cookie") list.Add(verb);
         list.AddRange(args);
         return (ResolveExecutable(python), list);
     }
@@ -81,6 +81,9 @@ public static class GatewayLocator
     /// </summary>
     public static void ApplyEnvironment(ProcessStartInfo psi, string gatewayDir)
     {
+        // Gateway gốc mặc định đi qua proxy http://127.0.0.1:7890 (máy tác giả): không có proxy đó thì trình duyệt không vào được mạng.
+        // Đặt rỗng = đi thẳng, trừ khi người dùng đã tự đặt DOLA_PROXY cho riêng mình.
+        if (!psi.Environment.ContainsKey("DOLA_PROXY")) psi.Environment["DOLA_PROXY"] = string.Empty;
         if (string.Equals(RuntimeDir(gatewayDir), gatewayDir, StringComparison.OrdinalIgnoreCase)) return;
         psi.Environment["DOLA_EXTENSION_DIR"] = Path.Combine(gatewayDir, "extensions", "dola30");
         psi.Environment["DOLA_WEB_DIR"] = Path.Combine(gatewayDir, "web");

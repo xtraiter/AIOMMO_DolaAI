@@ -37,15 +37,46 @@ if ($LASTEXITCODE -ne 0) { throw "dotnet publish that bai (ma $LASTEXITCODE)" }
 Get-ChildItem $temp -Filter *.pdb | Remove-Item -Force
 
 Write-Host "[2/3] Tao thu muc phat hanh (app + gateway)..." -ForegroundColor Cyan
-if (Test-Path $distDir) { Remove-Item -Recurse -Force $distDir }
-New-Item -ItemType Directory -Force $distDir | Out-Null
-Copy-Item "$temp\*" $distDir -Recurse -Force
-Remove-Item -Recurse -Force $temp
-Rename-Item (Join-Path $distDir "DolaCoordinator.exe") "AIOMMO DolaAI.exe"
-if ($SkipGateway) {
-    Write-Host "  (bo qua gateway: goi nay se can Python + dola-render-gateway rieng)" -ForegroundColor Yellow
-} else {
-    & (Join-Path $PSScriptRoot "build-gateway.ps1") -OutDir (Join-Path $distDir "gateway")
+# Ban chay truc tiep tu thu muc release luu du lieu NGUOI DUNG canh gateway (ho so dang nhap cua tung tai khoan, co so du lieu, video).
+# Build khong duoc xoa chung: cat ra cho an toan roi tra lai sau khi dong goi xong.
+$keepItems = @("gateway\accounts", "gateway\downloads", "gateway\refs", "gateway\tasks.db", "gateway\pool_usage.db")
+$stash = Join-Path $env:TEMP ("dola_keep_" + [Guid]::NewGuid().ToString("N"))
+$stashed = @()
+if ($ToRelease -and (Test-Path $distDir)) {
+    foreach ($rel in $keepItems) {
+        $src = Join-Path $distDir $rel
+        if (Test-Path $src) {
+            $dst = Join-Path $stash $rel
+            New-Item -ItemType Directory -Force (Split-Path $dst) | Out-Null
+            Move-Item $src $dst -Force
+            $stashed += $rel
+        }
+    }
+    if ($stashed.Count -gt 0) { Write-Host "  giu lai du lieu nguoi dung: $($stashed -join ', ')" -ForegroundColor Yellow }
+}
+try {
+    if (Test-Path $distDir) { Remove-Item -Recurse -Force $distDir }
+    New-Item -ItemType Directory -Force $distDir | Out-Null
+    Copy-Item "$temp\*" $distDir -Recurse -Force
+    Remove-Item -Recurse -Force $temp
+    Rename-Item (Join-Path $distDir "DolaCoordinator.exe") "AIOMMO DolaAI.exe"
+    if ($SkipGateway) {
+        Write-Host "  (bo qua gateway: goi nay se can Python + dola-render-gateway rieng)" -ForegroundColor Yellow
+    } else {
+        & (Join-Path $PSScriptRoot "build-gateway.ps1") -OutDir (Join-Path $distDir "gateway")
+    }
+}
+finally {
+    # Tra lai du lieu nguoi dung da cat o tren (neu co) - chay ca khi build o tren bi loi
+    foreach ($rel in $stashed) {
+        $src = Join-Path $stash $rel
+        if (-not (Test-Path $src)) { continue }
+        $dst = Join-Path $distDir $rel
+        New-Item -ItemType Directory -Force (Split-Path $dst) | Out-Null
+        if (Test-Path $dst) { Remove-Item -Recurse -Force $dst }
+        Move-Item $src $dst -Force
+    }
+    if (Test-Path $stash) { Remove-Item -Recurse -Force $stash -ErrorAction SilentlyContinue }
 }
 
 # ffmpeg: lay khung hinh cuoi va ghep video cua trang "Kich ban lon". Lay ban build san trong goi imageio-ffmpeg (pip)

@@ -11,14 +11,11 @@ import aiohttp
 from patchright.async_api import async_playwright
 
 from gap import find_gap_x
-from prompt_clean import strip_duration_words as strip_duration_words_in
 
 import config
 from browser import cookie_value, launch_account_context
 from dola_client import CREDIT_FAIL_PATTERN, CreditError
-from dola_errors import AccountUnhealthyError, DolaAskedBackError, LoginRequiredError  # noqa: F401  (re-exported for browser_pool)
 from video_worker import POLL_JS, RiskControlError, _download, extract_unwatermarked_url
-from warmup import open_new_chat, warmup_chat
 
 # Daily limit pattern matching response text
 DAILY_LIMIT_PATTERN = re.compile(
@@ -26,86 +23,6 @@ DAILY_LIMIT_PATTERN = re.compile(
     r"daily.*(?:limit|quota)|(?:limit|quota).*per\s*day",
     re.IGNORECASE,
 )
-
-
-# Dola's chat agent sometimes replies with a question instead of making the video ("may I use 15s?", "do you have a face
-# image? A / B"). It stays that way forever, so notice it instead of waiting for the full video timeout.
-QUESTION_MARK = re.compile(r"[?\uFF1F]")
-ASKED_BACK_GRACE_SEC = 60        # report the question as an error after this long (no auto reply configured)
-AUTO_REPLY_GRACE_SEC = 12        # answer Dola's question this soon once it has stopped writing
-MAX_AUTO_REPLIES = 3
-
-
-def _is_dola_question(text: str, prompt: str) -> bool:
-    t = (text or "").strip()
-    if len(t) < 12:
-        return False
-    # a duration offer often has no question mark ("...対応しています。別の秒数をご希望でしたら指定してください。")
-    if not QUESTION_MARK.search(t) and not (DURATION_QUESTION_RE.search(t) and not ACCEPTANCE_TEXT.search(t)):
-        return False
-    head = (prompt or "").strip()[:30]
-    # our own prompt echoed back in the conversation (it may contain question marks too) is not a question from Dola
-    if head and (t.startswith(head) or head.startswith(t[:30])):
-        return False
-    return True
-
-
-def _dola_note(texts, prompt: str) -> str:
-    """What Dola's chat agent wrote in the conversation besides our own prompt (e.g. "the video came out at 10s instead of 15s")."""
-    head = (prompt or "").strip()[:30]
-    seen, out = set(), []
-    for t in texts or []:
-        t = (t or "").strip()
-        if not t or t in seen:
-            continue
-        if head and (t.startswith(head) or head.startswith(t[:30])):
-            continue  # our own prompt echoed back
-        seen.add(t)
-        out.append(t)
-    return " | ".join(out)[:600]
-
-
-# Duration questions (same handling as dola-pool): "A. 5 秒で生成 B. 10 秒で生成 ...", "supports durations from 4 to 15 s",
-# "動画生成は現在4～15秒に対応しています。別の秒数をご希望でしたら…". The right answer is the duration that was requested
-# (e.g. "B. 10秒" / "30秒"). Answering "yes, use your suggestion" makes Dola compress the script or split it into two videos.
-DURATION_CHOICE_RE = re.compile(r"([A-Da-d])\s*[.．、)）\]]?\s*(\d+)\s*秒", re.IGNORECASE)
-DURATION_QUESTION_RE = re.compile(
-    r"動画生成には|秒で生成|A/B/C で選んで|supports durations from|nearest supported duration|"
-    r"秒数は|から選んで|選んでください|選んで下さい|choose.*duration|select.*duration|"
-    r"対応しています|別の秒数|秒数をご希望|秒数を指定|supports?\s+\d+\s*[-–~]\s*\d+\s*(?:s\b|sec)|"
-    r"\d+\s*[~～-]\s*\d+\s*秒",
-    re.IGNORECASE,
-)
-ACCEPTANCE_TEXT = re.compile(r"生成されます|ポイントを消費|を生成します|ビデオを生成|動画を生成|生成を開始|分後に完成", re.IGNORECASE)
-
-
-def build_duration_reply(text: str, duration: int | None, ratio: str | None) -> str | None:
-    """The reply that answers a duration question with the REQUESTED duration; None = Dola offers no option equal to it."""
-    if not text or not duration:
-        return None
-    letters = list(DURATION_CHOICE_RE.finditer(text))
-    if letters:
-        for m in letters:
-            if int(m.group(2)) == duration:
-                return f"{m.group(1).upper()}. {duration}秒"   # a bare "B" is rejected by Dola, "B. 10秒" is accepted
-        return None
-    if re.search(r"対応しています|別の秒数|秒数をご希望|秒数を指定", text):
-        return f"{duration}秒"
-    return f"{duration}秒、{ratio or '16:9'}"
-
-
-async def send_chat_message(page, text: str) -> None:
-    """Answer Dola in the open conversation: insert the text (one line) into the chat box and press Enter."""
-    box = await page.query_selector("textarea") or await page.query_selector('[contenteditable="true"]')
-    if not box:
-        raise RuntimeError("Could not find the chat box to answer Dola")
-    try:
-        await box.click(force=True, timeout=5000)
-    except Exception:
-        await box.focus()
-    await page.keyboard.insert_text(" ".join(text.split()))
-    await page.wait_for_timeout(500)
-    await page.keyboard.press("Enter")
 
 
 class AccountLimitedError(Exception):
@@ -323,30 +240,6 @@ async def solve_slider(page, frame, attempt: int) -> bool:
 
 
 
-async def wait_and_solve_captcha(page, account: str, wait_sec: int = 20) -> None:
-    """Wait for the slider captcha after a submit and solve it (up to 3 attempts). Returns when absent or solved.
-
-    Raises RiskControlError when it cannot be passed.
-    """
-    for attempt in range(1, 4):
-        frame = None
-        for _ in range(wait_sec):
-            await page.wait_for_timeout(1000)
-            frame = find_captcha_frame(page)
-            if frame:
-                break
-        if not frame:
-            return
-        print(f"[{account}] Captcha detected, attempt {attempt} solving...", flush=True)
-        if await solve_slider(page, frame, attempt):
-            print(f"[{account}] Captcha passed ✓", flush=True)
-            await page.wait_for_timeout(3000)  # Wait for frontend auto-retry
-            return
-        print(f"[{account}] Captcha not passed, retrying...", flush=True)
-    await page.screenshot(path="solve_fail.png")
-    raise RiskControlError("Captcha failed 3 times")
-
-
 _BALANCE_PATTERNS = (
     re.compile(r"(?:本日は|今日(?:还剩|剩余)?|今天).*?(\d+)\s*(?:ポイント|积分|points?)", re.I),
     re.compile(r"(?:remaining|left)\s*[:：]?\s*(\d+)\s*points?", re.I),
@@ -387,19 +280,12 @@ async def _preflight_balance(page, ms_token: str, fp: str, required: int) -> dic
 
 
 async def poll_conversation(account: str, page, context, conversation_id: str,
-                            timeout: int, on_poll=None, on_balance=None, prompt: str = "",
-                            auto_reply: str | None = None, duration: int | None = None,
-                            ratio: str | None = None) -> dict:
+                            timeout: int, on_poll=None, on_balance=None) -> dict:
     """Polls accepted conversation for video completion."""
     cookies = await context.cookies("https://www.dola.com")
     ms_token, fp = cookie_value(cookies, "msToken"), cookie_value(cookies, "s_v_web_id")
     start = time.time()
     last_callback = 0.0
-    question_since = None
-    question_text = ""
-    answered: set = set()   # questions we already answered (they stay in the conversation history)
-    replies = 0
-    grace = AUTO_REPLY_GRACE_SEC if auto_reply else ASKED_BACK_GRACE_SEC
     while time.time() - start < timeout:
         await asyncio.sleep(5)
         try:
@@ -420,28 +306,6 @@ async def poll_conversation(account: str, page, context, conversation_id: str,
                 raise AccountLimitedError(f"Account daily limit reached: {text[:120]}")
             if CREDIT_FAIL_PATTERN.search(text):
                 raise CreditError(f"Insufficient quota: {text[:80]}")
-        questions = [t for t in poll.get("texts", []) if _is_dola_question(t, prompt) and t not in answered]
-        if questions and not poll.get("videos"):
-            if question_since is None:
-                question_since, question_text = now, questions[-1]
-            elif now - question_since >= grace:
-                if auto_reply and replies < MAX_AUTO_REPLIES:
-                    # Dola wants a confirmation: a duration question gets the REQUESTED duration as the answer (never
-                    # "use your suggestion" - that compresses / splits the video), anything else gets the configured reply
-                    reply = auto_reply
-                    if duration and DURATION_QUESTION_RE.search(question_text):
-                        reply = build_duration_reply(question_text, duration, ratio)
-                        if reply is None:
-                            raise DolaAskedBackError(question_text.strip())   # no option equals the requested duration
-                    print(f"[{account}] Dola asked: {question_text[:150]!r} -> auto reply #{replies + 1}: {reply!r}", flush=True)
-                    answered.update(questions)
-                    await send_chat_message(page, reply)
-                    replies += 1
-                    question_since = None
-                    continue
-                raise DolaAskedBackError(question_text.strip())
-        else:
-            question_since = None
         if poll.get("videos"):
             video_models = poll.get("videoModels", [])
             url = extract_unwatermarked_url(
@@ -450,8 +314,7 @@ async def poll_conversation(account: str, page, context, conversation_id: str,
             local = await _download(url, account)
             print(f"[{account}] Downloaded {local} ({local.stat().st_size / 1e6:.1f} MB)", flush=True)
             return {"video_url": url, "local_path": str(local),
-                    "conversation_id": conversation_id, "account": account,
-                    "note": ((f"[App tự trả lời Dola {replies} lần] " if replies else "") + _dola_note(poll.get("texts", []), prompt))[:700]}
+                    "conversation_id": conversation_id, "account": account}
         print(f"  ...Generating ({int(time.time() - start)}s)", flush=True)
     raise TimeoutError(f"No video generated within {timeout}s (conversation_id={conversation_id})")
 
@@ -471,51 +334,12 @@ async def resume_video(account: str, conversation_id: str, timeout: int,
             await context.close()
 
 
-async def type_prompt(page, prompt: str) -> None:
-    """Type a prompt into Dola's chat box WITHOUT sending it.
-
-    In the chat box Enter submits the message, so a multi-line prompt must use Shift+Enter for every line break
-    (typing "\n" would press Enter and send the first line on its own). Tabs are turned into spaces because a Tab key
-    press moves the focus out of the box. Short single-line prompts keep the original slow, human-like typing;
-    long / multi-line ones are inserted line by line (typing 2,000 characters at 100 ms each would take minutes).
-    """
-    text = prompt.replace("\r\n", "\n").replace("\r", "\n").replace("\t", "    ")
-    lines = text.split("\n")
-    slow = len(lines) == 1 and len(text) <= 300
-    for i, line in enumerate(lines):
-        if i > 0:
-            await page.keyboard.press("Shift+Enter")
-        if not line:
-            continue
-        if slow:
-            await page.keyboard.type(line, delay=100)
-        else:
-            await page.keyboard.insert_text(line)
-            await page.wait_for_timeout(60)
-
-
 async def generate_video(account: str, prompt: str, ratio: str = None,
                          duration: int = None, timeout: int = None,
                          model: str = "seedance_v2.0", use_extension: bool = True,
                          on_conversation_id=None, on_poll=None, on_balance=None,
-                         reference_image_paths: list[str] | None = None,
-                         on_stage=None, warmup: bool | None = None, on_warmup_done=None,
-                         hide_window: bool = False, auto_reply: str | None = None,
-                         strip_duration_words: bool | None = None) -> dict:
-    """Full generation flow via UI automation.
-
-    Stages reported through on_stage: warmup -> new_chat -> submitting -> generating (-> done by the caller).
-
-    The greeting chat runs once per account per day: the pool passes warmup=True only when it is due and gets
-    on_warmup_done() after Dola answered. warmup=None (direct calls) falls back to config.WARMUP_ENABLED.
-    """
-    def stage(name: str):
-        if on_stage:
-            try:
-                on_stage(name)
-            except Exception:  # a broken progress callback must never abort the generation
-                pass
-
+                         reference_image_paths: list[str] | None = None) -> dict:
+    """Full generation flow via UI automation."""
     timeout = timeout or config.VIDEO_TIMEOUT
     model_key = model.lower().replace("-", "_")
     if model_key in ("seedance_2.5", "seedance_v2.5", "seedance_25", "seedance_v25"):
@@ -524,14 +348,8 @@ async def generate_video(account: str, prompt: str, ratio: str = None,
         model_key = "seedance_v2.0"
     else:
         raise ValueError(f"Unsupported model: {model} (supported: seedance-2.0 / seedance-2.5)")
-    if duration is not None and duration not in (5, 10, 15, 30):
-        raise ValueError("Dola supports durations of 5s, 10s, 15s, and 30s via extension")
-    prompt_note = ""
-    if strip_duration_words if strip_duration_words is not None else config.STRIP_DURATION_WORDS:
-        prompt, removed = strip_duration_words_in(prompt)
-        if removed:
-            prompt_note = f"[Đã bỏ {removed} chỗ ghi thời lượng khỏi prompt] "
-            print(f"[{account}] removed {removed} duration mention(s) from the prompt", flush=True)
+    if duration is not None and duration not in (10, 15, 30):
+        raise ValueError("Dola supports durations of 10s, 15s, and 30s via extension")
     if duration == 30 and not use_extension:
         raise ValueError("30s generation requires Dola30 extension enabled")
     # 30s videos require extended generation timeout
@@ -542,106 +360,47 @@ async def generate_video(account: str, prompt: str, ratio: str = None,
     async with async_playwright() as p:
         context = await launch_account_context(
             p, account, headless=False if use_extension else None,
-            use_extension=use_extension, hide_window=hide_window)
+            use_extension=use_extension)
         try:
             page = context.pages[0] if context.pages else await context.new_page()
             await page.goto("https://www.dola.com/chat", timeout=60000, wait_until="domcontentloaded")
-            await page.wait_for_timeout(4000)
-
-            # Check authentication cookies
+            await page.wait_for_timeout(5000)
             cookies = await context.cookies("https://www.dola.com")
-            sid = cookie_value(cookies, "sessionid") or cookie_value(cookies, "sessionid_ss")
-            if not sid:
-                raise LoginRequiredError(f"Tài khoản '{account}' chưa đăng nhập Dola (thiếu cookie sessionid hoặc phiên đăng nhập đã hết hạn). Vui lòng đăng nhập lại profile!")
-
-            # Check if login button is visible in header bar (meaning cookie expired)
-            for login_btn_sel in ('button:has-text("ログイン")', 'button:has-text("Log in")', 'button:has-text("登录")', 'a:has-text("ログイン")', 'a:has-text("Log in")'):
-                btn = page.locator(login_btn_sel).first
-                if await btn.count() and await btn.is_visible():
-                    raise LoginRequiredError(f"Tài khoản '{account}' có phiên đăng nhập đã hết hạn trên Dola (xuất hiện nút Đăng nhập). Vui lòng đăng nhập lại profile!")
-
-            # Dismiss any popup overlay or announcement dialog if present
-            try:
-                for close_sel in ('[data-slot="dialog-close"]', 'button[aria-label="Close"]', 'button[aria-label*="close" i]'):
-                    btn = page.locator(close_sel).first
-                    if await btn.count() and await btn.is_visible():
-                        await btn.click(timeout=1500)
-            except Exception:
-                pass
-
             ms_token, fp = cookie_value(cookies, "msToken"), cookie_value(cookies, "s_v_web_id")
             await _preflight_balance(page, ms_token, fp, config.VIDEO_REQUIRED_POINTS)
 
-            # ---- Pre-flight greeting chat, then a brand-new chat for the real request ----
-            if config.WARMUP_ENABLED and warmup is not False:
-                await warmup_chat(
-                    page, context, account,
-                    solve_captcha=lambda pg, acc: wait_and_solve_captcha(pg, acc, wait_sec=6),
-                    cookie_value=cookie_value, on_stage=stage)
-                if on_warmup_done:
-                    on_warmup_done()  # only after a real answer: a failed greeting is retried on the next task
-                await open_new_chat(page, on_stage=stage)
-            elif config.WARMUP_ENABLED:
-                print(f"[{account}] Greeting chat already done today - skipping", flush=True)
-
             # ---- UI Submission ----
-            stage("submitting")
-            # Video creation button (supports Japanese, English, Chinese)
-            video_btn = None
-            for sel in ("text=動画を作成", "text=Create video", "text=Generate video", "text=创建视频"):
-                loc = page.locator(sel).first
-                if await loc.count() and await loc.is_visible():
-                    video_btn = loc
-                    break
-            if video_btn:
-                await video_btn.click(timeout=10000)
-            else:
-                await page.click(VIDEO_BTN, timeout=10000)
+            await page.click(VIDEO_BTN)
             await page.wait_for_timeout(1500)
-
-            # Check if login modal appeared after clicking create video
-            login_prompts = ("text=他の機能を利用するにはログインしてください", "text=Please log in to use other features", "text=请先登录")
-            for prompt_sel in login_prompts:
-                if await page.locator(prompt_sel).count() > 0:
-                    raise LoginRequiredError(f"Tài khoản '{account}' chưa đăng nhập Dola (hệ thống yêu cầu đăng nhập khi tạo video). Vui lòng đăng nhập lại profile!")
-
             if reference_image_paths:
                 await attach_reference_images(page, reference_image_paths)
-
-            # Select model in UI (Seedance 2.0 / 2.5)
+            # Select model in UI
             try:
-                need_switch = True
                 current_model = None
-                for label in ("モデル 2.0高速", "モデル 2.5", "Model 2.0 Fast", "Model 2.5", "Seedance 2.0", "Seedance 2.5"):
+                for label in ("モデル 2.0高速", "モデル 2.5"):
                     loc = page.get_by_text(label, exact=True).first
                     if await loc.count() and await loc.is_visible():
                         current_model = loc
-                        txt = await loc.inner_text()
-                        if (model_key == "seedance_v2.0" and ("2.0" in txt)) or (model_key == "seedance_v2.5" and ("2.5" in txt)):
-                            need_switch = False
                         break
-
-                if need_switch:
-                    if current_model is None:
-                        current_model = page.get_by_text(re.compile(r"^(モデル|Model)\s*", re.I), exact=False).first
-                    if await current_model.count() and await current_model.is_visible():
-                        await current_model.click(timeout=5000)
-                        await page.wait_for_timeout(500)
-                        options = (("Dreamina Seedance 2.5",)
-                                   if model_key == "seedance_v2.5"
-                                   else ("Dreamina Seedance 2.0高速", "Dreamina Seedance 2.0", "Seedance2.0Fast", "Seedance 2.0 Fast"))
-                        selected = False
-                        for option_text in options:
-                            loc = page.get_by_text(option_text, exact=False).first
-                            if await loc.count() and await loc.is_visible():
-                                await loc.click(timeout=5000)
-                                selected = True
-                                break
-                        if not selected:
-                            print(f"[{account}] Warning: Target model option not found in dropdown, using current", flush=True)
-                        await page.wait_for_timeout(500)
+                if current_model is None:
+                    current_model = page.get_by_text(re.compile(r"^モデル "), exact=False).first
+                await current_model.click(timeout=5000)
+                await page.wait_for_timeout(500)
+                options = (("Dreamina Seedance 2.5",)
+                           if model_key == "seedance_v2.5"
+                           else ("Dreamina Seedance 2.0高速", "Dreamina Seedance 2.0", "Seedance2.0Fast"))
+                selected = False
+                for option_text in options:
+                    loc = page.get_by_text(option_text, exact=False).first
+                    if await loc.count() and await loc.is_visible():
+                        await loc.click(timeout=5000)
+                        selected = True
+                        break
+                if not selected:
+                    raise RuntimeError("Model option not found")
+                await page.wait_for_timeout(500)
             except Exception as e:
-                print(f"[{account}] Note on model selector: {e}, continuing with active model", flush=True)
+                raise RuntimeError(f"Failed to set model ({model_key}): {str(e)[:120]}") from e
             if ratio:
                 try:
                     await page.click("text=比率", timeout=3000)
@@ -659,32 +418,35 @@ async def generate_video(account: str, prompt: str, ratio: str = None,
                         await page.click(f"text={duration}s", timeout=3000)
                     except Exception as e:
                         print(f"  (Failed to set duration, using default: {str(e)[:80]})", flush=True)
-            # Dismiss any leftover open dropdown menus by pressing Escape
-            try:
-                await page.keyboard.press("Escape")
-                await page.wait_for_timeout(300)
-            except Exception:
-                pass
-
             box = await page.query_selector("textarea") or await page.query_selector('[contenteditable="true"]')
-            if not box:
-                raise RuntimeError("Could not find prompt textarea or contenteditable box on Dola page")
-            try:
-                await box.click(force=True, timeout=5000)
-            except Exception:
-                await box.focus()
-            await type_prompt(page, prompt)
+            await box.click()
+            await page.keyboard.type(prompt, delay=100)
             await page.wait_for_timeout(600)
-            if config.DRY_RUN:
-                # Test mode: settings are applied and the prompt is typed; nothing is sent, so no credit is spent
-                print(f"[{account}] [dry-run] prompt typed, NOT sending: {prompt[:40]}", flush=True)
-                await page.screenshot(path="dry_run.png")
-                return {"video_url": "", "local_path": "", "conversation_id": "", "account": account, "dry_run": True}
             await page.keyboard.press("Enter")
             print(f"[{account}] UI submitted prompt: {prompt[:40]}", flush=True)
 
             # ---- Captcha Solver (up to 3 attempts) ----
-            await wait_and_solve_captcha(page, account, wait_sec=20)
+            solved_or_absent = False
+            for attempt in range(1, 4):
+                frame = None
+                for _ in range(20):
+                    await page.wait_for_timeout(1000)
+                    frame = find_captcha_frame(page)
+                    if frame:
+                        break
+                if not frame:
+                    solved_or_absent = True
+                    break
+                print(f"[{account}] Captcha detected, attempt {attempt} solving...", flush=True)
+                if await solve_slider(page, frame, attempt):
+                    print(f"[{account}] Captcha passed ✓", flush=True)
+                    await page.wait_for_timeout(3000)  # Wait for frontend auto-retry
+                    solved_or_absent = True
+                    break
+                print(f"[{account}] Captcha not passed, retrying...", flush=True)
+            if not solved_or_absent:
+                await page.screenshot(path="solve_fail.png")
+                raise RiskControlError("Captcha failed 3 times")
 
             # ---- Wait for real conversation_id ----
             conv_id = ""
@@ -698,16 +460,11 @@ async def generate_video(account: str, prompt: str, ratio: str = None,
                 await page.screenshot(path="no_conv.png")
                 raise TimeoutError("conversation_id not acquired within 30s")
             print(f"[{account}] conversation_id={conv_id}, polling for video...", flush=True)
-            stage("generating")
 
             deadline = time.time() + timeout
             if on_conversation_id:
                 on_conversation_id(account, conv_id, deadline)
-            result = await poll_conversation(account, page, context, conv_id, timeout, on_poll, on_balance, prompt=prompt,
-                                             auto_reply=auto_reply, duration=duration, ratio=ratio)
-            if prompt_note:
-                result["note"] = (prompt_note + (result.get("note") or ""))[:700]
-            return result
+            return await poll_conversation(account, page, context, conv_id, timeout, on_poll, on_balance)
         finally:
             await context.close()
 

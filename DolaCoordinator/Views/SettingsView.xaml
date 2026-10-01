@@ -132,6 +132,22 @@
                 </StackPanel>
             </Border>
 
+            <!-- Card: Sao lưu / khôi phục toàn bộ -->
+            <Border Style="{StaticResource ModernCard}" Margin="0,0,0,16">
+                <StackPanel>
+                    <TextBlock Text="Sao lưu &amp; khôi phục toàn bộ" FontSize="14" FontWeight="Bold" Foreground="{StaticResource AccentBrush}" Margin="0,0,0,12" />
+                    <TextBlock Text="Xuất tất cả tài khoản (kèm đăng nhập, cookie, phiên, proxy đã gán), proxy, prompt và kịch bản lớn ra một file Excel; khôi phục lại trên máy khác. Khôi phục chỉ THÊM, không xóa dữ liệu đang có."
+                               Foreground="{StaticResource TextSecondaryBrush}" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,12" />
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                        <Button Content="Sao lưu toàn bộ" Command="{Binding BackupAllCommand}" Style="{StaticResource ModernPrimaryButton}" Padding="16,9" Margin="0,0,8,0"/>
+                        <Button Content="Khôi phục toàn bộ" Command="{Binding RestoreAllCommand}" Padding="16,9"/>
+                    </StackPanel>
+                    <TextBlock Text="⚠ File sao lưu chứa mật khẩu và cookie ở dạng văn bản thường — giữ ở nơi an toàn, xóa khi không cần."
+                               Foreground="{StaticResource TextMutedBrush}" FontSize="11" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding BackupStatusText}" Foreground="{StaticResource AccentBrush}" FontSize="12" TextWrapping="Wrap" Margin="0,8,0,0"/>
+                </StackPanel>
+            </Border>
+
             <!-- Card 4: Storage & Notification -->
             <Border Style="{StaticResource ModernCard}" Margin="0,0,0,20">
                 <StackPanel>

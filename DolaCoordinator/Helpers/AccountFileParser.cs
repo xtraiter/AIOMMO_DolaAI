@@ -41,6 +41,12 @@ public sealed class AccountRow
     public bool Use { get; set; } = true;
     public AfterLogin After { get; set; } = AfterLogin.Close;
 
+    /// <summary>Proxy gán cho tài khoản (dạng scheme://user:pass@host:port). Rỗng = không gán. Dùng khi nhập để tạo/gán lại proxy.</summary>
+    public string ProxyUrl { get; set; } = string.Empty;
+
+    /// <summary>Phiên Dola đã đăng nhập (cookie chứa sessionid=...). Có thì nhập xong là dùng được ngay, không cần đăng nhập lại.</summary>
+    public string DolaSession { get; set; } = string.Empty;
+
     /// <summary>Lỗi (tiếng Việt) làm dòng này bị bỏ qua; null nếu hợp lệ.</summary>
     public string? Error { get; set; }
 
@@ -109,6 +115,8 @@ public static class AccountFileParser
         var iNotes = Col("ghichu", "notes", "note");
         var iUse = Col("dungdechay", "dungvanhanh", "chayvanhanh", "use", "enabled", "active");
         var iAfter = Col("saukhidangnhap", "after", "sauklogin");
+        var iProxy = Col("proxy");
+        var iSession = Col("phiendola", "sessiondola", "dolasession", "phien", "session");
 
         if (new[] { iName, iKind, iEmail, iPass, iCookie }.All(i => i < 0))
             throw new InvalidDataException("Không nhận ra tiêu đề cột. Cần ít nhất một trong: Tên tài khoản, Loại đăng nhập, Email/SĐT, Mật khẩu, Cookie. Hãy tải file mẫu.");
@@ -128,6 +136,8 @@ public static class AccountFileParser
                 Totp = Get(iTotp).Replace(" ", string.Empty),
                 Cookie = Get(iCookie),
                 Notes = Get(iNotes) is { Length: > 0 } n ? n : null,
+                ProxyUrl = Get(iProxy),
+                DolaSession = Get(iSession),
             };
 
             if (new[] { row.Name, row.Email, row.Password, row.Cookie, Get(iKind) }.All(string.IsNullOrEmpty)) continue; // dòng trống

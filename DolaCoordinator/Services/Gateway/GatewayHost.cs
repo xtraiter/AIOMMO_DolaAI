@@ -95,6 +95,7 @@ public sealed class GatewayHost : IGatewayHost, IDisposable
         psi.Environment["PYTHONUNBUFFERED"] = "1";
         psi.Environment["PYTHONIOENCODING"] = "utf-8";
         psi.Environment["DOLA_MAX_CONCURRENCY"] = GatewayCapacity().ToString(); // đủ chỗ cho mọi tài khoản chạy song song
+        psi.Environment["DOLA_DAILY_LIMIT"] = Math.Max(1, _db.GetSettings().DefaultDailyQuota).ToString(); // gateway gốc ghi cứng 2 video/ngày/tài khoản
         GatewayLocator.ApplyEnvironment(psi, gatewayDir);
 
         try
@@ -234,6 +235,65 @@ public sealed class GatewayHost : IGatewayHost, IDisposable
         {
             _browserGate.Release();
         }
+    }
+
+    public async Task<(bool Started, int ExitCode, string Output, string? Error)> RunCommandAsync(
+        string verb, IEnumerable<string> args, string? stdinLine, TimeSpan timeout, CancellationToken ct = default)
+    {
+        var settings = _db.GetSettings();
+        var gatewayDir = GatewayLocator.FindDir(settings.GatewayDir);
+        if (gatewayDir == null)
+            return (false, -1, string.Empty, "Không tìm thấy gateway (thư mục 'gateway' có dola-gateway.exe, hoặc dola-render-gateway có server.py).");
+
+        var (fileName, list) = GatewayLocator.BuildCommand(gatewayDir, settings.PythonCommand, verb, args);
+        var psi = new ProcessStartInfo(fileName)
+        {
+            WorkingDirectory = GatewayLocator.RuntimeDir(gatewayDir),
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardInput = stdinLine != null,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            StandardOutputEncoding = Encoding.UTF8,
+            StandardErrorEncoding = Encoding.UTF8,
+        };
+        foreach (var a in list) psi.ArgumentList.Add(a);
+        psi.Environment["PYTHONUNBUFFERED"] = "1";
+        psi.Environment["PYTHONIOENCODING"] = "utf-8";
+        GatewayLocator.ApplyEnvironment(psi, gatewayDir);
+
+        var output = new StringBuilder();
+        void OnLine(string? line) { if (!string.IsNullOrEmpty(line)) lock (output) output.AppendLine(line); }
+
+        using var process = new Process { StartInfo = psi };
+        process.OutputDataReceived += (_, e) => OnLine(e.Data);
+        process.ErrorDataReceived += (_, e) => OnLine(e.Data);
+        try
+        {
+            process.Start();
+            process.BeginOutputReadLine();
+            process.BeginErrorReadLine();
+            if (stdinLine != null)
+            {
+                try { await process.StandardInput.WriteLineAsync(stdinLine); process.StandardInput.Close(); }
+                catch (IOException) { /* lệnh thoát trước khi đọc: output giải thích lý do */ }
+            }
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            cts.CancelAfter(timeout);
+            await process.WaitForExitAsync(cts.Token);
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or OperationCanceledException)
+        {
+            try { if (!process.HasExited) process.Kill(entireProcessTree: true); } catch (InvalidOperationException) { }
+            if (ct.IsCancellationRequested) throw;
+            string partial;
+            lock (output) partial = output.ToString();
+            return (false, -1, partial, ex is OperationCanceledException ? "Quá thời gian chờ." : ex.Message);
+        }
+
+        string text;
+        lock (output) text = output.ToString();
+        return (true, process.ExitCode, text, null);
     }
 
     /// <summary>Số video gateway được render cùng lúc: bằng số luồng tối đa trong cài đặt (có dư chỗ để tăng số luồng mà không phải bật lại gateway).</summary>

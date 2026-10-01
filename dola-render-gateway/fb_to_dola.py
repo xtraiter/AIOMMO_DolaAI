@@ -24,7 +24,7 @@ if sys.platform == "win32":
 
 from patchright.async_api import async_playwright
 import config
-from browser import LAUNCH_ARGS, cookie_value, proxy_for_account, _proxy_from_url
+from aiommo_compat import LAUNCH_ARGS, cookie_value, proxy_for_account, _proxy_from_url
 
 
 def parse_fb_cookie(raw: str) -> list[dict]:
@@ -88,6 +88,33 @@ def parse_fb_cookie(raw: str) -> list[dict]:
         })
 
     return cookies
+
+
+# Bấm nút CHÍNH của màn OAuth theo DOM, không phụ thuộc ngôn ngữ (Pháp/TBN/Nhật/… đều được).
+# Loại trừ các nút phụ (Hủy / Xem quyền / Để sau / Đổi tài khoản …) rồi chọn nút xác nhận.
+OAUTH_CONFIRM_JS = r"""
+() => {
+  const DENY = /(annul|cancel|cancelar|abbrechen|annulla|batal|ยกเลิก|취소|отмена|إلغاء|iptal|anuluj|annuleren|hủy|huy|キャンセル|取消|voir l|see (details|access)|afficher|xem quyền|review|en savoir|learn more|savoir plus|not now|plus tard|later|lần sau|để sau|paramèt|setting|cài đặt|refus|từ chối|đổi tài khoản|switch account|changer de compte|báo cáo|report|^no$|^non$|^không$)/i;
+  const PREFER = /(continuer en tant que|continue as|weiter als|continua come|continuar como|lanjutkan sebagai|ดำเนินการต่อในชื่อ|으로 계속|продолжить как|المتابعة باسم|olarak devam|kontynuuj jako|doorgaan als|tiếp tục dưới tên|continuar como|として続行|继续以|繼續以|continuer|continue|weiter|continua|lanjutkan|ดำเนินการต่อ|계속|продолжить|متابعة|devam|kontynuuj|doorgaan|tiếp tục|continuar|続行|次へ|继续|繼續|confirm|xác nhận|autoriser|allow|cho phép|đồng ý|accept|accepter|d'accord|aceptar|ok)/i;
+  const nodes = [...document.querySelectorAll('button, [role="button"], a[role="button"], input[type="submit"]')];
+  const vis = nodes.filter(el => {
+    const r = el.getBoundingClientRect();
+    if (r.width < 24 || r.height < 16) return false;
+    const s = getComputedStyle(el);
+    if (s.visibility === 'hidden' || s.display === 'none' || +s.opacity === 0) return false;
+    return el.offsetParent !== null || s.position === 'fixed';
+  });
+  const label = el => ((el.getAttribute('aria-label') || '') + ' ' + (el.innerText || el.value || '')).trim();
+  const allowed = vis.filter(el => { const t = label(el); return t && t.length <= 80 && !DENY.test(t); });
+  let pick = allowed.find(el => PREFER.test(label(el)));
+  if (!pick) pick = allowed.find(el => el.getAttribute('name') === '__CONFIRM__' || el.type === 'submit');
+  if (!pick && allowed.length === 1) pick = allowed[0];
+  if (!pick) return null;
+  const txt = label(pick).slice(0, 40);
+  pick.click();
+  return txt || 'confirm';
+}
+"""
 
 
 async def convert_fb_to_dola_session(account: str, fb_cookie_str: str, proxy: str = None, headless: bool = True) -> dict:
@@ -198,10 +225,18 @@ async def convert_fb_to_dola_session(account: str, fb_cookie_str: str, proxy: st
                         'button[name="__CONFIRM__"]',
                         'button:has-text("Tiếp tục dưới tên")',
                         'button:has-text("Continue as")',
+                        'button:has-text("Continuer en tant que")',
+                        'div[role="button"]:has-text("Continuer en tant que")',
+                        'a[role="button"]:has-text("Continuer en tant que")',
+                        'button:has-text("Continuer")',
+                        'div[role="button"]:has-text("Continuer")',
+                        'button:has-text("Continuar como")',
                         'button:has-text("Tiếp tục")',
                         'button:has-text("Continue")',
                         'div[role="button"]:has-text("Tiếp tục")',
                         'div[role="button"]:has-text("Continue")',
+                        'button:has-text("続行")',
+                        'button:has-text("继续")',
                         'button[type="submit"]',
                     ):
                         try:
@@ -214,6 +249,17 @@ async def convert_fb_to_dola_session(account: str, fb_cookie_str: str, proxy: st
                                 break
                         except Exception:
                             pass
+
+                    # Dự phòng độc lập ngôn ngữ: chỉ ở màn consent/oauth, bấm nút chính theo DOM.
+                    if not confirmed and ("/privacy/consent" in target_url or "/dialog/oauth" in target_url):
+                        try:
+                            picked = await active_target.evaluate(OAUTH_CONFIRM_JS)
+                        except Exception:
+                            picked = None
+                        if picked:
+                            print(f"[{account}] Xác nhận OAuth (nút '{picked}', theo nút chính).", flush=True)
+                            await page.wait_for_timeout(2000)
+                            confirmed = True
 
                 # Check if we are back on dola.com with active session
                 dola_cookies = await context.cookies("https://www.dola.com")

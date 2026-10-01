@@ -1,4 +1,4 @@
-<Window x:Class="DolaCoordinator.MainWindow"
+﻿<Window x:Class="DolaCoordinator.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -131,15 +131,11 @@
                         <StackPanel Orientation="Horizontal">
                             <Image Source="Assets/Icons/robot.png" Style="{StaticResource NavIcon}"/>
                             <TextBlock Text="Quản lý tài khoản"/>
-                            <Border Margin="10,0,0,0" CornerRadius="9" Padding="7,1,7,2" Background="{StaticResource InfoSoftBrush}" VerticalAlignment="Center"
-                                    Visibility="{Binding ProfilesVm.TotalCount, Converter={StaticResource CountToVisibilityConverter}}">
-                                <TextBlock FontSize="11" FontWeight="Bold" Foreground="{StaticResource TextSecondaryBrush}"
-                                           Text="{Binding ProfilesVm.TotalCount}"/>
-                            </Border>
-                            <Border Margin="6,0,0,0" CornerRadius="9" Padding="7,1,7,2" Background="{StaticResource SuccessSoftBrush}" VerticalAlignment="Center"
-                                    Visibility="{Binding ProfilesVm.RunningCount, Converter={StaticResource CountToVisibilityConverter}}">
-                                <TextBlock FontSize="11" FontWeight="Bold" Foreground="{StaticResource SuccessBrush}"
-                                           Text="{Binding ProfilesVm.RunningCount, StringFormat='{}{0} mở'}"/>
+                            <Border Margin="10,0,0,0" CornerRadius="9" Padding="7,1,7,2" Background="{StaticResource DangerSoftBrush}" VerticalAlignment="Center"
+                                    Visibility="{Binding ProfilesVm.AttentionCount, Converter={StaticResource CountToVisibilityConverter}}"
+                                    ToolTip="Tài khoản cần xử lý: chưa đăng nhập, hết phiên hoặc đang chờ bạn giải captcha/2FA">
+                                <TextBlock FontSize="11" FontWeight="Bold" Foreground="{StaticResource DangerBrush}"
+                                           Text="{Binding ProfilesVm.AttentionCount}"/>
                             </Border>
                         </StackPanel>
                     </RadioButton>
@@ -149,10 +145,11 @@
                         <StackPanel Orientation="Horizontal">
                             <Image Source="Assets/Icons/services.png" Style="{StaticResource NavIcon}"/>
                             <TextBlock Text="Quản lý proxy"/>
-                            <Border Margin="10,0,0,0" CornerRadius="9" Padding="7,1,7,2" Background="{StaticResource InfoSoftBrush}" VerticalAlignment="Center"
-                                    Visibility="{Binding ProxiesVm.TotalCount, Converter={StaticResource CountToVisibilityConverter}}">
-                                <TextBlock FontSize="11" FontWeight="Bold" Foreground="{StaticResource TextSecondaryBrush}"
-                                           Text="{Binding ProxiesVm.TotalCount}"/>
+                            <Border Margin="10,0,0,0" CornerRadius="9" Padding="7,1,7,2" Background="{StaticResource DangerSoftBrush}" VerticalAlignment="Center"
+                                    Visibility="{Binding ProxiesVm.FailedCount, Converter={StaticResource CountToVisibilityConverter}}"
+                                    ToolTip="Proxy kiểm tra bị lỗi">
+                                <TextBlock FontSize="11" FontWeight="Bold" Foreground="{StaticResource DangerBrush}"
+                                           Text="{Binding ProxiesVm.FailedCount}"/>
                             </Border>
                         </StackPanel>
                     </RadioButton>
@@ -162,10 +159,11 @@
                         <StackPanel Orientation="Horizontal">
                             <Image Source="Assets/Icons/clapperboard.png" Style="{StaticResource NavIcon}"/>
                             <TextBlock Text="Quản lý prompt"/>
-                            <Border Margin="10,0,0,0" CornerRadius="9" Padding="7,1,7,2" Background="{StaticResource InfoSoftBrush}" VerticalAlignment="Center"
-                                    Visibility="{Binding PromptsVm.TotalCount, Converter={StaticResource CountToVisibilityConverter}}">
-                                <TextBlock FontSize="11" FontWeight="Bold" Foreground="{StaticResource TextSecondaryBrush}"
-                                           Text="{Binding PromptsVm.TotalCount}"/>
+                            <Border Margin="10,0,0,0" CornerRadius="9" Padding="7,1,7,2" Background="{StaticResource DangerSoftBrush}" VerticalAlignment="Center"
+                                    Visibility="{Binding PromptsVm.FailedPromptCount, Converter={StaticResource CountToVisibilityConverter}}"
+                                    ToolTip="Prompt có video bị lỗi">
+                                <TextBlock FontSize="11" FontWeight="Bold" Foreground="{StaticResource DangerBrush}"
+                                           Text="{Binding PromptsVm.FailedPromptCount}"/>
                             </Border>
                         </StackPanel>
                     </RadioButton>
@@ -175,11 +173,11 @@
                         <StackPanel Orientation="Horizontal">
                             <Image Source="Assets/Icons/dashboard.png" Style="{StaticResource NavIcon}"/>
                             <TextBlock Text="Tạo video"/>
-                            <Border Margin="10,0,0,0" CornerRadius="9" Padding="7,1,7,2" Background="{StaticResource InfoSoftBrush}" VerticalAlignment="Center"
-                                    Visibility="{Binding QueueVm.ActiveCount, Converter={StaticResource CountToVisibilityConverter}}"
-                                    ToolTip="Số video đang chờ / đang chạy">
-                                <TextBlock FontSize="11" FontWeight="Bold" Foreground="{StaticResource TextSecondaryBrush}"
-                                           Text="{Binding QueueVm.ActiveCount}"/>
+                            <Border Margin="10,0,0,0" CornerRadius="9" Padding="7,1,7,2" Background="{StaticResource DangerSoftBrush}" VerticalAlignment="Center"
+                                    Visibility="{Binding QueueVm.FailedCount, Converter={StaticResource CountToVisibilityConverter}}"
+                                    ToolTip="Video bị lỗi trong hàng đợi">
+                                <TextBlock FontSize="11" FontWeight="Bold" Foreground="{StaticResource DangerBrush}"
+                                           Text="{Binding QueueVm.FailedCount}"/>
                             </Border>
                         </StackPanel>
                     </RadioButton>

@@ -44,11 +44,14 @@
 
         <!-- Facebook cookie -->
         <StackPanel Visibility="{Binding Method, Converter={StaticResource EnumToVisibilityConverter}, ConverterParameter=FacebookCookie}">
-            <TextBlock Text="COOKIE FACEBOOK (chứa c_user=... và/hoặc xs=...)" Style="{StaticResource FieldLabel}"/>
-            <TextBox Text="{Binding Cookie, UpdateSourceTrigger=PropertyChanged}" Height="56" TextWrapping="Wrap" AcceptsReturn="False"
-                     VerticalScrollBarVisibility="Auto" VerticalContentAlignment="Top" Margin="0,0,0,6"/>
+            <TextBlock Text="COOKIE FACEBOOK (dán cả dòng mua kiểu UID|mật khẩu|cookie|token cũng được)" Style="{StaticResource FieldLabel}"/>
+            <TextBox x:Name="CookieBox" Text="{Binding Cookie, UpdateSourceTrigger=PropertyChanged}" Height="56" TextWrapping="Wrap" AcceptsReturn="False"
+                     VerticalScrollBarVisibility="Auto" VerticalContentAlignment="Top" Margin="0,0,0,6"
+                     TextChanged="Cookie_Changed"/>
+            <TextBlock x:Name="CookieParsedHint" Visibility="Collapsed" Foreground="{StaticResource SuccessBrush}" FontSize="11.5"
+                       TextWrapping="Wrap" Margin="0,0,0,6"/>
             <TextBlock Foreground="{StaticResource TextMutedBrush}" FontSize="11.5" TextWrapping="Wrap" Margin="0,0,0,10"
-                       Text="Các bước: nạp cookie → mở Facebook xác nhận đã đăng nhập → chuyển sang Dola, chọn 'Tiếp tục với Facebook' → lưu phiên Dola vào profile (giống fb_to_dola.py)."/>
+                       Text="Các bước: nạp cookie → mở Facebook xác nhận đã đăng nhập → chuyển sang Dola, chọn 'Tiếp tục với Facebook' → lưu phiên Dola vào profile (giống fb_to_dola.py). Nếu dán cả dòng mua, app tự lấy cookie, dùng UID làm tên và giữ mật khẩu để đăng nhập lại khi cookie hết hạn (token bị bỏ)."/>
         </StackPanel>
 
         <CheckBox Content="Ghi nhớ thông tin đăng nhập (mã hóa, chỉ dùng trên máy này) — lần sau chỉ cần bấm 'Đăng nhập tự động'"

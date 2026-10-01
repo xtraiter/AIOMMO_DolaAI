@@ -93,6 +93,19 @@ public partial class ScriptsViewModel : ObservableObject
         for (var i = 0; i < p.Parts.Count; i++) p.Parts[i].Number = i + 1;
     }
 
+    /// <summary>Đảm bảo tiêu đề kịch bản không trùng: trùng thì thêm hậu tố (2), (3)… (bỏ qua chính nó khi sửa).</summary>
+    private string UniqueTitle(string title, string? exceptId)
+    {
+        title = string.IsNullOrWhiteSpace(title) ? "Kịch bản" : title.Trim();
+        bool Taken(string t) => Projects.Any(x => x.Id != exceptId && x.Title.Equals(t, StringComparison.OrdinalIgnoreCase));
+        if (!Taken(title)) return title;
+        for (var n = 2; ; n++)
+        {
+            var candidate = $"{title} ({n})";
+            if (!Taken(candidate)) return candidate;
+        }
+    }
+
     /// <summary>
     /// Sau khi mở lại app: phần đang "chờ/đang chạy" mà tác vụ đã xong (hoặc không còn) được cập nhật theo hàng đợi thật,
     /// để không bị treo ở trạng thái cũ.
@@ -139,11 +152,91 @@ public partial class ScriptsViewModel : ObservableObject
         var dlg = new ScriptProjectEditorWindow { Owner = Application.Current.MainWindow };
         if (dlg.ShowDialog() != true) return;
         var project = dlg.Result;
+        project.Title = UniqueTitle(project.Title, null);
         Renumber(project);
         _db.UpsertProject(project);
         Projects.Insert(0, project);
         SelectedProject = project;
         StatusText = $"Đã tạo kịch bản '{project.Title}' gồm {project.Parts.Count} phần. Bấm 'Chạy kịch bản' để làm video lần lượt.";
+    }
+
+    [RelayCommand]
+    private void ExportScripts()
+    {
+        if (Projects.Count == 0) { StatusText = "Chưa có kịch bản nào để xuất."; return; }
+        var dialog = new Microsoft.Win32.SaveFileDialog
+        {
+            Filter = "Excel (*.xlsx)|*.xlsx",
+            FileName = $"Dola_KichBan_{DateTime.Now:yyyyMMdd_HHmm}.xlsx",
+            Title = "Xuất kịch bản lớn",
+        };
+        if (dialog.ShowDialog() != true) return;
+        try
+        {
+            BackupIO.WriteScripts(dialog.FileName, Projects.SelectMany(ScriptRows));
+            StatusText = $"Đã xuất {Projects.Count} kịch bản ra {dialog.FileName}. (Ảnh nhân vật/bối cảnh chỉ lưu đường dẫn.)";
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            MessageBox.Show($"Không xuất được file (đang mở trong Excel?): {ex.Message}", "Xuất kịch bản", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    [RelayCommand]
+    private void ImportScripts()
+    {
+        var dialog = new Microsoft.Win32.OpenFileDialog
+        {
+            Filter = "Excel / CSV (*.xlsx;*.csv;*.tsv)|*.xlsx;*.csv;*.tsv|Tất cả (*.*)|*.*",
+            Title = "Nhập kịch bản lớn từ file",
+        };
+        if (dialog.ShowDialog() != true) return;
+        try
+        {
+            var projects = BackupIO.ScriptsFromRows(TableFile.ReadRows(dialog.FileName));
+            foreach (var p in projects)
+            {
+                p.Title = UniqueTitle(p.Title, null);
+                Renumber(p);
+                _db.UpsertProject(p);
+                Projects.Insert(0, p);
+            }
+            SelectedProject = Projects.FirstOrDefault();
+            StatusText = $"Đã nhập {projects.Count} kịch bản từ file.";
+        }
+        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException)
+        {
+            MessageBox.Show($"Không đọc được file: {ex.Message}", "Nhập kịch bản", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    /// <summary>Toàn bộ kịch bản ở dạng dòng xuất (cho "Sao lưu toàn bộ").</summary>
+    internal IEnumerable<ScriptExportRow> ExportAllRows() => Projects.SelectMany(ScriptRows).ToList();
+
+    /// <summary>Khôi phục kịch bản từ các dòng (gồm tiêu đề). Trả số đã thêm.</summary>
+    internal int RestoreFromRows(List<string[]> rows)
+    {
+        var projects = BackupIO.ScriptsFromRows(rows);
+        foreach (var p in projects)
+        {
+            p.Title = UniqueTitle(p.Title, null);
+            Renumber(p);
+            _db.UpsertProject(p);
+            Projects.Insert(0, p);
+        }
+        if (projects.Count > 0) SelectedProject = Projects.FirstOrDefault();
+        return projects.Count;
+    }
+
+    /// <summary>Một kịch bản → nhiều dòng xuất (mỗi phần một dòng; không có phần thì một dòng rỗng giữ thông tin kịch bản).</summary>
+    internal static IEnumerable<ScriptExportRow> ScriptRows(ScriptProject p)
+    {
+        ScriptExportRow Row(int number, string text) => new(
+            p.Title, p.Model, p.Ratio, p.Duration, p.UseLastFrame, p.AutoMerge,
+            BackupIO.SerializeCharacters(p.Characters), p.SceneText, string.Join(";", p.SceneImages),
+            p.ContinueHeader, p.ContinueFooter, p.Notes ?? string.Empty, number, text);
+        if (p.Parts.Count == 0) { yield return Row(0, string.Empty); yield break; }
+        for (var i = 0; i < p.Parts.Count; i++) yield return Row(i + 1, p.Parts[i].Text);
     }
 
     [RelayCommand]
@@ -158,6 +251,7 @@ public partial class ScriptsViewModel : ObservableObject
         }
         var dlg = new ScriptProjectEditorWindow(p) { Owner = Application.Current.MainWindow };
         if (dlg.ShowDialog() != true) return;
+        p.Title = UniqueTitle(p.Title, p.Id);
         Renumber(p);
         p.UpdatedAt = DateTime.UtcNow;
         _db.UpsertProject(p);

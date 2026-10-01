@@ -57,8 +57,14 @@
             </Grid.ColumnDefinitions>
             <TextBlock FontSize="12.5" Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap" VerticalAlignment="Center"
                        Text="Kịch bản lớn: dán một kịch bản dài, tách thành nhiều phần (mỗi phần một video). App chạy lần lượt, lấy khung hình cuối của video trước làm ảnh mở đầu video sau, rồi ghép thành một video. Bạn xem, sắp xếp, sửa và làm lại từng phần."/>
-            <Button Grid.Column="1" Style="{StaticResource ModernPrimaryButton}" Command="{Binding NewProjectCommand}"
-                    Padding="18,9" VerticalAlignment="Top" Margin="20,0,0,0" Content="➕ Thêm kịch bản lớn"/>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top" Margin="20,0,0,0">
+                <Button Command="{Binding ImportScriptsCommand}" Padding="12,9" Margin="0,0,8,0" Content="Nhập"
+                        ToolTip="Nhập kịch bản từ file Excel/CSV đã xuất"/>
+                <Button Command="{Binding ExportScriptsCommand}" Padding="12,9" Margin="0,0,8,0" Content="Xuất"
+                        ToolTip="Xuất tất cả kịch bản ra Excel (ảnh chỉ lưu đường dẫn)"/>
+                <Button Style="{StaticResource ModernPrimaryButton}" Command="{Binding NewProjectCommand}"
+                        Padding="18,9" Content="➕ Thêm kịch bản lớn"/>
+            </StackPanel>
         </Grid>
 
         <Border Grid.Row="1" Style="{StaticResource ModernCard}" Padding="14,10" Margin="0,0,0,12"

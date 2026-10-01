@@ -41,8 +41,8 @@ DB_PATH = os.getenv("DOLA_DB_PATH", "tasks.db")
 # Video download storage directory (served statically by FastAPI)
 DOWNLOAD_DIR = os.getenv("DOLA_DOWNLOAD_DIR", "downloads")
 
-# Explicit browser proxy (must point to JP/KR egress; empty = direct/system connection)
-PROXY = os.getenv("DOLA_PROXY", "")
+# Explicit browser proxy (must point to JP/KR egress; empty = system proxy)
+PROXY = os.getenv("DOLA_PROXY", "http://127.0.0.1:7890")
 
 # Run browser in headless mode (login always runs with head)
 HEADLESS = os.getenv("DOLA_HEADLESS", "1") == "1"
@@ -63,9 +63,6 @@ LIMIT_RESET_TZ = os.getenv("DOLA_LIMIT_RESET_TZ", "Asia/Tokyo")
 # Conservative credit check before video generation (default 2 points)
 VIDEO_REQUIRED_POINTS = int(os.getenv("DOLA_VIDEO_REQUIRED_POINTS", "2"))
 
-# Maximum daily video limit per account in pool
-DAILY_LIMIT = int(os.getenv("DOLA_DAILY_LIMIT", "100"))
-
 # Public reference image download limits
 REFERENCE_IMAGE_MAX_BYTES = int(os.getenv("DOLA_REFERENCE_IMAGE_MAX_BYTES", str(15 * 1024 * 1024)))
 REFERENCE_DOWNLOAD_TIMEOUT = int(os.getenv("DOLA_REFERENCE_DOWNLOAD_TIMEOUT", "60"))
@@ -73,18 +70,3 @@ REFERENCE_IMAGE_MAX_COUNT = int(os.getenv("DOLA_REFERENCE_IMAGE_MAX_COUNT", "30"
 
 # Extended generation window for reference image tasks (seconds)
 REFERENCE_VIDEO_TIMEOUT = int(os.getenv("DOLA_REFERENCE_VIDEO_TIMEOUT", "900"))
-
-# ---- Pre-flight "greeting chat" -------------------------------------------------------------------------
-# Before creating a video the worker sends one random question in a chat and waits for Dola's reply to prove the
-# account really works (session alive, no risk control, chat responding). Then it opens a NEW chat for the video.
-WARMUP_ENABLED = os.getenv("DOLA_WARMUP", "1") == "1"
-# Seconds to wait for Dola's reply to the greeting
-WARMUP_TIMEOUT = int(os.getenv("DOLA_WARMUP_TIMEOUT", "90"))
-# Optional text file with one question per line (used instead of the built-in list)
-WARMUP_QUESTIONS_FILE = os.getenv("DOLA_WARMUP_QUESTIONS", "warmup_questions.txt")
-
-# Testing only: run everything up to typing the video prompt, but never press Enter to send it (no credit spent)
-DRY_RUN = os.getenv("DOLA_DRY_RUN", "0") == "1"
-# Remove "(00:00 - 00:03)", "Giây 0 đến 3", "30s"... from the prompt before typing it: the Dola30 extension README says duration
-# words in the text make Dola's agent ask back ("supports 4-15 s, compress?"). The length comes from the duration dropdown.
-STRIP_DURATION_WORDS = os.getenv("DOLA_STRIP_DURATION_WORDS", "1") == "1"

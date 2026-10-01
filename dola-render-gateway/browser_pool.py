@@ -1,5 +1,6 @@
 """Browser Account Pool: Manages accounts/ profiles with concurrency control and daily limits."""
 import asyncio
+import os
 import shutil
 import sqlite3
 import time
@@ -9,14 +10,15 @@ from pathlib import Path
 
 from dola_client import CreditError
 from video_worker_ui import (
-    AccountLimitedError, AccountUnhealthyError, CreditInsufficientError, LoginRequiredError,
-    RiskControlError, generate_video, resume_video,
+    AccountLimitedError, CreditInsufficientError, RiskControlError, generate_video, resume_video,
 )
 import config
 
-DAILY_LIMIT = getattr(config, "DAILY_LIMIT", 100)
+try:  # AIOMMO: app truyền hạn ngạch/ngày của người dùng qua DOLA_DAILY_LIMIT (bản gốc ghi cứng 2)
+    DAILY_LIMIT = max(1, int(os.getenv("DOLA_DAILY_LIMIT", "2")))
+except ValueError:
+    DAILY_LIMIT = 2
 COOLDOWN_SEC = 1800  # 30-minute cooldown on risk control
-UNHEALTHY_COOLDOWN_SEC = 600  # 10-minute cooldown when the greeting chat got no answer
 
 
 class AllAccountsLimitedError(RuntimeError):
@@ -70,7 +72,6 @@ class BrowserPool:
             ("quota_reason", "TEXT DEFAULT ''"),
             ("credit_balance", "INTEGER"),
             ("credit_checked_at", "REAL DEFAULT 0"),
-            ("warmup_day", "TEXT DEFAULT ''"),
         ):
             try:
                 self._conn.execute(f"ALTER TABLE accounts_meta ADD COLUMN {column} {definition}")
@@ -158,18 +159,6 @@ class BrowserPool:
         )
         self._conn.commit()
 
-    # ===== Greeting chat: once per account per calendar day =====
-
-    def warmup_due(self, account: str) -> bool:
-        """True if this account has not completed its greeting chat today."""
-        row = self._meta(account)
-        return not row or row["warmup_day"] != date.today().isoformat()
-
-    def mark_warmup_done(self, account: str):
-        self._conn.execute(
-            "UPDATE accounts_meta SET warmup_day=? WHERE name=?", (date.today().isoformat(), account))
-        self._conn.commit()
-
     def list_accounts(self) -> list:
         """Dashboard view: combines metadata, quota, and busy status."""
         self._clear_expired_rate_limits()
@@ -198,7 +187,6 @@ class BrowserPool:
                 "quota_reason": m["quota_reason"] if m else "",
                 "credit_balance": m["credit_balance"] if m else None,
                 "credit_checked_at": m["credit_checked_at"] if m else 0,
-                "warmup_day": m["warmup_day"] if m else "",
                 "used_today": used,
                 "limit": DAILY_LIMIT,
                 "remaining": max(0, DAILY_LIMIT - used),
@@ -272,9 +260,9 @@ class BrowserPool:
         row = self._meta(account)
         return not row or row["credit_balance"] is None or row["credit_balance"] >= required
 
-    def _schedulable(self, a: dict, ignore_limit: bool = False) -> bool:
+    def _schedulable(self, a: dict) -> bool:
         return (a["scheduling"] and not a["cooling"] and not a["rate_limited"]
-                and not a["quota_blocked"] and (ignore_limit or a["used_today"] < DAILY_LIMIT)
+                and not a["quota_blocked"] and a["used_today"] < DAILY_LIMIT
                 and (a["credit_balance"] is None or a["credit_balance"] >= 2))
 
     @property
@@ -333,53 +321,20 @@ class BrowserPool:
     async def generate_video(self, prompt: str, ratio: str = None, duration: int = None,
                              model: str = "seedance_v2.0", on_conversation_id=None,
                              on_poll=None, on_balance=None,
-                             reference_image_paths: list[str] | None = None,
-                             preferred_account: str | None = None,
-                             on_stage=None, hide_window: bool = False, auto_reply: str | None = None,
-                             strip_duration_words: bool | None = None) -> dict:
+                             reference_image_paths: list[str] | None = None) -> dict:
         """Picks an idle schedulable account; automatically rotates on quota/risk limits."""
         async with self.semaphore:
             last_err = None
-            skip_reasons = []
-            accounts = self.list_accounts()
-            if preferred_account:
-                matched = [a for a in accounts if a["name"] == preferred_account]
-                if matched:
-                    accounts = matched
-                else:
-                    skip_reasons.append(
-                        f"Tai khoan '{preferred_account}' khong tim thay trong pool (hien co: {[x['name'] for x in accounts]})"
-                    )
-
-            for a in accounts:
-                is_explicit = (a["name"] == preferred_account)
+            for a in self.list_accounts():
+                if not self._schedulable(a):
+                    continue
                 account = a["name"]
-
-                if not self._schedulable(a, ignore_limit=is_explicit):
-                    parts = []
-                    if not a["scheduling"]: parts.append("tat lap lich")
-                    if a["cooling"]: parts.append("cooldown rui ro")
-                    if a["rate_limited"]: parts.append(f"rate limited ({a['limit_reason'] or 'het luot'})")
-                    if a["quota_blocked"]: parts.append(f"het credit ({a['quota_reason'] or 'thieu diem'})")
-                    if not is_explicit and a["used_today"] >= DAILY_LIMIT:
-                        parts.append(f"het han muc ngay {a['used_today']}/{a['limit']}")
-                    if a["credit_balance"] is not None and a["credit_balance"] < 2:
-                        parts.append(f"credit={a['credit_balance']} < 2")
-                    skip_reasons.append(f"TK '{account}': " + (", ".join(parts) or "chua san sang"))
-                    continue
-
                 lock = self._locks.setdefault(account, asyncio.Lock())
-
-                # If this account is the explicitly requested account, wait for its lock
-                if len(accounts) == 1 or account == preferred_account:
-                    pass
-                elif lock.locked():
-                    skip_reasons.append(f"TK '{account}' dang ban tac vu khac")
+                # Skip busy accounts to prevent concurrent collisions on same profile.
+                if lock.locked():
                     continue
-
                 async with lock:
-                    if not self._schedulable(next((x for x in self.list_accounts() if x['name'] == account), a), ignore_limit=is_explicit):
-                        skip_reasons.append(f"TK '{account}' thay doi trang thai khi cho lock")
+                    if not self._schedulable(next(x for x in self.list_accounts() if x['name'] == account)):
                         continue  # State changed while waiting
                     try:
                         def on_balance(balance, source=""):
@@ -388,11 +343,7 @@ class BrowserPool:
                         result = await generate_video(
                             account, prompt, ratio, duration, model=model,
                             on_conversation_id=on_conversation_id, on_poll=on_poll,
-                            on_balance=on_balance, reference_image_paths=reference_image_paths,
-                            on_stage=on_stage, hide_window=hide_window, auto_reply=auto_reply,
-                            strip_duration_words=strip_duration_words,
-                            warmup=self.warmup_due(account),
-                            on_warmup_done=lambda acc=account: self.mark_warmup_done(acc))
+                            on_balance=on_balance, reference_image_paths=reference_image_paths)
                         self._claim(account)
                         self._conn.execute(
                             "UPDATE accounts_meta SET last_used_at=? WHERE name=?",
@@ -431,34 +382,16 @@ class BrowserPool:
                             (time.time(), account))
                         self._conn.commit()
                         raise
-                    except LoginRequiredError as e:
-                        # Session is dead: flag it so schedulers (and the coordinator) stop using it until re-login
-                        print(f"[pool] {account} not logged in, skipping: {e}", flush=True)
-                        self.set_login_status(account, False)
-                        last_err = e
-                        continue
-                    except AccountUnhealthyError as e:
-                        print(f"[pool] {account} failed the greeting chat ({UNHEALTHY_COOLDOWN_SEC // 60}m cooldown), rotating: {e}", flush=True)
-                        self._conn.execute(
-                            "UPDATE accounts_meta SET cooldown_until=? WHERE name=?",
-                            (time.time() + UNHEALTHY_COOLDOWN_SEC, account))
-                        self._conn.commit()
-                        last_err = e
-                        continue
                     except FileNotFoundError as e:
                         print(f"[pool] {account} profile missing, skipping: {e}", flush=True)
                         last_err = e
                         continue
-            # The caller pinned one account and it failed: surface the real (typed) reason so it can pick another
-            if preferred_account and last_err is not None and len(accounts) == 1:
-                raise last_err
             if self.all_accounts_quota_blocked:
                 raise AllAccountsQuotaBlockedError(
-                    f"429: Tat ca tai khoan khong du credit: {last_err or '; '.join(skip_reasons) or 'No accounts'}"
+                    f"429: All schedulable accounts have insufficient points: {last_err or 'No accounts'}"
                 )
             if self.all_accounts_limited:
                 raise AllAccountsLimitedError(
-                    f"429: Tat ca tai khoan da dat han muc ngay: {last_err or '; '.join(skip_reasons) or 'No accounts'}"
+                    f"429: All schedulable accounts have reached Dola daily limit: {last_err or 'No accounts'}"
                 )
-            diag = last_err or ("; ".join(skip_reasons) if skip_reasons else "Khong co tai khoan san sang")
-            raise RuntimeError(f"No available accounts in pool: {diag}")
+            raise RuntimeError(f"No available accounts in pool: {last_err or 'No accounts'}")

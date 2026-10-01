@@ -51,7 +51,7 @@
         <!-- Đăng nhập tự động (Google / Facebook / cookie Facebook) -->
         <Border x:Name="LoginBox" Grid.Row="3" Margin="0,0,0,14" Padding="14" CornerRadius="8"
                 Background="{StaticResource WindowBackgroundBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
-            <dlg:LoginOptionsPanel DataContext="{Binding Login}"/>
+            <dlg:LoginOptionsPanel x:Name="LoginPanel" DataContext="{Binding Login}"/>
         </Border>
 
         <StackPanel Grid.Row="4" Margin="0,0,0,8">

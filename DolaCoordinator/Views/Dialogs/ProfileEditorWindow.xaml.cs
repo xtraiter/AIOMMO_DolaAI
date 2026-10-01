@@ -15,6 +15,7 @@ public partial class ProfileEditorWindow : Window
     public const string NoProxyLabel = "Chưa gán proxy (đi thẳng bằng IP nhà bạn)";
 
     private readonly bool _hasProxies;
+    private readonly HashSet<string> _existingNames;
 
     public bool IsEditMode { get; }
 
@@ -34,10 +35,11 @@ public partial class ProfileEditorWindow : Window
 
     /// <summary>Sửa tài khoản có sẵn (chỉ đổi được ghi chú: tên là khóa của gateway).</summary>
     public ProfileEditorWindow(AccountProfile? editing, LoginOptions? savedLogin = null, string? statusNote = null,
-                               IReadOnlyList<ProxyItem>? proxies = null)
+                               IReadOnlyList<ProxyItem>? proxies = null, IEnumerable<string>? existingNames = null)
     {
         if (savedLogin != null) Login = savedLogin;
         IsEditMode = editing != null;
+        _existingNames = new HashSet<string>(existingNames ?? Enumerable.Empty<string>(), System.StringComparer.OrdinalIgnoreCase);
 
         InitializeComponent();
         DarkTitleBar.Attach(this);
@@ -80,6 +82,13 @@ public partial class ProfileEditorWindow : Window
 
         DataContext = this;
         Loaded += (_, _) => NameBox.Focus();
+
+        // Dán nguyên dòng mua vào ô cookie → nếu chưa đặt tên và đang thêm mới, dùng UID làm tên.
+        LoginPanel.AccountLineParsed += uid =>
+        {
+            if (IsEditMode || !string.IsNullOrWhiteSpace(NameBox.Text)) return;
+            NameBox.Text = GatewayLocator.SanitizeAccountName(uid);
+        };
     }
 
     private void Ok_Click(object sender, RoutedEventArgs e)
@@ -92,7 +101,13 @@ public partial class ProfileEditorWindow : Window
                 ShowError("Tên chỉ gồm A-Z a-z 0-9 _ - (không dấu, không khoảng trắng), tối đa 32 ký tự — đúng quy định của gateway.");
                 return;
             }
-
+            if (_existingNames.Contains(ProfileName))
+            {
+                ShowError($"Đã có tài khoản tên '{ProfileName}'. Hãy đặt tên khác (mỗi tài khoản là một thư mục accounts/… riêng).");
+                NameBox.Focus();
+                NameBox.SelectAll();
+                return;
+            }
         }
 
         // Sửa tài khoản + bỏ tích "Ghi nhớ" = xóa thông tin đã lưu, không cần đủ mật khẩu

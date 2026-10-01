@@ -112,8 +112,10 @@ async def add_account_flow(account: str, email: str, password: str, secret: str)
     async with async_playwright() as p:
         kwargs = {"headless": False, "args": LAUNCH_ARGS,
                   "locale": "ja-JP", "timezone_id": "Asia/Tokyo"}
-        if config.PROXY:
-            kwargs["proxy"] = {"server": config.PROXY}
+        from aiommo_compat import proxy_for_account  # AIOMMO: proxy riêng của tài khoản
+        proxy = proxy_for_account(account)
+        if proxy:
+            kwargs["proxy"] = proxy
         context = await p.chromium.launch_persistent_context(str(profile_dir), **kwargs)
         try:
             page = context.pages[0] if context.pages else await context.new_page()

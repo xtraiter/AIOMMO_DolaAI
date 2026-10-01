@@ -25,6 +25,9 @@ public interface IDolaGatewayClient
     /// </summary>
     Task<(bool Ok, bool? LoginOk, string? Error)> VerifyAccountAsync(string name, CancellationToken ct = default);
 
+    /// <summary>Bật/tắt lập lịch của một tài khoản trong gateway (PATCH /api/admin/accounts/{name}). Gateway gốc tự chọn tài khoản có lập lịch bật.</summary>
+    Task<bool> SetAccountSchedulingAsync(string name, bool on, CancellationToken ct = default);
+
     /// <summary>
     /// Xóa tài khoản (thư mục accounts/&lt;name&gt; + metadata) qua gateway. Unreachable=true khi gateway không chạy
     /// (người gọi có thể tự xóa thư mục); Ok=false, Unreachable=false khi gateway từ chối (vd. đang render).
