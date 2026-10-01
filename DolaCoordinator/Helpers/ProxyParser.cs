@@ -35,6 +35,11 @@ public static class ProxyParser
         proxy = null;
         error = string.Empty;
         var s = raw.Trim();
+        // nhiều nhà cung cấp thêm đuôi sau proxy ("host:port:user:pass | ID: 17685"): bỏ phần sau dấu '|' hoặc khoảng trắng
+        var bar = s.IndexOf('|');
+        if (bar >= 0) s = s[..bar].Trim();
+        var space = s.IndexOfAny(new[] { ' ', '\t' });
+        if (space > 0) s = s[..space];
         var scheme = "http";
 
         var schemeEnd = s.IndexOf("://", StringComparison.Ordinal);
