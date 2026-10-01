@@ -45,6 +45,22 @@ def proxy_for_account(account: str | None) -> dict | None:
     return _proxy_from_url(config.PROXY) if config.PROXY else None
 
 
+def http_proxy_url_for_account(account: str | None) -> str | None:
+    """Same proxy as proxy_for_account, as one URL for aiohttp (which only speaks http/https proxies).
+    None = download directly (no proxy, or a socks5 proxy that aiohttp cannot use)."""
+    px = proxy_for_account(account)
+    if not px:
+        return None
+    server = px["server"]
+    if not server.startswith(("http://", "https://")):
+        return None
+    if px.get("username"):
+        from urllib.parse import quote, urlsplit
+        parts = urlsplit(server)
+        return f"{parts.scheme}://{quote(px['username'], safe='')}:{quote(px.get('password', ''), safe='')}@{parts.netloc}"
+    return server
+
+
 # "Hidden" render window. The Dola extension needs a HEADED Chromium, so instead of headless mode the window is
 # opened far off-screen (and kept from being throttled as "occluded"). It behaves exactly like a normal window for the
 # site, so it does not raise the bot-detection risk that real headless mode would.

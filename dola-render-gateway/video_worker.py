@@ -10,7 +10,7 @@ import aiohttp
 from patchright.async_api import async_playwright
 
 import config
-from browser import cookie_value, launch_account_context
+from browser import cookie_value, http_proxy_url_for_account, launch_account_context
 from dola_client import CREDIT_FAIL_PATTERN, CreditError
 from video_probe import SUBMIT_JS
 
@@ -147,7 +147,8 @@ async def _download(url: str, account: str) -> Path:
     fname = dl_dir / f"{account}_{time.strftime('%Y%m%d_%H%M%S')}.mp4"
     timeout = aiohttp.ClientTimeout(total=300)
     async with aiohttp.ClientSession(timeout=timeout) as session:
-        async with session.get(url, proxy=config.PROXY or None) as resp:
+        # the finished video comes from Dola's CDN: fetch it through the same proxy as the account's browser
+        async with session.get(url, proxy=http_proxy_url_for_account(account)) as resp:
             resp.raise_for_status()
             with open(fname, "wb") as f:
                 async for chunk in resp.content.iter_chunked(1 << 16):
