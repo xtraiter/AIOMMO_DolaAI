@@ -704,6 +704,14 @@ function patchDurationSelector(value, seen = new Set()) {
       options.splice(insertIndex, 0, createThirtySecondOption(options));
       changed = true;
     }
+    // AIOMMO: Dola chỉ có 5s / 10s, tiện ích gốc chỉ thêm 30s. Thêm cả 15s (nằm giữa 10s và 30s) để chọn được 10 / 15 / 30.
+    const has15s = options.some((option) => String(option?.option_key || option?.value || "") === "15");
+    if (!has15s) {
+      const tenIdx = options.findIndex((option) => String(option?.option_key || option?.value || "") === "10");
+      const at = tenIdx >= 0 ? tenIdx + 1 : options.length;
+      options.splice(at, 0, createDurationOption(options, 15));
+      changed = true;
+    }
   }
 
   for (const key of Object.keys(value)) {
@@ -720,6 +728,20 @@ function patchDurationSelector(value, seen = new Set()) {
   }
 
   return changed;
+}
+
+function createDurationOption(optionList, seconds) {
+  const maxId = optionList.reduce((maxValue, option) => {
+    const id = Number(option?.id);
+    return Number.isFinite(id) ? Math.max(maxValue, id) : maxValue;
+  }, 0);
+
+  return {
+    id: maxId + 1,
+    display_text: `${seconds}s`,
+    message_text: "",
+    option_key: String(seconds)
+  };
 }
 
 function createThirtySecondOption(optionList) {
