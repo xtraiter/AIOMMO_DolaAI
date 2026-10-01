@@ -244,7 +244,12 @@ _BALANCE_PATTERNS = (
     re.compile(r"(?:本日は|今日(?:还剩|剩余)?|今天).*?(\d+)\s*(?:ポイント|积分|points?)", re.I),
     re.compile(r"(?:remaining|left)\s*[:：]?\s*(\d+)\s*points?", re.I),
     re.compile(r"(?:还剩|剩余|还有)\s*(\d+)\s*(?:积分|点)", re.I),
+    re.compile(r"本日は残り\s*(\d+)\s*のみ", re.I),  # AIOMMO: Dola nay ghi "本日は残り 1 のみ" (credit video), không còn chữ ポイント
 )
+
+# AIOMMO: câu Dola trả lời khi không đủ credit: "…4 動画クレジットが使用されます。本日は残り 1 のみです…"
+# (bản gốc không nhận ra nên chờ hết 30 phút mới báo lỗi)
+NEED_CREDIT_PATTERN = re.compile(r"(\d+)\s*動画クレジットが使用されます.*?本日は残り\s*(\d+)", re.S)
 
 
 def _parse_balance_texts(texts: list[str]) -> tuple[int | None, bool, str]:
@@ -306,6 +311,9 @@ async def poll_conversation(account: str, page, context, conversation_id: str,
                 raise AccountLimitedError(f"Account daily limit reached: {text[:120]}")
             if CREDIT_FAIL_PATTERN.search(text):
                 raise CreditError(f"Insufficient quota: {text[:80]}")
+            need = NEED_CREDIT_PATTERN.search(text)
+            if need and int(need.group(2)) < int(need.group(1)):
+                raise CreditError(f"Insufficient quota: needs {need.group(1)} video credits, only {need.group(2)} left today")
         if poll.get("videos"):
             video_models = poll.get("videoModels", [])
             url = extract_unwatermarked_url(

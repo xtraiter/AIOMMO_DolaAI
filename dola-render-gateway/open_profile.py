@@ -43,6 +43,7 @@ if sys.platform == "win32":
 
 from patchright.async_api import async_playwright
 
+import config
 from add_account import totp
 from fb_to_dola import parse_fb_cookie, OAUTH_CONFIRM_JS
 from aiommo_compat import USER_LAUNCH_SUFFIX, cookie_value, launch_account_context, parse_user_launch
@@ -570,7 +571,11 @@ async def main():
     st.shot_path = profile_dir / "need_human.png"
 
     async with async_playwright() as p:
-        context = await launch_account_context(p, account, headless=False)
+        # Tiện ích Dola30 mở khóa thời lượng 15s / 30s trên trang Dola: nạp vào cửa sổ này để ô chọn thời lượng hiện đủ
+        # 10s / 15s / 30s (không có nó trang chỉ cho 5s / 10s). Không có tiện ích thì mở bình thường, không báo lỗi.
+        ext_dir = Path(config.EXTENSION_DIR)
+        want_ext = bool(config.EXTENSION_ENABLED) and ext_dir.is_dir() and os.environ.get("DOLA_PROFILE_EXTENSION", "1") != "0"
+        context = await launch_account_context(p, account, headless=False, use_extension=want_ext)
         closed = asyncio.Event()
         context.on("close", lambda *_: closed.set())
 
