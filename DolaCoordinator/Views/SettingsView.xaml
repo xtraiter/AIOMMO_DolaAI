@@ -225,6 +225,9 @@
                 <StackPanel>
                     <TextBlock Text="Khi Dola hỏi lại thay vì tạo video" FontSize="14" FontWeight="Bold" Foreground="{StaticResource AccentBrush}" Margin="0,0,0,12" />
                     <CheckBox IsChecked="{Binding AutoAnswerAskBack}" Content="Tự trả lời Dola để nó tạo video luôn (tối đa 3 lần mỗi video)" Margin="0,0,0,10" />
+                    <CheckBox IsChecked="{Binding RemoveWatermark}" Content="Xóa logo Dola bằng dịch vụ bên thứ ba của dola-pool" Margin="0,0,0,4" />
+                    <TextBlock Text="⚠ Mặc định TẮT. Khi bật, thông tin video được gửi tới một máy chủ bên ngoài (47.104.150.143, qua HTTP không mã hóa) và máy chủ đó thấy IP THẬT của máy bạn, vì lời gọi này cố ý không đi qua proxy của tài khoản. Tắt thì video có thể còn logo."
+                               Foreground="{StaticResource TextMutedBrush}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,12" />
                     <TextBlock Text="Câu app gõ vào khung chat khi Dola hỏi (ví dụ 'dùng 15 giây được không?', 'bạn có ảnh khuôn mặt không, A hay B?'):" Foreground="{StaticResource TextSecondaryBrush}" FontSize="12" Margin="0,0,0,4" />
                     <TextBox Text="{Binding AskBackReply, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" TextWrapping="Wrap"
                              Height="80" VerticalScrollBarVisibility="Auto" VerticalContentAlignment="Top" Style="{StaticResource ModernTextBox}" />

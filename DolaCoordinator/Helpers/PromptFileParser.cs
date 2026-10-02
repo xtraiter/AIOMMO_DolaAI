@@ -20,8 +20,18 @@ public static class PromptFileParser
     /// <summary>Đúng các lựa chọn trong ô "比率" (tỷ lệ) của Dola.</summary>
     public static readonly string[] Ratios = { "1:1", "3:4", "4:3", "9:16", "16:9", "21:9" };
 
-    /// <summary>Thời lượng như bản gốc của gateway: 10s, 15s, 30s (30s chỉ có ở Seedance 2.5).</summary>
-    public static readonly int[] Durations = { 10, 15, 30 };
+    /// <summary>Mọi thời lượng có thể có (hợp của hai model). Dùng <see cref="DurationsFor"/> để lấy đúng danh sách theo model.</summary>
+    public static readonly int[] Durations = { 5, 10, 15, 30 };
+
+    /// <summary>Thời lượng theo model (README dola-pool): Seedance 2.0 → 5/10/15 giây; Seedance 2.5 → 5/10/30 giây.</summary>
+    public static int[] DurationsFor(string? model) => NormalizeModel(model) == "seedance-2.5" ? new[] { 5, 10, 30 } : new[] { 5, 10, 15 };
+
+    /// <summary>Giữ nguyên nếu hợp lệ với model; không thì lấy thời lượng gần nhất mà model đó có.</summary>
+    public static int FitDuration(int seconds, string? model)
+    {
+        var allowed = DurationsFor(model);
+        return allowed.Contains(seconds) ? seconds : allowed.OrderBy(d => Math.Abs(d - seconds)).ThenBy(d => d).First();
+    }
 
     /// <summary>Model mà gateway hỗ trợ (giá trị gửi qua API /v1/videos/generations).</summary>
     public static readonly string[] Models = { "seedance-2.0", "seedance-2.5" };
@@ -115,13 +125,16 @@ public static class PromptFileParser
             var body = Get(iText);
             if (body.Length == 0) continue;
             var title = Get(iTitle);
+            // Ô model để trống mà thời lượng là 30 giây → chỉ Seedance 2.5 có 30 giây nên chọn 2.5; còn lại mặc định 2.0.
+            var modelCell = Get(iModel);
+            if (modelCell.Length == 0) modelCell = Get(iDuration).Any(char.IsDigit) && NormalizeDuration(Get(iDuration), "seedance-2.5") == 30 ? "seedance-2.5" : "seedance-2.0";
             result.Add(new PromptItem
             {
                 Title = title.Length > 0 ? title : AutoTitle(body),
                 Text = body,
                 Ratio = NormalizeRatio(Get(iRatio)),
-                Duration = NormalizeDuration(Get(iDuration)),
-                Model = NormalizeModel(Get(iModel)),
+                Duration = NormalizeDuration(Get(iDuration), modelCell),
+                Model = NormalizeModel(modelCell),
                 ReferenceLocalPaths = Get(iRefs).Split(new[] { ';', '\n' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList(),
                 Notes = Get(iNotes) is { Length: > 0 } n ? n : null,
             });
@@ -195,10 +208,11 @@ public static class PromptFileParser
         return Ratios.Contains(v) ? v : "9:16";
     }
 
-    public static int NormalizeDuration(string? value)
+    public static int NormalizeDuration(string? value, string? model = null)
     {
         var digits = new string((value ?? string.Empty).Where(char.IsDigit).ToArray());
-        return int.TryParse(digits, out var n) && n > 0 ? Durations.OrderBy(d => Math.Abs(d - n)).First() : 30;
+        var allowed = DurationsFor(model);
+        return int.TryParse(digits, out var n) && n > 0 ? FitDuration(n, model) : allowed[^1];
     }
 
     private static string Norm(string s)

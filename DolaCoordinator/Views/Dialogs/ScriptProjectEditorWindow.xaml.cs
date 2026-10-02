@@ -26,14 +26,43 @@ public partial class PartEntry : ObservableObject
 }
 
 /// <summary>Tạo / sửa một kịch bản lớn: thông số, nhân vật + bối cảnh dùng chung, tách kịch bản thành các phần.</summary>
-public partial class ScriptProjectEditorWindow : Window
+public partial class ScriptProjectEditorWindow : Window, System.ComponentModel.INotifyPropertyChanged
 {
     private readonly ScriptProject? _editing;
 
     public string ProjectTitle { get; set; } = string.Empty;
-    public string ModelLabel { get; set; } = PromptFileParser.ModelLabel("seedance-2.5");
     public string Ratio { get; set; } = "16:9";
-    public int Duration { get; set; } = 10;
+    private string _modelLabel = PromptFileParser.ModelLabel("seedance-2.5");
+    private int _duration = 10;
+
+    public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
+
+    /// <summary>Đổi model thì danh sách thời lượng đổi theo (2.0: 5/10/15, 2.5: 5/10/30) và thời lượng không hợp lệ được chuyển về giá trị gần nhất.</summary>
+    public string ModelLabel
+    {
+        get => _modelLabel;
+        set
+        {
+            if (_modelLabel == value) return;
+            _modelLabel = value;
+            Raise(nameof(ModelLabel));
+            Raise(nameof(DurationOptions));
+            Duration = PromptFileParser.FitDuration(_duration, PromptFileParser.NormalizeModel(value));
+        }
+    }
+
+    public int Duration
+    {
+        get => _duration;
+        set
+        {
+            if (_duration == value) return;
+            _duration = value;
+            Raise(nameof(Duration));
+        }
+    }
+
+    private void Raise(string name) => PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(name));
     public bool UseLastFrame { get; set; } = true;
     public bool AutoMerge { get; set; }
     public string FullScript { get; set; } = string.Empty;
@@ -46,7 +75,7 @@ public partial class ScriptProjectEditorWindow : Window
     public ObservableCollection<PartEntry> Entries { get; } = new();
 
     public string[] RatioOptions => PromptFileParser.Ratios;
-    public int[] DurationOptions => PromptFileParser.Durations;
+    public int[] DurationOptions => PromptFileParser.DurationsFor(PromptFileParser.NormalizeModel(ModelLabel));
     public string[] ModelOptions => PromptFileParser.ModelLabels;
 
     /// <summary>Kịch bản sau khi bấm Lưu (khi sửa: chính đối tượng được truyền vào, đã cập nhật).</summary>
@@ -61,7 +90,7 @@ public partial class ScriptProjectEditorWindow : Window
             ProjectTitle = editing.Title;
             ModelLabel = PromptFileParser.ModelLabel(editing.Model);
             Ratio = editing.Ratio;
-            Duration = editing.Duration;
+            Duration = PromptFileParser.FitDuration(editing.Duration, editing.Model);
             UseLastFrame = editing.UseLastFrame;
             AutoMerge = editing.AutoMerge;
             ContinueHeader = editing.ContinueHeader;

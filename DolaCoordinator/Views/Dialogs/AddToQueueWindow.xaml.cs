@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
 using DolaCoordinator.Helpers;
@@ -32,11 +33,21 @@ public partial class AddToQueueWindow : Window
         Title = "Thêm vào hàng đợi";
         SummaryText.Text = $"{promptCount} prompt đã chọn. Mỗi prompt được gửi nguyên văn (giữ xuống dòng) cho Dola.";
         RatioBox.ItemsSource = new[] { PerPrompt }.Concat(PromptFileParser.Ratios).ToList();
-        DurationBox.ItemsSource = new[] { PerPrompt }.Concat(PromptFileParser.Durations.Select(d => d.ToString())).ToList();
         ModelBox.ItemsSource = new[] { PerPrompt }.Concat(PromptFileParser.ModelLabels).ToList();
         ModelBox.SelectedIndex = 0;
         RatioBox.SelectedIndex = 0;
-        DurationBox.SelectedIndex = 0;
+        RefreshDurations();
+        ModelBox.SelectionChanged += (_, _) => RefreshDurations();
+    }
+
+    /// <summary>Thời lượng theo model đã chọn (2.0: 5/10/15, 2.5: 5/10/30); "Theo từng prompt" → hiện đủ 5/10/15/30.</summary>
+    private void RefreshDurations()
+    {
+        var previous = DurationBox.SelectedItem as string;
+        var model = ModelBox.SelectedItem as string;
+        var seconds = model is null || model == PerPrompt ? PromptFileParser.Durations : PromptFileParser.DurationsFor(model);
+        DurationBox.ItemsSource = new[] { PerPrompt }.Concat(seconds.Select(d => d.ToString())).ToList();
+        DurationBox.SelectedItem = previous is not null && ((IEnumerable<string>)DurationBox.ItemsSource).Contains(previous) ? previous : PerPrompt;
     }
 
     private void Ok_Click(object sender, RoutedEventArgs e)

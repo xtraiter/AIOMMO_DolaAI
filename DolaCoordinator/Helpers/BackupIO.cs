@@ -285,7 +285,7 @@ public static class BackupIO
                     Title = title,
                     Model = Get(iModel) is { Length: > 0 } m ? PromptFileParser.NormalizeModel(m) : "seedance-2.5",
                     Ratio = Get(iRatio) is { Length: > 0 } ra ? ra : "16:9",
-                    Duration = int.TryParse(Get(iDur), out var d) ? d : 10,
+                    Duration = int.TryParse(Get(iDur), out var d) ? PromptFileParser.FitDuration(d, Get(iModel) is { Length: > 0 } mm ? mm : "seedance-2.5") : 10,
                     UseLastFrame = !IsNo(Get(iLast)),
                     AutoMerge = IsYes(Get(iMerge)),
                     SceneText = Get(iScene),

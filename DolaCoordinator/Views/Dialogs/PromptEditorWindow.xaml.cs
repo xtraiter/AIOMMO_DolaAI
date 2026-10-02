@@ -11,15 +11,44 @@ using Microsoft.Win32;
 namespace DolaCoordinator.Views.Dialogs;
 
 /// <summary>Thêm / sửa một prompt: tên, nội dung nhiều dòng, tỷ lệ, thời lượng, ảnh tham chiếu mặc định, ghi chú.</summary>
-public partial class PromptEditorWindow : Window
+public partial class PromptEditorWindow : Window, System.ComponentModel.INotifyPropertyChanged
 {
     private const int MaxReferenceImages = PromptComposer.MaxReferenceImages; // Dola chỉ nhận tối đa 10 ảnh tham chiếu
 
     public string PromptTitle { get; set; } = string.Empty;
     public string PromptText { get; set; } = string.Empty;
     public string Ratio { get; set; } = "9:16";
-    public int Duration { get; set; } = 30;
-    public string ModelLabel { get; set; } = PromptFileParser.ModelLabel("seedance-2.0");
+    private string _modelLabel = PromptFileParser.ModelLabel("seedance-2.0");
+    private int _duration = 15;
+
+    public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
+
+    /// <summary>Đổi model thì danh sách thời lượng đổi theo (2.0: 5/10/15, 2.5: 5/10/30) và thời lượng không hợp lệ được chuyển về giá trị gần nhất.</summary>
+    public string ModelLabel
+    {
+        get => _modelLabel;
+        set
+        {
+            if (_modelLabel == value) return;
+            _modelLabel = value;
+            Raise(nameof(ModelLabel));
+            Raise(nameof(DurationOptions));
+            Duration = PromptFileParser.FitDuration(_duration, PromptFileParser.NormalizeModel(value));
+        }
+    }
+
+    public int Duration
+    {
+        get => _duration;
+        set
+        {
+            if (_duration == value) return;
+            _duration = value;
+            Raise(nameof(Duration));
+        }
+    }
+
+    private void Raise(string name) => PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(name));
 
     /// <summary>Giá trị API của model đã chọn (seedance-2.0 / seedance-2.5).</summary>
     public string Model => PromptFileParser.NormalizeModel(ModelLabel);
@@ -34,7 +63,7 @@ public partial class PromptEditorWindow : Window
     public System.Collections.Generic.List<string> SceneImages => Cast.ToSceneImages();
 
     public string[] RatioOptions => PromptFileParser.Ratios;
-    public int[] DurationOptions => PromptFileParser.Durations;
+    public int[] DurationOptions => PromptFileParser.DurationsFor(PromptFileParser.NormalizeModel(ModelLabel));
     public string[] ModelOptions => PromptFileParser.ModelLabels;
 
     public PromptEditorWindow(PromptItem? editing = null)
@@ -45,8 +74,8 @@ public partial class PromptEditorWindow : Window
             PromptTitle = editing.Title;
             PromptText = editing.Text;
             Ratio = editing.Ratio;
-            Duration = editing.Duration;
             ModelLabel = PromptFileParser.ModelLabel(editing.Model);
+            Duration = PromptFileParser.FitDuration(editing.Duration, editing.Model);
             Notes = editing.Notes ?? string.Empty;
             foreach (var p in editing.ReferenceLocalPaths) RefImages.Add(p);
         }

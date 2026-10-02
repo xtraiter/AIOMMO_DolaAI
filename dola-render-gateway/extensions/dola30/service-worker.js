@@ -1,4 +1,4 @@
-﻿const DEBUGGER_VERSION = "1.3";
+const DEBUGGER_VERSION = "1.3";
 const DOUBAO_SKILL_PACK_URL_PART = "doubao.com/samantha/skill/pack";
 const DOLA_SKILL_PACK_URL_PART = "dola.com/samantha/skill/pack";
 const ACTION_BAR_CONF_URL_PART = ".com/alice/slot/action_bar_v3/get_item_conf";
@@ -245,7 +245,7 @@ async function inspectChainSingleResponse(tabId, event, source) {
     await sendToTab(tabId, {
       type: "MEDIA_STATUS",
       sourceKey,
-      text: "No resources found"
+      text: "未提取到资源"
     });
   }
 
@@ -704,7 +704,7 @@ function patchDurationSelector(value, seen = new Set()) {
       options.splice(insertIndex, 0, createThirtySecondOption(options));
       changed = true;
     }
-    // AIOMMO: Dola chỉ có 5s / 10s, tiện ích gốc chỉ thêm 30s. Thêm cả 15s (nằm giữa 10s và 30s) để chọn được 10 / 15 / 30.
+    // AIOMMO: thêm ô 15s (nằm giữa 10s và 30s) để chọn được 10 / 15 / 30 trên trang Dola.
     const has15s = options.some((option) => String(option?.option_key || option?.value || "") === "15");
     if (!has15s) {
       const tenIdx = options.findIndex((option) => String(option?.option_key || option?.value || "") === "10");

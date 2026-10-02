@@ -548,6 +548,12 @@ public class TaskDispatcher : ITaskDispatcher, IDisposable
                     model = "seedance-2.5";
                     Log($"[{session.Name}] Video {task.Duration}s chỉ có ở Seedance 2.5 → tự dùng Seedance 2.5 (tác vụ đang chọn {task.Model}).");
                 }
+                else if (task.Duration == 15 && model.Contains("2.5", StringComparison.Ordinal))
+                {
+                    // Theo dola-pool: Seedance 2.0 có 5/10/15 giây, Seedance 2.5 có 5/10/30 giây; độ dài khác bị từ chối
+                    model = "seedance-2.0";
+                    Log($"[{session.Name}] Video 15s chỉ có ở Seedance 2.0 → tự dùng Seedance 2.0 (tác vụ đang chọn {task.Model}).");
+                }
 
                 var sessionToken = session.PlainToken ?? _securityService.Decrypt(session.EncryptedToken);
                 var req = new VideoGenApiRequest
@@ -777,6 +783,7 @@ public class TaskDispatcher : ITaskDispatcher, IDisposable
         if (Has("Insufficient", "quota", "credit")) return "credit";
         if (Has("Captcha", "risk control", "Submission failed")) return "risk_control";
         if (Has("No video generated within", "not acquired within")) return "timeout";
+        if (Has("interface only offers")) return "duration_unsupported";
         if (Has("No available accounts", "no account in pool")) return "no_account";
         if (Has("cancel")) return "cancelled";
         return null;
@@ -797,6 +804,7 @@ public class TaskDispatcher : ITaskDispatcher, IDisposable
             "restarted" => "Gateway đã khởi động lại khi tác vụ đang chạy.",
             "429" => "Mọi tài khoản đều hết lượt hoặc hết credit hôm nay.",
             "no_account" => "Không có tài khoản phù hợp trong gateway.",
+            "duration_unsupported" => "Giao diện Dola của tài khoản chỉ cho chọn độ dài 4–10 giây, không có 15s/30s. Dùng tài khoản còn giao diện cũ (có ô chọn 10s/15s/30s) hoặc chọn độ dài ngắn hơn.",
             _ => null,
         };
         if (vi == null) return detail ?? "Gateway báo lỗi không rõ nguyên nhân";
@@ -864,6 +872,7 @@ public class TaskDispatcher : ITaskDispatcher, IDisposable
             case "429":
             case "rejected":
             case "no_account":
+            case "duration_unsupported": // gateway đã thử hết tài khoản, chưa gửi prompt nên chưa tốn credit
                 _quotaTracker.ReleaseQuota(session.Id);
                 return false;
 

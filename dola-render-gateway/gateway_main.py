@@ -12,7 +12,28 @@ import runpy
 import sys
 
 
+def _ensure_node() -> None:
+    """dola-pool ký yêu cầu tạo video bằng Node.js (pure_signer.py). Máy người dùng thường không cài Node, nhưng bộ trình duyệt
+    patchright đi kèm sẵn một node.exe: nếu không có node trong PATH và DOLA_NODE chưa đặt thì dùng chính nó."""
+    import shutil
+
+    if (os.environ.get("DOLA_NODE") or "").strip() or shutil.which("node") or shutil.which("node.exe"):
+        return
+    try:
+        from patchright._impl._driver import compute_driver_executable
+
+        node_exe = compute_driver_executable()[0]
+        if node_exe and os.path.isfile(node_exe):
+            os.environ["DOLA_NODE"] = node_exe
+            # Có chỗ trong dola-pool gọi cứng tên "node" (protocol/dola_pure_api.py), không đọc DOLA_NODE:
+            # thêm thư mục của node đi kèm vào đầu PATH để mọi nơi đều tìm thấy.
+            os.environ["PATH"] = os.path.dirname(node_exe) + os.pathsep + os.environ.get("PATH", "")
+    except Exception as ex:  # noqa: BLE001
+        print(f"Cannot locate a bundled node: {ex}", file=sys.stderr, flush=True)
+
+
 def _serve(argv: list[str]) -> None:
+    _ensure_node()
     ap = argparse.ArgumentParser(prog="dola-gateway serve")
     ap.add_argument("--host", default="127.0.0.1")
     ap.add_argument("--port", type=int, default=8000)

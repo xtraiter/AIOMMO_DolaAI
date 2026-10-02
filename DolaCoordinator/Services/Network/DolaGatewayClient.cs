@@ -280,11 +280,36 @@ public class DolaGatewayClient : IDolaGatewayClient
                 return (false, null, err);
             }
             var converted = root.TryGetProperty("cookie", out var c) && c.ValueKind == JsonValueKind.String ? c.GetString() : null;
+
+            // Thiết kế của dola-pool: tài khoản "cookie" tạo video bằng API thuần (nhanh, không phụ thuộc giao diện web của Dola,
+            // nhận ra hết credit ngay). Báo cho gateway biết cookie của tài khoản này để nó chạy theo đường đó.
+            var poolCookie = converted ?? cookieToken.Trim();
+            if (poolCookie.Contains("sessionid=", StringComparison.OrdinalIgnoreCase))
+                await TrySetPoolCookieAsync(name, poolCookie, ct);
             return (true, converted, null);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return (false, null, ex.Message);
+        }
+    }
+
+    /// <summary>POST /api/admin/accounts/{name}/set-cookie: gateway ghi cookie_state.json và đặt tài khoản thành loại "cookie" (đường API thuần).</summary>
+    private async Task<bool> TrySetPoolCookieAsync(string name, string cookie, CancellationToken ct)
+    {
+        try
+        {
+            using var req = new HttpRequestMessage(HttpMethod.Post, $"{GetGatewayBaseUrl()}/api/admin/accounts/{Uri.EscapeDataString(name)}/set-cookie")
+            {
+                Content = new StringContent(JsonSerializer.Serialize(new { cookie }, JsonOptions), Encoding.UTF8, "application/json"),
+            };
+            ApplyAdminHeader(req);
+            using var response = await _httpClient.SendAsync(req, ct);
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        {
+            return false; // gateway chưa chạy: lần kiểm tra phiên sau sẽ thử lại
         }
     }
 

@@ -143,6 +143,7 @@ public partial class SettingsViewModel : ObservableObject
         PythonCommand = string.IsNullOrWhiteSpace(s.PythonCommand) ? "py -3" : s.PythonCommand;
         AdminKey = s.AdminKey;
         AutoAnswerAskBack = s.AutoAnswerAskBack;
+        RemoveWatermark = s.RemoveWatermark;
         AskBackReply = string.IsNullOrWhiteSpace(s.AskBackReply) || s.AskBackReply.Trim() == AppSettings.LegacyAskBackReply
             ? AppSettings.DefaultAskBackReply : s.AskBackReply;
         UpdateCheckUrl = s.UpdateCheckUrl;
@@ -159,6 +160,10 @@ public partial class SettingsViewModel : ObservableObject
     /// <summary>Thông báo sau khi sao lưu / khôi phục toàn bộ.</summary>
     [ObservableProperty]
     private string _backupStatusText = string.Empty;
+
+    /// <summary>Xóa logo bằng dịch vụ bên thứ ba (lộ IP thật cho bên đó). Mặc định tắt.</summary>
+    [ObservableProperty]
+    private bool _removeWatermark;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(InstallBrowserCommand))]
@@ -386,6 +391,8 @@ public partial class SettingsViewModel : ObservableObject
             s.PythonCommand = string.IsNullOrWhiteSpace(PythonCommand) ? "py -3" : PythonCommand.Trim();
             s.AdminKey = string.IsNullOrWhiteSpace(AdminKey) ? null : AdminKey.Trim();
             s.AutoAnswerAskBack = AutoAnswerAskBack;
+            var oldRemoveWatermark = s.RemoveWatermark;
+            s.RemoveWatermark = RemoveWatermark;
             s.AskBackReply = string.IsNullOrWhiteSpace(AskBackReply) ? AppSettings.DefaultAskBackReply : AskBackReply.Trim();
             s.UpdateCheckUrl = UpdateCheckUrl?.Trim() ?? string.Empty;
 
@@ -395,8 +402,8 @@ public partial class SettingsViewModel : ObservableObject
             _quotaTracker.ApplyDailyLimit(s.DefaultDailyQuota);
             DefaultDailyQuota = s.DefaultDailyQuota;
             WeakReferenceMessenger.Default.Send(new SessionsChangedMessage());
-            var note = oldQuota != s.DefaultDailyQuota
-                ? $"{Environment.NewLine}{Environment.NewLine}Hạn ngạch {s.DefaultDailyQuota} video/ngày/tài khoản sẽ áp dụng cho gateway sau khi bạn tắt rồi mở lại app (gateway nhận mức này lúc khởi động)."
+            var note = oldRemoveWatermark != s.RemoveWatermark
+                ? $"{Environment.NewLine}{Environment.NewLine}Tùy chọn xóa logo sẽ áp dụng cho gateway sau khi bạn tắt rồi mở lại app (gateway nhận nó lúc khởi động)."
                 : string.Empty;
             MessageBox.Show("Đã lưu cấu hình hệ thống thành công!" + note, "Thông báo", MessageBoxButton.OK, MessageBoxImage.Information);
         }

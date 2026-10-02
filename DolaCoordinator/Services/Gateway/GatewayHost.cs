@@ -95,7 +95,9 @@ public sealed class GatewayHost : IGatewayHost, IDisposable
         psi.Environment["PYTHONUNBUFFERED"] = "1";
         psi.Environment["PYTHONIOENCODING"] = "utf-8";
         psi.Environment["DOLA_MAX_CONCURRENCY"] = GatewayCapacity().ToString(); // đủ chỗ cho mọi tài khoản chạy song song
-        psi.Environment["DOLA_DAILY_LIMIT"] = Math.Max(1, _db.GetSettings().DefaultDailyQuota).ToString(); // gateway gốc ghi cứng 2 video/ngày/tài khoản
+        // dola-pool: DOLA_DAILY_LIMIT là số ĐIỂM mỗi tài khoản mỗi ngày (mặc định 4) → để mặc định, không ghi đè bằng số video của app.
+        // Xóa logo dùng dịch vụ bên thứ ba và làm lộ IP thật: chỉ bật khi người dùng tự bật trong Cài đặt.
+        psi.Environment["DOLA_PURE_REMOVE_WATERMARK"] = _db.GetSettings().RemoveWatermark ? "1" : "0";
         GatewayLocator.ApplyEnvironment(psi, gatewayDir);
 
         try

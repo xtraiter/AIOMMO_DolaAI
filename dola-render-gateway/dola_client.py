@@ -1,4 +1,14 @@
-"""Dola API Client Module: Handles chat, image recognition, and video generation protocols."""
+"""
+豆包国际版 (dola.com) API 客户端核心模块
+从 doubao-free-api 的 TypeScript 实现翻译而来，已验证可用。
+
+功能：
+- 聊天（/chat/completion SSE 流式）
+- 图片识别（上传图片 + block_type:10052）
+- 文生图（ability_type:16）
+- 视频生成（生成影片前缀 + ability_type:17 + 轮询出片）
+- 多账号轮询（shuffle + 失败换号 + 额度检测）
+"""
 
 import asyncio
 import binascii
@@ -13,7 +23,7 @@ from urllib.parse import urlencode, quote
 
 import aiohttp
 
-# ============ Constants ============
+# ============ 常量 ============
 
 DOLA_AID = "495671"
 DOLA_BOT_ID = "7339470689562525703"
@@ -35,7 +45,7 @@ FAKE_HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
 }
 
-# Insufficient credit keywords (multi-language)
+# 额度不足失败关键词（多语言）
 CREDIT_FAIL_PATTERN = re.compile(
     r"無法生成|无法生成|不能生成|无法完成|無法完成|"
     r"余额不足|餘額不足|额度不足|額度不足|额度耗尽|額度耗盡|"
@@ -46,10 +56,10 @@ CREDIT_FAIL_PATTERN = re.compile(
 )
 
 
-# ============ Helpers ============
+# ============ 工具函数 ============
 
 def parse_cookie(cookie: str) -> dict:
-    """Extracts required Dola parameters from cookie."""
+    """从完整 cookie 中提取 dola 所需参数"""
     def extract(key):
         m = re.search(key + r"=([^;]+)", cookie or "")
         return m.group(1) if m else ""
@@ -65,12 +75,12 @@ def uuid() -> str:
 
 
 def crc32_hex(data: bytes) -> str:
-    """CRC32 hexadecimal string for Volcano ImageX PUT TOS."""
+    """CRC32，返回十六进制字符串（火山引擎 ImageX PUT TOS 需要）"""
     return format(binascii.crc32(data) & 0xFFFFFFFF, "x")
 
 
 def aws4_sign(method: str, url: str, ak: str, sk: str, sts: str) -> dict:
-    """AWS4-HMAC-SHA256 signature for Volcano ImageX ApplyImageUpload."""
+    """AWS4-HMAC-SHA256 签名（火山引擎 ImageX ApplyImageUpload）"""
     from urllib.parse import urlparse, parse_qsl
     u = urlparse(url)
     now = datetime.now(timezone.utc)
@@ -112,7 +122,7 @@ def _find_url_in_data(data, *keywords) -> str:
     if isinstance(data, str):
         if all(kw in data for kw in keywords) and data.startswith("http"):
             return data
-        # Strings may contain embedded JSON or URLs
+        # 字符串里可能内嵌 URL（如 JSON 字符串值）
         for m in re.finditer(r"https?://[^\s\"'\\]+", data):
             url = m.group(0)
             if all(kw in url for kw in keywords):
@@ -131,7 +141,7 @@ def _find_url_in_data(data, *keywords) -> str:
 
 
 def build_query_params(cookie: str, extra: dict = None) -> dict:
-    """Builds common Dola API URL parameters."""
+    """构建 dola API 通用 URL 参数"""
     info = parse_cookie(cookie)
     params = {
         "aid": DOLA_AID,
@@ -158,7 +168,7 @@ def build_query_params(cookie: str, extra: dict = None) -> dict:
 # ============ DolaClient ============
 
 class DolaClient:
-    """Dola API Client instance."""
+    """豆包国际版 API 客户端，单 cookie 实例"""
 
     def __init__(self, cookie: str, api_base: str = "https://www.dola.com"):
         self.cookie = cookie
@@ -169,10 +179,11 @@ class DolaClient:
     def is_valid(self) -> bool:
         return bool(self.info["sessionid"])
 
-    # ===== Common Requests =====
+    # ===== 通用请求 =====
 
     async def _request_chat_completion(self, session: aiohttp.ClientSession, body: dict, timeout: int = 300) -> aiohttp.ClientResponse:
-        """POST /chat/completion (SSE stream). Caller must close."""
+        """POST /chat/completion（SSE 流式响应），返回未关闭的 response 对象
+        调用方负责 async with 读取和关闭"""
         url = f"{self.api_base}/chat/completion"
         headers = {
             **FAKE_HEADERS,
@@ -206,15 +217,15 @@ class DolaClient:
         ) as resp:
             return await resp.json(content_type=None)
 
-    # ===== SSE Parsing =====
+    # ===== SSE 解析 =====
 
     async def _read_sse_stream(self, resp: aiohttp.ClientResponse) -> list:
-        """Reads SSE stream and returns all events."""
+        """读取 SSE 流，返回所有事件 [(event_name, data_dict), ...]"""
         events = []
         buffer = ""
         async for chunk in resp.content:
             buffer += chunk.decode("utf-8", errors="replace")
-            # SSE events separated by \n\n
+            # SSE 事件以 \n\n 分隔
             while "\n\n" in buffer:
                 raw_event, buffer = buffer.split("\n\n", 1)
                 event_name = ""
@@ -234,8 +245,8 @@ class DolaClient:
 
     @staticmethod
     def _extract_text(event_data: dict) -> str:
-        """Extracts text delta from SSE event."""
-        # STREAM_MSG_NOTIFY: first token
+        """从 SSE 事件数据中提取文本增量"""
+        # STREAM_MSG_NOTIFY: 首 token
         content = event_data.get("content", {})
         if isinstance(content, dict) and content.get("content_block"):
             for block in content["content_block"]:
@@ -243,7 +254,7 @@ class DolaClient:
                     return block["content"]["thinking_block"]["text"]
                 if block.get("content", {}).get("text_block", {}).get("text"):
                     return block["content"]["text_block"]["text"]
-        # STREAM_CHUNK: subsequent delta
+        # STREAM_CHUNK: 后续 patch_op 增量
         text = ""
         if event_data.get("patch_op"):
             for op in event_data["patch_op"]:
@@ -257,10 +268,10 @@ class DolaClient:
                             text += c["text_block"]["text"]
         return text
 
-    # ===== Chat =====
+    # ===== 聊天 =====
 
     async def chat(self, messages: list, deep_think: bool = False) -> str:
-        """Chat completion, returns full text."""
+        """聊天补全，返回完整回复文本"""
         body = self._build_chat_body(messages, deep_think)
         async with aiohttp.ClientSession(trust_env=True) as session:
             resp = await self._request_chat_completion(session, body)
@@ -276,7 +287,7 @@ class DolaClient:
         return full_text
 
     async def chat_stream(self, messages: list, deep_think: bool = False):
-        """Streaming chat completion, yields text deltas."""
+        """聊天补全流式，yield 文本增量"""
         body = self._build_chat_body(messages, deep_think)
         async with aiohttp.ClientSession(trust_env=True) as session:
             resp = await self._request_chat_completion(session, body)
@@ -305,11 +316,11 @@ class DolaClient:
                             yield text
 
     def _build_chat_body(self, messages: list, deep_think: bool = False) -> dict:
-        """Builds chat completion request body."""
+        """构建聊天请求体（纯文本）"""
         now_ms = int(time.time() * 1000)
         now_sec = now_ms // 1000
 
-        # Merge multi-turn dialogue into single text
+        # 多轮对话合并为一条文本
         combined = []
         for msg in messages:
             role = "Assistant" if msg.get("role") == "assistant" else "User"
@@ -381,18 +392,18 @@ class DolaClient:
             },
         }
 
-    # ===== Image Upload =====
+    # ===== 图片上传 =====
 
     async def upload_image(self, image_input: str) -> str:
         """完整上传链路：prepare_upload → ApplyImageUpload → PUT TOS → 返回 StoreUri
         接受 base64 / http URL / 已有 uri
         """
-        # 1) Get image binary
+        # 1) 拿到图片二进制
         if image_input.startswith("tos-mya-i-"):
-            return image_input  # Already a TOS uri
+            return image_input  # 已是 TOS uri
         image_buf = await self._fetch_image(image_input)
 
-        # 2. prepare_upload for STS
+        # 2. prepare_upload 拿 STS
         prep_url = f"{self.api_base}/alice/resource/prepare_upload"
         prep_params = build_query_params(self.cookie, {
             "device_id": "7655726059970627125",
@@ -418,7 +429,7 @@ class DolaClient:
             ) as p1:
                 p1_data = await p1.json(content_type=None)
         if p1_data.get("code") != 0:
-            raise Exception(f"prepare_upload failed: {json.dumps(p1_data)[:100]}")
+            raise Exception(f"prepare_upload 失败: {json.dumps(p1_data)[:100]}")
 
         sts_info = p1_data["data"]
         service_id = sts_info["service_id"]
@@ -426,7 +437,7 @@ class DolaClient:
         auth = sts_info["upload_auth_token"]
         ak, sk, sts_token = auth["access_key"], auth["secret_key"], auth["session_token"]
 
-        # 3. ApplyImageUpload (AWS4 signature)
+        # 3. ApplyImageUpload（AWS4 签名）
         apply_url = (
             f"https://{upload_host}/?Action=ApplyImageUpload&Version=2018-08-01"
             f"&ServiceId={service_id}&FileSize={len(image_buf)}&FileExtension=.png"
@@ -436,7 +447,7 @@ class DolaClient:
             async with session.get(apply_url, headers=sig, timeout=aiohttp.ClientTimeout(total=15)) as p2:
                 p2_data = await p2.json(content_type=None)
         if p2_data.get("ResponseMetadata", {}).get("Error"):
-            raise Exception(f"ApplyImageUpload failed: {p2_data['ResponseMetadata']['Error']['Message']}")
+            raise Exception(f"ApplyImageUpload 失败: {p2_data['ResponseMetadata']['Error']['Message']}")
 
         store_info = p2_data["Result"]["UploadAddress"]["StoreInfos"][0]
         store_uri = store_info["StoreUri"]
@@ -457,25 +468,25 @@ class DolaClient:
                                    timeout=aiohttp.ClientTimeout(total=30)) as p3:
                 p3_data = await p3.json(content_type=None)
         if p3_data.get("success") not in (0, None) and p3_data.get("code"):
-            raise Exception(f"PUT TOS failed: {json.dumps(p3_data)[:100]}")
+            raise Exception(f"PUT TOS 失败: {json.dumps(p3_data)[:100]}")
 
         return store_uri
 
     async def _fetch_image(self, image_input: str) -> bytes:
-        """Downloads image: supports HTTP URL or base64."""
+        """下载图片：支持 http URL / base64"""
         if image_input.startswith("http"):
             async with aiohttp.ClientSession(trust_env=True) as session:
                 async with session.get(image_input, timeout=aiohttp.ClientTimeout(total=30)) as r:
                     return await r.read()
-        # base64 (optional data: prefix)
+        # base64（可能带 data: 前缀）
         b64 = re.sub(r"^data:[^;]+;base64,", "", image_input)
         import base64
         return base64.b64decode(b64)
 
-    # ===== Image Recognition =====
+    # ===== 图片识别 =====
 
     async def vision(self, image_input: str, prompt: str) -> str:
-        """Image recognition: upload + block_type:10052 + chat."""
+        """图片识别：上传图片 + block_type:10052 + 聊天"""
         image_uri = await self.upload_image(image_input)
         body = self._build_vision_body(image_uri, prompt)
         async with aiohttp.ClientSession(trust_env=True) as session:
@@ -492,7 +503,7 @@ class DolaClient:
         return full_text
 
     def _build_vision_body(self, image_uri: str, prompt: str) -> dict:
-        """Builds image recognition request body."""
+        """构建图片识别请求体（block_type:10052 + 10000 两条消息）"""
         now_ms = int(time.time() * 1000)
         now_sec = now_ms // 1000
         att_id = uuid()
@@ -598,10 +609,10 @@ class DolaClient:
             },
         }
 
-    # ===== Text-to-Image =====
+    # ===== 文生图 =====
 
     async def generate_image(self, prompt: str, ratio: str = "1:1", style: str = "auto") -> str:
-        """Text-to-Image generation, returns image URL."""
+        """文生图，返回图片 URL"""
         body = self._build_image_body(prompt, ratio, style)
         async with aiohttp.ClientSession(trust_env=True) as session:
             resp = await self._request_chat_completion(session, body, timeout=60)
@@ -613,7 +624,7 @@ class DolaClient:
         for event_name, data in events:
             if event_name == "SSE_ACK":
                 conv_id = (data.get("ack_client_meta") or {}).get("conversation_id", "")
-            # Recursive search for image URLs
+            # 递归搜索数据结构里的 ibyteimg URL（比正则提 json.dumps 更可靠）
             found = _find_url_in_data(data, "ibyteimg", "image_raw")
             if found:
                 image_url = found
@@ -621,10 +632,10 @@ class DolaClient:
         if image_url:
             return image_url
 
-        # Poll for image
+        # 轮询出图
         if conv_id:
             return await self._poll_image(conv_id)
-        raise Exception("Image generation: failed to acquire conversation_id")
+        raise Exception("文生图未获取到 conversation_id")
 
     def _build_image_body(self, prompt: str, ratio: str, style: str) -> dict:
         now_ms = int(time.time() * 1000)
@@ -675,7 +686,7 @@ class DolaClient:
         }
 
     async def _poll_image(self, conversation_id: str, timeout: int = 120) -> str:
-        """Polls /im/chain/single for image generation."""
+        """轮询 /im/chain/single 出图"""
         start = time.time()
         attempt = 0
         async with aiohttp.ClientSession(trust_env=True) as session:
@@ -703,18 +714,18 @@ class DolaClient:
                                     url = (img.get(key) or {}).get("url", "")
                                     if url:
                                         return url
-                                # Fallback search for image URL
+                                # 兜底递归搜 ibyteimg URL
                                 found = _find_url_in_data(cre, "ibyteimg")
                                 if found:
                                     return found
                 except Exception:
                     pass
-        raise Exception("Image generation timeout")
+        raise Exception("文生图超时未出图")
 
-    # ===== Video Generation =====
+    # ===== 视频生成 =====
 
     async def generate_video(self, prompt: str, ratio: str = "9:16", duration: int = 5, timeout: int = 300) -> str:
-        """Video generation, returns video download URL."""
+        """视频生成，返回视频下载 URL"""
         body = self._build_video_body(prompt, ratio, duration)
         async with aiohttp.ClientSession(trust_env=True) as session:
             resp = await self._request_chat_completion(session, body, timeout=120)
@@ -727,15 +738,15 @@ class DolaClient:
                 conv_id = (data.get("ack_client_meta") or {}).get("conversation_id", "")
 
         if not conv_id:
-            raise Exception("Video accepted but no conversation_id returned")
+            raise Exception("视频受理未返回 conversation_id")
 
-        # Poll for video
+        # 轮询出片
         return await self._poll_video(conv_id, timeout)
 
     def _build_video_body(self, prompt: str, ratio: str, duration: int) -> dict:
         now_ms = int(time.time() * 1000)
         now_sec = now_ms // 1000
-        # Video prompt trigger prefix
+        # ★ 必须加"生成影片："前缀，否则被降级为文生图
         video_prompt = f"生成影片：{prompt}，{ratio}"
         return {
             "client_meta": {
@@ -811,7 +822,7 @@ class DolaClient:
         }
 
     async def _poll_video(self, conversation_id: str, timeout: int = 300) -> str:
-        """Polls /im/chain/single for video, checking quota limits."""
+        """轮询 /im/chain/single 出片，检测额度不足"""
         start = time.time()
         attempt = 0
         async with aiohttp.ClientSession(trust_env=True) as session:
@@ -841,12 +852,12 @@ class DolaClient:
                             continue
 
                         for block in content:
-                            # Check for quota limit text
+                            # 检测额度不足文本
                             block_text = (block.get("content") or {}).get("text_block", {}).get("text", "")
                             if block_text and CREDIT_FAIL_PATTERN.search(block_text):
-                                raise CreditError(f"Insufficient quota: {block_text[:60]}")
+                                raise CreditError(f"额度不足: {block_text[:60]}")
 
-                            # Check for video output (block_type=2074, type=2)
+                            # 检测视频出片（block_type=2074, type=2）
                             if block.get("block_type") != 2074:
                                 continue
                             creations = (block.get("content") or {}).get("creation_block", {}).get("creations") or []
@@ -860,18 +871,18 @@ class DolaClient:
                     raise
                 except Exception:
                     pass
-        raise Exception("Video generation timeout")
+        raise Exception("视频生成超时未出片")
 
 
 class CreditError(Exception):
-    """Insufficient quota, rotate account without retrying."""
+    """额度不足错误，不重试，直接换号"""
     pass
 
 
-# ============ Multi-Account Rotation ============
+# ============ 多账号轮询 ============
 
 class DolaPool:
-    """Multi-cookie rotation pool with quota detection."""
+    """多 cookie 轮询池：支持国际版+国内版混合，shuffle + 失败换号 + 额度检测"""
 
     def __init__(self, cookies: list, api_base: str = "https://www.dola.com",
                  video_timeout: int = 300, image_timeout: int = 120, max_retry: int = 2):
@@ -892,7 +903,7 @@ class DolaPool:
         return len(self.clients) > 0
 
     async def run_with_pool(self, fn_name: str, *args, **kwargs):
-        """Shuffles cookie pool, rotating accounts on quota limits."""
+        """shuffle cookie 池，逐个尝试，额度不足直接换号，其他错误重试 max_retry 次"""
         import random
         clients = self.clients[:]
         random.shuffle(clients)
@@ -904,21 +915,21 @@ class DolaPool:
                     return await fn(*args, **kwargs)
                 except CreditError as e:
                     last_err = e
-                    break  # Insufficient quota, rotate account
+                    break  # 额度不足，不重试，换号
                 except Exception as e:
                     last_err = e
                     if retry < self.max_retry:
                         await asyncio.sleep(3)
                         continue
-                    break  # Retries exhausted, rotate account
-        raise last_err or Exception("No available cookies")
+                    break  # 重试用完，换号
+        raise last_err or Exception("无可用 cookie")
 
-    # Convenience methods
+    # 便捷方法
     async def chat(self, messages, **kw):
         return await self.run_with_pool("chat", messages, **kw)
 
     async def chat_stream(self, messages, **kw):
-        """Streaming chat using first available cookie."""
+        """流式聊天：选第一个可用 cookie 流式返回"""
         import random
         clients = self.clients[:]
         random.shuffle(clients)
@@ -929,7 +940,7 @@ class DolaPool:
                 return
             except Exception:
                 continue
-        raise Exception("All cookies failed")
+        raise Exception("所有 cookie 均失败")
 
     async def vision(self, image_input, prompt):
         return await self.run_with_pool("vision", image_input, prompt)
@@ -944,7 +955,7 @@ class DolaPool:
         )
 
 
-# ============ Domestic Engine (doubao.com) ============
+# ============ 国内版 (doubao.com) ============
 
 CN_DOMAIN = "www.doubao.com"
 CN_DEFAULT_ASSISTANT_ID = "497858"
@@ -971,14 +982,14 @@ CN_FAKE_HEADERS = {
 
 
 def _fake_ms_token() -> str:
-    """Generates pseudo msToken."""
+    """生成伪 msToken（国内版不校验）"""
     import base64
     import os
     return base64.urlsafe_b64encode(os.urandom(96)).rstrip(b"=").decode()
 
 
 def _fake_a_bogus() -> str:
-    """Generates pseudo a_bogus."""
+    """生成伪 a_bogus（国内版居然接受这个格式）"""
     import random
     import string
     part1 = "".join(random.choices(string.ascii_letters + string.digits, k=34))
@@ -992,7 +1003,10 @@ def _random_numeric(length: int) -> str:
 
 
 class DoubaoCNClient:
-    """Doubao Client: Chat, image recognition, and image generation."""
+    """豆包国内版 (doubao.com) API 客户端
+    token 即 sessionid（32位十六进制），cookie = sessionid=xxx; sessionid_ss=xxx
+    支持聊天、图片识别、文生图。不支持视频（卡 a_bogus 真签名）。
+    """
 
     def __init__(self, token: str):
         self.token = token  # sessionid
@@ -1006,7 +1020,7 @@ class DoubaoCNClient:
 
     @staticmethod
     def _extract_cn_text(events: list) -> str:
-        """Extracts text delta from domestic SSE events."""
+        """从国内版 SSE 事件列表提取文本（event_type 2001=文本/2003=结束/2005=错误）"""
         full_text = ""
         for event_name, data in events:
             event_type = data.get("event_type")
@@ -1014,7 +1028,7 @@ class DoubaoCNClient:
             if event_type == 2005:
                 try:
                     err = json.loads(event_data_str)
-                    raise Exception(f"Domestic engine error: {err.get('code')} {err.get('message', '')[:60]}")
+                    raise Exception(f"国内版错误: {err.get('code')} {err.get('message', '')[:60]}")
                 except json.JSONDecodeError:
                     pass
                 continue
@@ -1062,7 +1076,7 @@ class DoubaoCNClient:
         return params
 
     def _build_headers(self, referer: str = None) -> dict:
-        """Builds domestic request headers."""
+        """构建国内版请求头（含 X-Flow-Trace，防风控）"""
         u = str(uuid_lib.uuid4())
         return {
             **CN_FAKE_HEADERS,
@@ -1072,9 +1086,9 @@ class DoubaoCNClient:
         }
 
     def _messages_to_text(self, messages: list) -> str:
-        """Merges multi-turn dialogue into format string."""
+        """将多轮对话合并为 <|im_start|> 格式字符串（国内版 messagesPrepare 逻辑）"""
         if len(messages) < 2:
-            # Single message passthrough
+            # 单条消息直接透传
             parts = []
             for msg in messages:
                 content = msg.get("content", "")
@@ -1095,7 +1109,7 @@ class DoubaoCNClient:
         return result
 
     async def chat(self, messages: list, deep_think: bool = False) -> str:
-        """Domestic chat completion."""
+        """国内版聊天"""
         body = {
             "messages": [{
                 "content": json.dumps({"text": self._messages_to_text(messages)}),
@@ -1134,7 +1148,7 @@ class DoubaoCNClient:
         return self._extract_cn_text(events)
 
     async def _read_sse(self, resp: aiohttp.ClientResponse) -> list:
-        """Reads SSE stream."""
+        """读取 SSE 流"""
         events = []
         buffer = ""
         async for chunk in resp.content:
@@ -1157,12 +1171,12 @@ class DoubaoCNClient:
         return events
 
     async def upload_image(self, image_input: str) -> str:
-        """Domestic image upload flow."""
+        """国内版图片上传：prepare_upload(scene_id=5) → ApplyImageUpload → PUT TOS"""
         if image_input.startswith("tos-cn-i-"):
             return image_input
         image_buf = await self._fetch_image(image_input)
 
-        # 1. prepare_upload (scene_id="5")
+        # 1. prepare_upload（国内版 scene_id="5"）
         url = f"https://{CN_DOMAIN}/alice/resource/prepare_upload"
         headers = {**self._build_headers(), "agw-js-conv": "str"}
         params = self._build_params({"msToken": _fake_ms_token(), "a_bogus": _fake_a_bogus()})
@@ -1171,10 +1185,10 @@ class DoubaoCNClient:
                                      json={"tenant_id": "5", "scene_id": "5", "resource_type": 2},
                                      headers=headers, timeout=aiohttp.ClientTimeout(total=15)) as p1:
                 p1_data = await p1.json(content_type=None)
-        # Response structure: service_id, upload_host, upload_auth_token
+        # 响应结构: {code:0, data:{service_id, upload_host, upload_auth_token:{...}}}
         upload_data = p1_data.get("data") or p1_data
         if not upload_data.get("upload_auth_token"):
-            raise Exception(f"Domestic prepare_upload failed: {json.dumps(p1_data)[:100]}")
+            raise Exception(f"国内版 prepare_upload 失败: {json.dumps(p1_data)[:100]}")
 
         auth = upload_data["upload_auth_token"]
         service_id = upload_data["service_id"]
@@ -1220,7 +1234,7 @@ class DoubaoCNClient:
         return base64.b64decode(b64)
 
     async def vision(self, image_input: str, prompt: str) -> str:
-        """Domestic image recognition."""
+        """国内版图片识别：上传图片 → vlm_image attachment → 聊天"""
         image_uri = await self.upload_image(image_input)
         body = {
             "messages": [{
@@ -1258,8 +1272,8 @@ class DoubaoCNClient:
         return self._extract_cn_text(events)
 
     async def generate_image(self, prompt: str, ratio: str = "1:1", style: str = "auto") -> str:
-        """Domestic text-to-image generation."""
-        # Domestic text-to-image uses ability_type=16
+        """国内版文生图（和国际版结构类似，用 ability_type=16）"""
+        # 国内版文生图也是 /samantha/chat/completion，请求体加 chat_ability
         body = {
             "messages": [{
                 "content": json.dumps({"text": f"帮我生成图片：{prompt}\n风格：{style}\n比例：{ratio}"}),
@@ -1299,21 +1313,24 @@ class DoubaoCNClient:
                 image_url = urls[0].replace("\\u0026", "&")
         if image_url:
             return image_url
-        raise Exception("Domestic text-to-image failed to acquire image URL")
+        raise Exception("国内版文生图未获取到图片URL")
 
     async def generate_video(self, *args, **kwargs):
-        """Domestic engine does not support video generation."""
-        raise CreditError("Domestic engine does not support video generation")
+        """国内版不支持视频生成（a_bogus 真签名无法绕过）"""
+        raise CreditError("国内版不支持视频生成（卡 a_bogus 签名）")
 
 
-# ============ Unified Client Factory ============
+# ============ 统一客户端工厂 ============
 
 def create_client(cookie_or_token: str, api_base: str = "https://www.dola.com") -> "DolaClient | DoubaoCNClient":
-    """Factory creating appropriate client based on cookie format."""
+    """根据 cookie 特征自动创建国际版或国内版客户端
+    - 含 msToken= → 国际版 DolaClient
+    - 纯 sessionid（32位十六进制）或不含 msToken 的 doubao cookie → 国内版 DoubaoCNClient
+    """
     if "msToken=" in cookie_or_token:
         return DolaClient(cookie_or_token, api_base)
     else:
-        # Domestic: plain sessionid or doubao cookie
+        # 国内版：可能是纯 sessionid 或完整 doubao cookie
         token = cookie_or_token
         m = re.search(r"sessionid=([^;]+)", cookie_or_token)
         if m:

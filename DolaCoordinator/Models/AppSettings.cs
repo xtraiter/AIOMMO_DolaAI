@@ -76,6 +76,12 @@ public class AppSettings
     /// <summary>Khi Dola hỏi lại, tự trả lời để nó tạo video (tối đa 3 lần mỗi video).</summary>
     public bool AutoAnswerAskBack { get; set; } = true;
 
+    /// <summary>
+    /// Xóa logo bằng dịch vụ bên thứ ba của dola-pool (DOLA_PURE_REMOVE_WATERMARK). Dịch vụ đó được gọi qua HTTP thường, KHÔNG qua
+    /// proxy của tài khoản, nên nó nhận IP thật của máy và thông tin video. Mặc định tắt.
+    /// </summary>
+    public bool RemoveWatermark { get; set; }
+
     /// <summary>Nội dung tự trả lời (có thể sửa). Để trống = dùng mặc định.</summary>
     public string AskBackReply { get; set; } = DefaultAskBackReply;
 

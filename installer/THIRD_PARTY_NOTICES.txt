@@ -11,6 +11,6 @@ This list is informational. Each component remains under its own license.
   - PSF license / MIT / BSD / Apache-2.0 / HPND (each package keeps its own license inside gateway\_internal)
 * .NET 8 runtime and libraries (WPF, CommunityToolkit.Mvvm, LiteDB, ClosedXML, Microsoft.Extensions.*) - MIT and others
 * Dola30 browser extension (gateway\extensions\dola30) - third-party extension, license not specified by its author
-* Parts of the gateway are derived from third-party source code (github.com/coll3879xx-cyber/dola-render-gateway) that does not state a license
+* The gateway is derived from third-party source code (github.com/Roins-hub/dola-pool, earlier github.com/coll3879xx-cyber/dola-render-gateway); neither repository states a license
 
 AIOMMO DolaAI is not affiliated with, endorsed by or sponsored by Dola, ByteDance, Google, Meta or any proxy provider.

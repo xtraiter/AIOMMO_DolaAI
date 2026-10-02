@@ -34,13 +34,15 @@ if ($LASTEXITCODE -ne 0) { throw "pip install that bai." }
 
 Write-Host "[2/4] Dong goi bang PyInstaller (vai phut)..." -ForegroundColor Cyan
 $dist = Join-Path $work "dist"
+# pure_signer / protocol/dola_pure_api tim bdms_sign_url.js canh ma Python: phai di kem exe, thieu thi dang nhap/xac thuc cookie bao loi "BDMS signer not found"
+$jsData = (Join-Path $src "protocol\js") + ";protocol\js"
 Push-Location $src
 try {
     & $vpy -m PyInstaller gateway_main.py --name dola-gateway --onedir --noconfirm --clean --console `
         --distpath $dist --workpath (Join-Path $work "build") --specpath (Join-Path $work "spec") `
         --paths . --collect-all patchright --collect-submodules uvicorn `
         --hidden-import open_profile --hidden-import add_account_cookie --hidden-import fb_to_dola --hidden-import aiommo_compat `
-        --exclude-module tkinter
+        --add-data $jsData --exclude-module tkinter
     if ($LASTEXITCODE -ne 0) { throw "PyInstaller that bai." }
 } finally { Pop-Location }
 

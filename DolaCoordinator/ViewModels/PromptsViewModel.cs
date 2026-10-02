@@ -81,9 +81,9 @@ public partial class PromptsViewModel : ObservableObject
 
         foreach (var p in _db.GetAllPrompts())
         {
-            if (!PromptFileParser.Durations.Contains(p.Duration) || !PromptFileParser.Ratios.Contains(p.Ratio))
+            if (!PromptFileParser.DurationsFor(p.Model).Contains(p.Duration) || !PromptFileParser.Ratios.Contains(p.Ratio))
             {
-                p.Duration = PromptFileParser.NormalizeDuration(p.Duration.ToString());
+                p.Duration = PromptFileParser.FitDuration(p.Duration, p.Model);
                 p.Ratio = PromptFileParser.NormalizeRatio(p.Ratio);
                 _db.UpsertPrompt(p);
             }
@@ -472,6 +472,11 @@ public partial class PromptsViewModel : ObservableObject
             for (var i = 0; i < dlg.Copies; i++)
             {
                 // Ghép nhân vật + bối cảnh vào prompt; ảnh được đánh số theo thứ tự gửi (ảnh mặc định → nhân vật → bối cảnh)
+                // Chọn thời lượng chung mà không chọn model: 30s chỉ có ở Seedance 2.5, 15s chỉ có ở Seedance 2.0 → tự chọn model phù hợp.
+                var model = dlg.ModelOverride ?? p.Model;
+                if (dlg.ModelOverride is null && dlg.DurationOverride is { } wanted && !PromptFileParser.DurationsFor(model).Contains(wanted))
+                    model = wanted == 30 ? "seedance-2.5" : wanted == 15 ? "seedance-2.0" : model;
+                var duration = PromptFileParser.FitDuration(dlg.DurationOverride ?? p.Duration, model);
                 var composed = PromptComposer.Compose(p.Text, p.ReferenceLocalPaths, p.Characters, p.SceneText, p.SceneImages);
                 tasks.Add(new RenderTask
                 {
@@ -479,9 +484,9 @@ public partial class PromptsViewModel : ObservableObject
                     PromptBucket = "active",
                     Prompt = composed.Text,
                     PromptTitle = p.Title,
-                    Model = dlg.ModelOverride ?? p.Model,
+                    Model = model,
                     Ratio = dlg.RatioOverride ?? p.Ratio,
-                    Duration = dlg.DurationOverride ?? p.Duration,
+                    Duration = duration,
                     ReferenceLocalPaths = composed.Images,
                     Priority = dlg.Priority,
                     CreatedAt = DateTime.UtcNow.AddMilliseconds(tasks.Count), // giữ đúng thứ tự khi cùng độ ưu tiên
